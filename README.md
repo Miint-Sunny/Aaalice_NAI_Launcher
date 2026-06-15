@@ -252,6 +252,7 @@
 
 - [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.35.0
 - [Dart SDK](https://dart.dev/get-dart) >= 3.10.7
+- **macOS 构建额外需要**：完整 Xcode（非仅 Command Line Tools）、CocoaPods（`brew install cocoapods`）、Git LFS（`brew install git-lfs`，用于拉取 `assets/databases/*.db`）
 
 #### 构建步骤
 
@@ -259,6 +260,9 @@
 # 克隆仓库
 git clone https://github.com/Aaalice233/Aaalice_NAI_Launcher.git
 cd Aaalice_NAI_Launcher
+
+# 拉取 LFS 数据库（assets/databases/*.db，否则 sqlite 启动报 "file is not a database"）
+git lfs pull
 
 # 安装依赖
 flutter pub get
@@ -272,6 +276,8 @@ flutter run
 # 构建发布版本
 # Windows
 flutter build windows --release
+# macOS（产物 build/macos/Build/Products/Release/Aaalice NAI Launcher.app）
+flutter build macos --release
 
 ```
 
