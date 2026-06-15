@@ -1,3 +1,5 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -446,25 +448,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get auth_troubleshoot_serverStatus_title => '检查服务器状态';
 
   @override
-  String get auth_troubleshoot_serverStatus_desc => '访问 NovelAI 状态页面或社区查看服务中断情况';
+  String get auth_troubleshoot_serverStatus_desc =>
+      '访问 NovelAI 状态页面或社区查看服务中断情况';
 
   @override
   String get auth_passwordResetHelp_title => '密码重置';
 
   @override
-  String get auth_passwordResetHelp_desc => '点击「忘记密码」将在浏览器中打开 NovelAI 密码重置页面，您可以在那里重置密码';
+  String get auth_passwordResetHelp_desc =>
+      '点击「忘记密码」将在浏览器中打开 NovelAI 密码重置页面，您可以在那里重置密码';
 
   @override
   String get auth_passwordResetAfterReset_title => '重置密码后';
 
   @override
-  String get auth_passwordResetAfterReset_desc => '在 NovelAI 网站上重置密码后，返回此应用并使用新密码登录';
+  String get auth_passwordResetAfterReset_desc =>
+      '在 NovelAI 网站上重置密码后，返回此应用并使用新密码登录';
 
   @override
   String get auth_passwordResetNoEmail_title => '未收到重置邮件？';
 
   @override
-  String get auth_passwordResetNoEmail_desc => '如果几分钟内未收到密码重置邮件，请检查垃圾邮件文件夹或联系 NovelAI 客服';
+  String get auth_passwordResetNoEmail_desc =>
+      '如果几分钟内未收到密码重置邮件，请检查垃圾邮件文件夹或联系 NovelAI 客服';
 
   @override
   String get common_paste => '粘贴';
@@ -1097,7 +1103,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get config_sort => '排序';
 
   @override
-  String get config_inputTags => '输入标签，每行一个...\n例如：\n1girl\nbeautiful eyes\nlong hair';
+  String get config_inputTags =>
+      '输入标签，每行一个...\n例如：\n1girl\nbeautiful eyes\nlong hair';
 
   @override
   String get config_unsavedChanges => '未保存的更改';
@@ -1812,7 +1819,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get preset_sort => '排序';
 
   @override
-  String get preset_inputHint => '输入标签，每行一个...\n例如：\n1girl\nbeautiful eyes\nlong hair';
+  String get preset_inputHint =>
+      '输入标签，每行一个...\n例如：\n1girl\nbeautiful eyes\nlong hair';
 
   @override
   String get preset_unsavedChanges => '未保存的更改';
@@ -2479,7 +2487,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get presetEdit_helpWeightBracketsContent => '花括号用于增加权重，括号越多权重越高。';
 
   @override
-  String get presetEdit_helpWeightBracketsExample => '例如：一层括号是 1.05 倍权重，两层括号是 1.1 倍。';
+  String get presetEdit_helpWeightBracketsExample =>
+      '例如：一层括号是 1.05 倍权重，两层括号是 1.1 倍。';
 
   @override
   String get presetEdit_helpNestedConfig => '嵌套配置';
@@ -2560,7 +2569,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ucPreset_addToNegative => '添加到负面提示词开头:';
 
   @override
-  String get ucPreset_nsfwHint => '💡 如需生成成人内容，请在正面提示词中添加 nsfw，负面提示词中的 nsfw 将自动移除';
+  String get ucPreset_nsfwHint =>
+      '💡 如需生成成人内容，请在正面提示词中添加 nsfw，负面提示词中的 nsfw 将自动移除';
 
   @override
   String get ucPreset_addFromLibrary => '从词库添加';
@@ -3115,7 +3125,8 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String characterEditor_characterCountWithEnabled(Object enabled, Object total) {
+  String characterEditor_characterCountWithEnabled(
+      Object enabled, Object total) {
     return '$enabled/$total 角色';
   }
 
@@ -3454,7 +3465,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get naiAlgorithm_weightedRandom => '加权随机算法';
 
   @override
-  String get naiAlgorithm_weightedRandomDesc => '每个标签的权重基于 Danbooru 使用次数计算，权重越高被选中概率越大。';
+  String get naiAlgorithm_weightedRandomDesc =>
+      '每个标签的权重基于 Danbooru 使用次数计算，权重越高被选中概率越大。';
 
   @override
   String get naiAlgorithm_v4MultiCharacter => 'V4多角色联动';
@@ -4043,7 +4055,8 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get addGroup_customInputHint => '输入 Danbooru 的 tag_group 标题，例如：hair_color';
+  String get addGroup_customInputHint =>
+      '输入 Danbooru 的 tag_group 标题，例如：hair_color';
 
   @override
   String get addGroup_groupTitleLabel => '标签词库标题 *';
@@ -4461,7 +4474,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get preset_resetConfirmTitle => '重置预设';
 
   @override
-  String get preset_resetConfirmMessage => '确定要将当前预设的所有类别和词组设置重置为默认配置吗？此操作不可撤销。';
+  String get preset_resetConfirmMessage =>
+      '确定要将当前预设的所有类别和词组设置重置为默认配置吗？此操作不可撤销。';
 
   @override
   String get preset_resetSuccess => '预设已重置为默认配置';
@@ -4657,7 +4671,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get characterCountConfig_mainPromptLabel => '主提示词标签';
 
   @override
-  String get characterCountConfig_mainPromptHint => '例如：solo, 2girls, 1girl 1boy';
+  String get characterCountConfig_mainPromptHint =>
+      '例如：solo, 2girls, 1girl 1boy';
 
   @override
   String get characterCountConfig_personCount => '人数：';
@@ -4740,7 +4755,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scope_character => '角色';
 
   @override
-  String get scope_characterTooltip => '提示词将只出现在角色提示词内\n每个角色单独生成\n适合：发色、眵色、服装、表情等';
+  String get scope_characterTooltip =>
+      '提示词将只出现在角色提示词内\n每个角色单独生成\n适合：发色、眵色、服装、表情等';
 
   @override
   String get scope_all => '通用';
@@ -5323,7 +5339,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localGallery_permissionRequiredTitle => '需要存储权限';
 
   @override
-  String get localGallery_permissionRequiredContent => '本地画廊需要访问存储权限才能扫描您生成的图片。\n\n请在设置中授予权限后重试。';
+  String get localGallery_permissionRequiredContent =>
+      '本地画廊需要访问存储权限才能扫描您生成的图片。\n\n请在设置中授予权限后重试。';
 
   @override
   String get localGallery_openSettings => '打开设置';
@@ -5332,7 +5349,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localGallery_firstTimeTipTitle => '💡 使用提示';
 
   @override
-  String get localGallery_firstTimeTipContent => '右键点击（桌面端）或长按（移动端）图片可以：\n\n• 复制 Prompt\n• 复制 Seed\n• 查看完整元数据';
+  String get localGallery_firstTimeTipContent =>
+      '右键点击（桌面端）或长按（移动端）图片可以：\n\n• 复制 Prompt\n• 复制 Seed\n• 查看完整元数据';
 
   @override
   String get localGallery_gotIt => '知道了';
@@ -7452,10 +7470,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_restartRequiredTitle => '需要重启应用';
 
   @override
-  String get settings_changePathConfirm => '更改数据存储路径后，需要重启应用才能生效。\\n\\n新路径将在下次启动时生效。是否继续？';
+  String get settings_changePathConfirm =>
+      '更改数据存储路径后，需要重启应用才能生效。\\n\\n新路径将在下次启动时生效。是否继续？';
 
   @override
-  String get settings_resetPathConfirm => '重置数据存储路径后，需要重启应用才能生效。\\n\\n默认路径将在下次启动时生效。是否继续？';
+  String get settings_resetPathConfirm =>
+      '重置数据存储路径后，需要重启应用才能生效。\\n\\n默认路径将在下次启动时生效。是否继续？';
 
   @override
   String get settings_fontScale => '字体大小';
