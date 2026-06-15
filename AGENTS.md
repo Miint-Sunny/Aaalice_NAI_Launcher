@@ -91,3 +91,18 @@ scripts/create_macos_dev_cert.sh
 启动后看日志（`~/Documents/NAI_Launcher/logs/app_*.log`）确认：
 `Sqflite FFI initialized` → `Translation data source initialized with 33874 records` → `Window filled to work area` → 登录后 `Subscription loaded`，且**无** `errSecMissingEntitlement / -34018 / Unhandled Exception`。
 触及共享代码（剪贴板 / 视频 / 窗口）时，提醒在 **Windows 回归**。
+
+---
+
+## 8. 本地数据目录（用户数据 / 调试）
+
+按 **bundle id** `com.example.nai_launcher` 定位（与应用名、`.app` 包无关——改 bundle id 才会换目录，所以重新构建/改应用名后数据照样在）：
+
+- **Hive 本地库**：`~/Library/Application Support/com.example.nai_launcher/hive/`
+  - `settings.hive` — 设置 + 上次 prompt：`last_prompt`(正面) / `last_negative_prompt`(负面) / `character_prompt_config`·`characters`(角色)，以及代理/主题/窗口尺寸等。**prompt 与其它设置同在此 box，不能单独删 prompt**（删整个文件会丢全部设置）。
+  - 其它：`accounts.hive`、`scan_state.hive`、`local_metadata_cache.hive` 等（`prompt_configs.hive` 当前空、未使用）。
+- **预构建数据库**：`~/Library/Application Support/com.example.nai_launcher/asset_databases/`（`translation.db` / `cooccurrence.db`，启动时从 assets 复制）。
+- **图片 / 日志**：`~/Documents/NAI_Launcher/`（`images/`、`logs/app_*.log`）；vibes 在 `~/Documents/NAI_Launcher/vibes`。
+- **token**：login keychain（见 §1，非文件；自签名证书 + dev_run 脚本免弹框）。
+
+排查「重新构建后数据还在 / 想重置」类问题看这里。
