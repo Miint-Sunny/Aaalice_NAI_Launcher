@@ -551,7 +551,9 @@ void main() async {
               ? 'assets/icons/app_icon.ico'
               : 'assets/icons/tray_icon.png',
         );
-        await trayManager.setToolTip('NAI Launcher');
+        await trayManager.setToolTip(
+          Platform.isMacOS ? 'Aaalice NAI Launcher' : 'NAI Launcher',
+        );
 
         // 获取本地化字符串
         final l10n = _getLocalizedStrings();
