@@ -30,6 +30,7 @@ scripts/create_macos_dev_cert.sh
 - **不要用 `flutter run`**：它用 ad-hoc 签名，会导致 `flutter_secure_storage` 每次访问 Keychain 弹授权框。必须用上面的脚本（稳定证书签名后 Always Allow 一次永久生效）。
 - 纯构建（不关心弹框）：`LANG=en_US.UTF-8 flutter build macos`（CocoaPods 需要 UTF-8 编码，**必须**带 `LANG`）。
 - 证书 "NAI Launcher Local Dev" 在独立钥匙串 `~/Library/Keychains/nai-codesign.keychain-db`（密码 `naidev`），不碰用户 login 钥匙串。
+- **应用/托盘图标**：圆角方块（白底 squircle + 角色立绘）。生成工具 `tool/macos_icon/`（Pillow，用 venv）：`make_macos_icons.py` 覆盖 AppIcon 各尺寸 + `tray_icon.png`；`--char-scale` 调白边宽度；`--previews` 出白边对比图（`previews/` 有 A/B/C 变体）。改图标后需重新 `flutter build macos`。
 
 ---
 
@@ -51,7 +52,7 @@ scripts/create_macos_dev_cert.sh
 - 移除 `glados`（其老版 analyzer 与新 SDK + hive_generator/freezed 冲突）
 - `DialogTheme → DialogThemeData`、`CardTheme → CardThemeData`（Flutter 主题 API 迁移，6 处）
 
-已在 issue #51 跟作者商量是否升级 SDK；若升级，可把下方 commit `b119b2c6` 整理成单独的 SDK 升级 PR。
+已在 issue #51 跟作者商量是否升级 SDK。**SDK 升级分支已备好**：`chore/flutter-3.44-upgrade`（commit `05c188db`，从上游 `main` 切，纯 SDK 升级 = intl/glados/theme + 重新生成 l10n/.g.dart/lock；本地 `pub get`/`build_runner`/`analyze` 验证通过），**未 push**，等作者在 issue #51 点头即可 `git push -u origin chore/flutter-3.44-upgrade` 开 PR。
 
 ---
 
@@ -59,8 +60,8 @@ scripts/create_macos_dev_cert.sh
 
 | 分支 | 内容 | 用途 |
 |------|------|------|
-| `feat/macos-support` | commit `04a69495`(A 适配) + `b119b2c6`(B+C 兼容) | **本地开发/运行**，3.44 可跑 |
-| `pr/macos` | 仅 `04a69495`（A） | 已 push → fork，对应 **PR #52**（上游旧 SDK 可直接 build） |
+| `feat/macos-support` | `04a69495`(A 适配)+`b119b2c6`(B+C 兼容)+`529026ab`(文档)+`30f8b834`(托盘+窗口)+`f4004707`(圆角图标) | **本地开发/运行**，3.44 可跑 |
+| `pr/macos` | `04a69495`(A 适配)+`95e790d0`(圆角 AppIcon + 图标工具) | 已 push → **PR #52**（上游旧 SDK 可直接 build） |
 
 提 PR 永远基于 `pr/macos`（纯 A）。本地开发待在 `feat/macos-support`。
 `pr/macos` 在本机 3.44 **build 不了**（缺 B），其旧-SDK 可构建性靠代码审查 + 作者/CI。
@@ -73,13 +74,14 @@ scripts/create_macos_dev_cert.sh
   `macos/` 目录、`lib/main.dart`（视频按平台初始化 + 窗口自适应）、`sqflite_bootstrap_service.dart`、`secure_storage_service.dart`、`history_panel.dart`、三处剪贴板（`selectable_image_card.dart` / `local_image_card_3d.dart` / `image_detail_viewer.dart` 改用 super_clipboard）、README、`.gitignore`、`scripts/build_release_macos.sh` + 签名脚本、pubspec 仅加 `media_kit_libs_macos_video` + `screen_retriever`。
 - **B — SDK 兼容（不进 PR，commit `b119b2c6` 一部分）**：见 §3。
 - **C — 生成产物（不进 PR）**：`.metadata`、`pubspec.lock`、`lib/l10n/*`、`*.g.dart`、`windows/flutter/generated_plugins.cmake`。
+- **功能补全（A 类，但在最小适配 PR #52 之外）**：系统托盘 + 窗口生命周期（`30f8b834`，仅 `feat`，等主 PR merge 后再提）；圆角图标 + `tool/macos_icon` 工具（`f4004707` 在 `feat`；其中 AppIcon + 工具部分已并入 PR #52 的 `95e790d0`，但 `tray_icon` 属托盘、未进 PR #52）。
 
 ---
 
 ## 6. 设计取舍 / 已知限制
 
 - **关闭了 App Sandbox**（`macos/Runner/*.entitlements`）：为支持 `Process.run`、读写用户目录、Keychain、网络。代价：不能上 Mac App Store（项目本就独立分发，OK）。上 MAS 需重开沙盒并逐项补 entitlements。
-- **系统托盘未实现**：macOS 下关窗口 = 退出应用。后续迭代项（托盘图标需从 `.ico` 换 `.png` template image）。
+- **系统托盘 + 窗口生命周期闭环**（commit `30f8b834`，在 `feat`，已验证）：菜单栏托盘（`assets/icons/tray_icon.png`）、关窗口隐藏到托盘、Dock/托盘恢复窗口、Cmd+Q 与托盘"退出"正常退出。Swift 层 `macos/Runner/AppDelegate.swift` 加了 `applicationShouldHandleReopen`（点 Dock 恢复）+ `applicationShouldTerminateAfterLastWindowClosed=false`（隐藏不退出）；Dart 层把托盘初始化条件从 `if(isWindows)` 扩到 `if(isWindows||isMacOS)`。**属功能补全，不在 PR #52**，等主 PR merge 后再单独提。
 - **bundle id `com.example.nai_launcher` 含下划线**：Apple 平台有 warning，本地 ad-hoc 运行无碍；正式签名/公证前建议改无下划线（如 `com.example.naiLauncher`）。
 
 ---
