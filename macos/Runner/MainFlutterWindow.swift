@@ -7,7 +7,7 @@ class MainFlutterWindow: NSWindow {
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
-    self.title = "NAI Launcher"
+    self.title = "Aaalice NAI Launcher"
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 

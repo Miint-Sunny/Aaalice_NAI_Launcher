@@ -28,10 +28,10 @@ else
 fi
 
 echo "[1/3] flutter build macos --$MODE ..."
-pkill -f "nai_launcher.app/Contents/MacOS" 2>/dev/null || true
+pkill -f "Aaalice NAI Launcher.app/Contents/MacOS" 2>/dev/null || true
 flutter build macos --"$MODE"
 
-APP="build/macos/Build/Products/$SUBDIR/nai_launcher.app"
+APP="build/macos/Build/Products/$SUBDIR/Aaalice NAI Launcher.app"
 echo "[2/3] 用 '$IDENTITY' 重签 ..."
 codesign --force --deep --sign "$IDENTITY" --entitlements "$ENT" "$APP"
 
