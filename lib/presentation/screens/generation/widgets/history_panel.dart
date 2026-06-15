@@ -534,7 +534,13 @@ class _HistoryPanelState extends ConsumerState<HistoryPanel> {
       ref.read(localGalleryNotifierProvider.notifier).refresh();
 
       // 在文件夹中打开并选中文件
-      await Process.start('explorer', ['/select,${file.path}']);
+      if (Platform.isWindows) {
+        await Process.start('explorer', ['/select,${file.path}']);
+      } else if (Platform.isMacOS) {
+        await Process.start('open', ['-R', file.path]);
+      } else if (Platform.isLinux) {
+        await Process.start('xdg-open', [file.parent.path]);
+      }
 
       if (context.mounted) {
         AppToast.success(context, context.l10n.image_imageSaved(saveDirPath));

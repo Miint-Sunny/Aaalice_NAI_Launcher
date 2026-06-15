@@ -114,6 +114,11 @@ Desktop.ini
 # Windows（Flutter 特定）
 **/windows/flutter/ephemeral
 
+# macOS（Flutter 特定）
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Pods/
+
 
 # ===========================================================================
 # 忽略模式例外

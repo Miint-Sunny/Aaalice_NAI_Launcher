@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../../../core/shortcuts/shortcuts.dart';
 import '../../../../data/models/metadata/metadata_import_options.dart';
@@ -549,41 +549,21 @@ class _ImageDetailViewerState extends State<ImageDetailViewer> {
 
   /// 复制图像到剪贴板
   Future<void> _copyImageToClipboard(BuildContext context) async {
-    File? tempFile;
     try {
+      final clipboard = SystemClipboard.instance;
+      if (clipboard == null) {
+        if (context.mounted) {
+          AppToast.error(context, '当前平台不支持复制图片');
+        }
+        return;
+      }
+
       // 获取图像字节
       final imageBytes = await _currentImage.getImageBytes();
 
-      // 创建临时文件
-      final tempDir = await getTemporaryDirectory();
-      tempFile = File(
-        '${tempDir.path}/NAI_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-      await tempFile.writeAsBytes(imageBytes);
-
-      // 验证文件是否成功创建
-      if (!await tempFile.exists()) {
-        throw Exception('临时文件创建失败');
-      }
-
-      // 使用 PowerShell 复制图像到剪贴板
-      // 使用 [System.Windows.Forms.Clipboard]::SetImage() 正确复制图像数据
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-Command',
-        'Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; \$image = [System.Drawing.Image]::FromFile("${tempFile.path}"); [System.Windows.Forms.Clipboard]::SetImage(\$image); \$image.Dispose();',
-      ]);
-
-      // 检查 PowerShell 命令执行结果
-      if (result.exitCode != 0) {
-        final errorOutput = result.stderr.toString();
-        throw Exception('PowerShell 命令失败 (exitCode: ${result.exitCode}): $errorOutput');
-      }
-
-      // 延迟删除临时文件，确保 PowerShell 完成读取
-      await Future.delayed(const Duration(milliseconds: 500));
+      final item = DataWriterItem();
+      item.add(Formats.png(imageBytes));
+      await clipboard.write([item]);
 
       if (context.mounted) {
         AppToast.success(context, '已复制到剪贴板');
@@ -591,15 +571,6 @@ class _ImageDetailViewerState extends State<ImageDetailViewer> {
     } catch (e) {
       if (context.mounted) {
         AppToast.error(context, '复制失败: $e');
-      }
-    } finally {
-      // 清理临时文件
-      if (tempFile != null && await tempFile.exists()) {
-        try {
-          await tempFile.delete();
-        } catch (_) {
-          // 忽略删除错误
-        }
       }
     }
   }

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../../core/cache/thumbnail_cache_service.dart';
 import '../../../core/utils/app_logger.dart';
@@ -188,42 +188,27 @@ class _LocalImageCard3DState extends State<LocalImageCard3D>
   }
 
   Future<void> _copyImageToClipboard() async {
-    File? tempFile;
     try {
+      final clipboard = SystemClipboard.instance;
+      if (clipboard == null) {
+        if (mounted) AppToast.error(context, '当前平台不支持复制图片');
+        return;
+      }
+
       final sourceFile = File(widget.record.path);
       if (!await sourceFile.exists()) {
         if (mounted) AppToast.error(context, '文件不存在');
         return;
       }
 
-      final tempDir = await getTemporaryDirectory();
-      tempFile = File('${tempDir.path}/NAI_${DateTime.now().millisecondsSinceEpoch}.png');
-      await tempFile.writeAsBytes(await sourceFile.readAsBytes());
+      final bytes = await sourceFile.readAsBytes();
+      final item = DataWriterItem();
+      item.add(Formats.png(bytes));
+      await clipboard.write([item]);
 
-      const psCommand = r'''
-Add-Type -AssemblyName System.Windows.Forms;
-Add-Type -AssemblyName System.Drawing;
-$image = [System.Drawing.Image]::FromFile("''';
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-Command',
-        '$psCommand${tempFile.path}"); [System.Windows.Forms.Clipboard]::SetImage(\$image); \$image.Dispose();',
-      ]);
-
-      if (result.exitCode != 0) throw Exception('PowerShell 命令失败');
-
-      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) AppToast.success(context, '已复制到剪贴板');
     } catch (e) {
       if (mounted) AppToast.error(context, '复制失败: $e');
-    } finally {
-      if (tempFile != null && await tempFile.exists()) {
-        try {
-          await tempFile.delete();
-        } catch (_) {}
-      }
     }
   }
 

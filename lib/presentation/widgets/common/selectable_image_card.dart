@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:super_clipboard/super_clipboard.dart';
 
 import '../../../core/utils/localization_extension.dart';
 import '../../../data/repositories/gallery_folder_repository.dart';
@@ -766,34 +766,18 @@ class _SelectableImageCardState extends ConsumerState<SelectableImageCard>
   }
 
   Future<void> _copyImage(BuildContext context) async {
-    File? tempFile;
     try {
-      final tempDir = await getTemporaryDirectory();
-      tempFile = File(
-        '${tempDir.path}/NAI_${DateTime.now().millisecondsSinceEpoch}.png',
-      );
-      await tempFile.writeAsBytes(widget.imageBytes!);
-
-      // 使用 PowerShell 复制图像到剪贴板
-      // 使用 [System.Windows.Forms.Clipboard]::SetImage() 正确复制图像数据
-      final result = await Process.run('powershell', [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-Command',
-        'Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; \$image = [System.Drawing.Image]::FromFile("${tempFile.path}"); [System.Windows.Forms.Clipboard]::SetImage(\$image); \$image.Dispose();',
-      ]);
-
-      // 检查 PowerShell 命令执行结果
-      if (result.exitCode != 0) {
-        final errorOutput = result.stderr.toString();
-        throw Exception(
-          'PowerShell 命令失败 (exitCode: ${result.exitCode}): $errorOutput',
-        );
+      final clipboard = SystemClipboard.instance;
+      if (clipboard == null) {
+        if (context.mounted) {
+          AppToast.error(context, '当前平台不支持复制图片');
+        }
+        return;
       }
 
-      // 延迟删除临时文件，确保 PowerShell 完成读取
-      await Future.delayed(const Duration(milliseconds: 500));
+      final item = DataWriterItem();
+      item.add(Formats.png(widget.imageBytes!));
+      await clipboard.write([item]);
 
       if (context.mounted) {
         AppToast.success(context, '已复制到剪贴板');
@@ -801,15 +785,6 @@ class _SelectableImageCardState extends ConsumerState<SelectableImageCard>
     } catch (e) {
       if (context.mounted) {
         AppToast.error(context, '复制失败: $e');
-      }
-    } finally {
-      // 清理临时文件
-      if (tempFile != null && await tempFile.exists()) {
-        try {
-          await tempFile.delete();
-        } catch (_) {
-          // 忽略删除错误
-        }
       }
     }
   }
