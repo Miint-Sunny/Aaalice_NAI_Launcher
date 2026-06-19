@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
@@ -18,21 +19,25 @@ Future<void> writeImageBytesToClipboardAsPng(Uint8List bytes) async {
   if (clipboard == null) {
     throw UnsupportedError('当前平台不支持系统剪贴板');
   }
+  final png = await _ensurePngBytes(bytes);
   final item = DataWriterItem();
-  item.add(Formats.png(_ensurePngBytes(bytes)));
+  item.add(Formats.png(png));
   await clipboard.write([item]);
 }
 
-/// 已是 PNG 则原样返回；否则解码后重新编码成 PNG。
-Uint8List _ensurePngBytes(Uint8List bytes) {
+/// 已是 PNG 则原样返回；否则在后台 isolate 解码后重新编码成 PNG，避免大图
+/// 解码阻塞 UI 线程。
+Future<Uint8List> _ensurePngBytes(Uint8List bytes) async {
   if (_looksLikePng(bytes)) {
     return bytes;
   }
-  final decoded = img.decodeImage(bytes);
-  if (decoded == null) {
-    throw const FormatException('无法解码图片用于复制到剪贴板');
-  }
-  return img.encodePng(decoded);
+  return Isolate.run(() {
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) {
+      throw const FormatException('无法解码图片用于复制到剪贴板');
+    }
+    return img.encodePng(decoded);
+  });
 }
 
 bool _looksLikePng(Uint8List bytes) {
