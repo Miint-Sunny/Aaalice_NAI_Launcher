@@ -778,6 +778,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generation_cancelGeneration => '取消生成';
 
   @override
+  String get generation_skipCurrentBatch => '跳过当前批次';
+
+  @override
+  String get generation_stopAllGeneration => '停止全部';
+
+  @override
   String get generation_generateImage => '生成图像';
 
   @override

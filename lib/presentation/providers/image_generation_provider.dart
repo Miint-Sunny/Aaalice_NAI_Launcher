@@ -1726,19 +1726,27 @@ class ImageGenerationNotifier extends _$ImageGenerationNotifier {
     }
   }
 
-  /// 取消生成
-  void cancel() {
+  /// 跳过当前请求，继续后续批次。
+  void skipCurrentRequest() {
     final generationRunId = _activeGenerationRunId;
     final apiService = ref.read(naiImageGenerationApiServiceProvider);
 
-    if (_activeRequestGenerationRunId == generationRunId &&
-        _activeRequestHasRemainingImages()) {
-      _activeRequestCancelRequested = true;
-      _appendFailedStreamSnapshotsForCurrentSlots(generationRunId);
-      apiService.cancelGeneration();
-      state = state.copyWith(clearStreamPreview: true);
+    if (_activeRequestGenerationRunId != generationRunId ||
+        !_activeRequestHasRemainingImages()) {
+      cancel();
       return;
     }
+
+    _activeRequestCancelRequested = true;
+    _appendFailedStreamSnapshotsForCurrentSlots(generationRunId);
+    apiService.cancelGeneration();
+    state = state.copyWith(clearStreamPreview: true);
+  }
+
+  /// 取消生成并停止后续批次。
+  void cancel() {
+    final generationRunId = _activeGenerationRunId;
+    final apiService = ref.read(naiImageGenerationApiServiceProvider);
 
     _appendFailedStreamSnapshotsForCurrentSlots(generationRunId);
     _invalidateGenerationRun();

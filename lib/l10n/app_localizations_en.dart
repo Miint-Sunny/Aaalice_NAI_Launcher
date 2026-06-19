@@ -796,6 +796,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generation_cancelGeneration => 'Cancel Generation';
 
   @override
+  String get generation_skipCurrentBatch => 'Skip Current Batch';
+
+  @override
+  String get generation_stopAllGeneration => 'Stop All';
+
+  @override
   String get generation_generateImage => 'Generate Image';
 
   @override
