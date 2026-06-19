@@ -3201,7 +3201,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String onlineGallery_downloadSelectedCompleted(
-      Object success, Object failed) {
+    Object success,
+    Object failed,
+  ) {
     return '下载完成: 成功 $success, 失败 $failed';
   }
 
@@ -4341,7 +4343,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String characterEditor_characterCountWithEnabled(
-      Object enabled, Object total) {
+    Object enabled,
+    Object total,
+  ) {
     return '$enabled/$total 角色';
   }
 
@@ -8017,7 +8021,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String fixedTags_columnFilteredCount(
-      Object enabled, Object total, Object shown) {
+    Object enabled,
+    Object total,
+    Object shown,
+  ) {
     return '$enabled/$total · 显示 $shown';
   }
 
@@ -9709,7 +9716,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String metadataImport_preciseReferenceDetail(
-      int index, Object type, Object strength, Object fidelity) {
+    int index,
+    Object type,
+    Object strength,
+    Object fidelity,
+  ) {
     return '参考$index: $type (强度 $strength%, 保真 $fidelity%)';
   }
 
@@ -11797,7 +11808,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String performanceReport_taskStatsLine(
-      Object count, Object average, Object min, Object max) {
+    Object count,
+    Object average,
+    Object min,
+    Object max,
+  ) {
     return '次数: $count | 平均: $average | 最小: $min | 最大: $max';
   }
 

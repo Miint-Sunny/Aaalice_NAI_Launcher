@@ -3305,7 +3305,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String onlineGallery_downloadSelectedCompleted(
-      Object success, Object failed) {
+    Object success,
+    Object failed,
+  ) {
     return 'Download complete: $success succeeded, $failed failed';
   }
 
@@ -4490,7 +4492,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String characterEditor_characterCountWithEnabled(
-      Object enabled, Object total) {
+    Object enabled,
+    Object total,
+  ) {
     return '$enabled/$total characters';
   }
 
@@ -8295,7 +8299,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String fixedTags_columnFilteredCount(
-      Object enabled, Object total, Object shown) {
+    Object enabled,
+    Object total,
+    Object shown,
+  ) {
     return '$enabled/$total · showing $shown';
   }
 
@@ -10043,7 +10050,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String metadataImport_preciseReferenceDetail(
-      int index, Object type, Object strength, Object fidelity) {
+    int index,
+    Object type,
+    Object strength,
+    Object fidelity,
+  ) {
     return 'Reference $index: $type (strength $strength%, fidelity $fidelity%)';
   }
 
@@ -12197,7 +12208,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String performanceReport_taskStatsLine(
-      Object count, Object average, Object min, Object max) {
+    Object count,
+    Object average,
+    Object min,
+    Object max,
+  ) {
     return 'Count: $count | Avg: $average | Min: $min | Max: $max';
   }
 
