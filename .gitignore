@@ -298,7 +298,6 @@ test/presentation/widgets/image_editor/widgets/panels/*
 !test/presentation/widgets/image_editor/widgets/panels/shift_edges_dialog_test.dart
 
 # 项目管理文件
-AGENTS.md
 CLAUDE.md
 GEMINI.md
 
