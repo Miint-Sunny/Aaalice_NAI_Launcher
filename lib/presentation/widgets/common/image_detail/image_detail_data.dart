@@ -36,6 +36,9 @@ abstract class ImageDetailData {
   /// 是否需要显示保存按钮（生成图像需要，本地图库不需要）
   bool get showSaveButton;
 
+  /// 是否需要显示复制按钮
+  bool get showCopyButton;
+
   /// 是否需要显示收藏按钮
   bool get showFavoriteButton;
 }
@@ -72,7 +75,7 @@ class LocalImageDetailData implements ImageDetailData {
 
   @override
   ImageProvider getImageProvider() {
-    final meta = record.metadata;
+    final meta = metadata;
     final fileImage = FileImage(File(record.path));
 
     // 如果有元数据且图像尺寸超过阈值，使用 ResizeImage 限制内存
@@ -110,20 +113,23 @@ class LocalImageDetailData implements ImageDetailData {
   }
 
   @override
-  NaiImageMetadata? get metadata => record.metadata;
+  NaiImageMetadata? get metadata =>
+      record.metadata?.upgradeFromRawJsonIfNeeded();
 
   /// 异步获取元数据（从文件解析）
   ///
   /// **前台高优先级调用** - 用户主动打开详情页时使用
-  /// 
+  ///
   /// 【优化】使用 Isolate 在后台线程解析，避免阻塞 UI
   Future<NaiImageMetadata?> getMetadataAsync() async {
     // 1. 先检查已缓存的元数据
-    if (record.metadata != null) return record.metadata;
+    final cachedRecordMetadata = metadata;
+    if (cachedRecordMetadata != null) return cachedRecordMetadata;
 
     // 2. 在 Isolate 中解析（不阻塞 UI）
     // 先尝试快速路径（缓存）
-    final cached = await ImageMetadataService().getMetadataImmediate(record.path);
+    final cached =
+        await ImageMetadataService().getMetadataImmediate(record.path);
     if (cached != null) return cached;
 
     // 3. 使用 Isolate 深度解析（针对大文件或复杂格式）
@@ -150,6 +156,9 @@ class LocalImageDetailData implements ImageDetailData {
   bool get showSaveButton => false;
 
   @override
+  bool get showCopyButton => true;
+
+  @override
   bool get showFavoriteButton => true;
 }
 
@@ -161,13 +170,19 @@ class GeneratedImageDetailData implements ImageDetailData {
   final Uint8List imageBytes;
   final NaiImageMetadata? _metadata;
   final String _id;
+  final bool _showSaveButton;
+  final bool _showCopyButton;
 
   GeneratedImageDetailData({
     required this.imageBytes,
     NaiImageMetadata? metadata,
     String? id,
+    bool showSaveButton = true,
+    bool showCopyButton = true,
   })  : _metadata = metadata,
-        _id = id ?? imageBytes.hashCode.toString();
+        _id = id ?? imageBytes.hashCode.toString(),
+        _showSaveButton = showSaveButton,
+        _showCopyButton = showCopyButton;
 
   @override
   ImageProvider getImageProvider() {
@@ -205,10 +220,11 @@ class GeneratedImageDetailData implements ImageDetailData {
   FileInfo? get fileInfo => null;
 
   @override
-  bool get showSaveButton => true;
+  bool get showSaveButton => _showSaveButton;
+
+  @override
+  bool get showCopyButton => _showCopyButton;
 
   @override
   bool get showFavoriteButton => false;
 }
-
-

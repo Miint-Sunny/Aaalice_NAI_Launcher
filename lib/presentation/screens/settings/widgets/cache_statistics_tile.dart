@@ -4,26 +4,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/cache/gallery_cache_manager.dart';
+import '../../../../core/utils/localization_extension.dart';
 import '../../../widgets/common/app_toast.dart';
 
 /// 缓存统计 Provider
 ///
 /// 使用 autoDispose 确保组件销毁时释放资源
 /// 通过统计信息失效回调机制实现实时刷新
-final cacheStatisticsProvider = FutureProvider.autoDispose<CacheStatistics>((ref) async {
+final cacheStatisticsProvider =
+    FutureProvider.autoDispose<CacheStatistics>((ref) async {
   GalleryCacheManager().registerOnStatisticsInvalidated(ref.invalidateSelf);
-  ref.onDispose(() => GalleryCacheManager().unregisterOnStatisticsInvalidated(ref.invalidateSelf));
+  ref.onDispose(
+    () => GalleryCacheManager()
+        .unregisterOnStatisticsInvalidated(ref.invalidateSelf),
+  );
   return await GalleryCacheManager().getStatistics();
 });
 
 /// 缓存统计展示组件
-/// 
+///
 /// 支持自动刷新，每 3 秒更新一次统计数据
 class CacheStatisticsTile extends ConsumerStatefulWidget {
   const CacheStatisticsTile({super.key});
 
   @override
-  ConsumerState<CacheStatisticsTile> createState() => _CacheStatisticsTileState();
+  ConsumerState<CacheStatisticsTile> createState() =>
+      _CacheStatisticsTileState();
 }
 
 class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
@@ -68,11 +74,11 @@ class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
   String _getTimeSinceLastRefresh() {
     final diff = DateTime.now().difference(_lastRefreshTime);
     if (diff.inSeconds < 5) {
-      return '刚刚';
+      return context.l10n.common_justNow;
     } else if (diff.inSeconds < 60) {
-      return '${diff.inSeconds}秒前';
+      return context.l10n.cacheStats_secondsAgo(diff.inSeconds);
     } else {
-      return '${diff.inMinutes}分钟前';
+      return context.l10n.common_minutesAgo(diff.inMinutes);
     }
   }
 
@@ -82,20 +88,24 @@ class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
 
     return statsAsync.when(
       data: (stats) => _buildContent(context, ref, stats),
-      loading: () => const ListTile(
-        leading: Icon(Icons.analytics_outlined),
-        title: Text('缓存统计'),
-        subtitle: LinearProgressIndicator(),
+      loading: () => ListTile(
+        leading: const Icon(Icons.analytics_outlined),
+        title: Text(context.l10n.cacheStats_title),
+        subtitle: const LinearProgressIndicator(),
       ),
       error: (error, _) => ListTile(
         leading: const Icon(Icons.error_outline, color: Colors.red),
-        title: const Text('缓存统计'),
-        subtitle: Text('加载失败: $error'),
+        title: Text(context.l10n.cacheStats_title),
+        subtitle: Text(context.l10n.settings_loadFailed(error.toString())),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, CacheStatistics stats) {
+  Widget _buildContent(
+    BuildContext context,
+    WidgetRef ref,
+    CacheStatistics stats,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -103,11 +113,13 @@ class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
       children: [
         ListTile(
           leading: const Icon(Icons.analytics_outlined),
-          title: const Text('缓存统计'),
+          title: Text(context.l10n.cacheStats_title),
           subtitle: Text(
-            '自动刷新 · 上次更新: ${_getTimeSinceLastRefresh()}',
+            context.l10n.cacheStats_autoRefreshUpdated(
+              _getTimeSinceLastRefresh(),
+            ),
             style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           trailing: Row(
@@ -120,19 +132,19 @@ class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
-                tooltip: '立即刷新',
+                tooltip: context.l10n.cacheStats_refreshNow,
                 onPressed: () {
                   _refreshStats();
-                  AppToast.success(context, '已刷新');
+                  AppToast.success(context, context.l10n.cacheStats_refreshed);
                 },
               ),
               IconButton(
                 icon: const Icon(Icons.delete_sweep, size: 20),
-                tooltip: '重置统计',
+                tooltip: context.l10n.cacheStats_resetStats,
                 onPressed: () {
                   GalleryCacheManager().resetStatistics();
                   _refreshStats();
-                  AppToast.success(context, '统计已重置');
+                  AppToast.success(context, context.l10n.cacheStats_statsReset);
                 },
               ),
             ],
@@ -144,7 +156,7 @@ class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
           child: Column(
             children: [
               _CacheLevelIndicator(
-                label: 'L1 内存缓存',
+                label: context.l10n.cacheStats_l1Memory,
                 count: stats.l1MemorySize,
                 hitRate: stats.l1HitRate,
                 color: Colors.blue,
@@ -152,7 +164,7 @@ class _CacheStatisticsTileState extends ConsumerState<CacheStatisticsTile> {
               ),
               const SizedBox(height: 12),
               _CacheLevelIndicator(
-                label: 'L2 Hive 缓存',
+                label: context.l10n.cacheStats_l2Hive,
                 count: stats.l2HiveSize,
                 hitRate: stats.l2HitRate,
                 color: Colors.orange,
@@ -209,7 +221,7 @@ class _AutoRefreshIndicatorState extends State<_AutoRefreshIndicator>
           child: CircularProgressIndicator(
             value: _controller.value,
             strokeWidth: 2,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
           ),
         );
       },
@@ -236,7 +248,7 @@ class _CacheLevelIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return _CacheIndicator(
       label: label,
-      value: '$count 条记录',
+      value: context.l10n.cacheStats_recordCount(count),
       icon: icon,
       color: color,
       subValue: '${(hitRate * 100).toStringAsFixed(1)}%',
@@ -256,8 +268,11 @@ class _DatabaseIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _CacheIndicator(
-      label: 'L3 SQLite 数据库',
-      value: '$imageCount 张图片 · $metadataCount 条元数据',
+      label: context.l10n.cacheStats_l3Sqlite,
+      value: context.l10n.cacheStats_databaseValue(
+        imageCount,
+        metadataCount,
+      ),
       icon: Icons.table_chart,
       color: Colors.purple,
     );
@@ -286,9 +301,9 @@ class _CacheIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -296,7 +311,7 @@ class _CacheIndicator extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -316,7 +331,7 @@ class _CacheIndicator extends StatelessWidget {
                 Text(
                   value,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],

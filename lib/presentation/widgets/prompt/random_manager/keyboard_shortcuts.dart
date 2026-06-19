@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/localization_extension.dart';
 import '../../../providers/tag_group_sync_provider.dart';
 
 /// 随机词库管理器的键盘快捷键配置
@@ -134,6 +135,7 @@ class ShortcutHelpDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = context.l10n;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -145,7 +147,7 @@ class ShortcutHelpDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.15),
+              color: colorScheme.shadow.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -161,7 +163,7 @@ class ShortcutHelpDialog extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.3),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -172,7 +174,7 @@ class ShortcutHelpDialog extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '键盘快捷键',
+                  l10n.randomManager_keyboardShortcuts,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -186,31 +188,31 @@ class ShortcutHelpDialog extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             // 快捷键列表
-            const _ShortcutSection(
-              title: '通用',
+            _ShortcutSection(
+              title: l10n.randomManager_generalShortcuts,
               shortcuts: [
-                _ShortcutItem('Esc', '关闭窗口'),
-                _ShortcutItem('Ctrl+S', '同步 Danbooru'),
-                _ShortcutItem('F5', '刷新/同步'),
+                _ShortcutItem('Esc', l10n.randomManager_closeWindow),
+                _ShortcutItem('Ctrl+S', l10n.randomManager_syncDanbooruTags),
+                _ShortcutItem('F5', l10n.randomManager_refreshOrSync),
               ],
             ),
             const SizedBox(height: 16),
-            const _ShortcutSection(
-              title: '预设操作',
+            _ShortcutSection(
+              title: l10n.randomManager_presetActions,
               shortcuts: [
-                _ShortcutItem('Ctrl+N', '新建预设'),
-                _ShortcutItem('Ctrl+D', '复制预设'),
-                _ShortcutItem('Ctrl+G', '生成预览'),
+                _ShortcutItem('Ctrl+N', l10n.shortcut_action_new_preset),
+                _ShortcutItem('Ctrl+D', l10n.shortcut_action_duplicate_preset),
+                _ShortcutItem('Ctrl+G', l10n.randomManager_generatePreview),
               ],
             ),
             const SizedBox(height: 16),
-            const _ShortcutSection(
-              title: '选择操作',
+            _ShortcutSection(
+              title: l10n.randomManager_selectionActions,
               shortcuts: [
-                _ShortcutItem('Ctrl+F', '搜索'),
-                _ShortcutItem('Ctrl+A', '全选'),
-                _ShortcutItem('Ctrl+Shift+A', '取消全选'),
-                _ShortcutItem('Delete', '删除选中'),
+                _ShortcutItem('Ctrl+F', l10n.common_search),
+                _ShortcutItem('Ctrl+A', l10n.common_selectAll),
+                _ShortcutItem('Ctrl+Shift+A', l10n.common_deselectAll),
+                _ShortcutItem('Delete', l10n.randomManager_deleteSelected),
               ],
             ),
           ],
@@ -311,7 +313,7 @@ class _KeyBadge extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.shadow.withOpacity(0.08),
+                    color: colorScheme.shadow.withValues(alpha: 0.08),
                     blurRadius: 3,
                     offset: const Offset(0, 1),
                   ),

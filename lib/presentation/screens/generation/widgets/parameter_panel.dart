@@ -4,15 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/localization_extension.dart';
-import '../../../../data/models/image/image_params.dart';
 import '../../../../data/models/image/resolution_preset.dart';
+import '../../../providers/generation/generation_params_selectors.dart';
 import '../../../providers/image_generation_provider.dart';
+import '../../../providers/krita/krita_bridge_notifier.dart';
+import '../../../utils/asset_protection_guard.dart';
 import '../../../widgets/common/themed_dropdown.dart';
 import '../../../widgets/common/themed_input.dart';
 import '../../../widgets/common/themed_button.dart';
 import '../../../widgets/common/themed_slider.dart';
 import '../../../widgets/common/themed_divider.dart';
 import 'img2img_panel.dart';
+import 'reverse_prompt_panel.dart';
 import 'unified_reference_panel.dart';
 import 'precise_reference_panel.dart';
 import 'prompt_input.dart';
@@ -36,33 +39,40 @@ class ParameterPanel extends ConsumerStatefulWidget {
 
 class _ParameterPanelState extends ConsumerState<ParameterPanel> {
   late final TextEditingController _seedController;
-  bool _seedControllerInitialized = false;
+  late final FocusNode _seedFocusNode;
 
   @override
   void initState() {
     super.initState();
     _seedController = TextEditingController();
+    _seedFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _seedController.dispose();
+    _seedFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final params = ref.watch(generationParamsNotifierProvider);
+    final params = ref.watch(
+      generationParamsNotifierProvider.select(selectParameterPanelViewData),
+    );
     final generationState = ref.watch(imageGenerationNotifierProvider);
+    final kritaBridgeState = ref.watch(kritaBridgeNotifierProvider);
     final theme = Theme.of(context);
-    final isGenerating = generationState.isGenerating;
+    final isLauncherGenerating = generationState.isGenerating;
+    final isGenerating =
+        isLauncherGenerating || kritaBridgeState.isBridgeGenerating;
+    final canSkipCurrentBatch = isLauncherGenerating &&
+        generationState.currentImage > 0 &&
+        generationState.totalImages > generationState.currentImage;
+    final generationProgressText =
+        '${generationState.currentImage}/${generationState.totalImages}';
 
-    // 首次 build 时同步 seed 到输入框
-    if (!_seedControllerInitialized) {
-      _seedControllerInitialized = true;
-      final currentSeed = params.seed;
-      _seedController.text = currentSeed == -1 ? '' : currentSeed.toString();
-    }
+    _syncSeedController(params.seed);
 
     return ListView(
       padding: EdgeInsets.all(widget.inBottomSheet ? 16 : 12),
@@ -77,38 +87,82 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
           // 生成按钮
           SizedBox(
             height: 48,
-            child: ThemedButton(
-              onPressed: isGenerating
-                  ? () => ref
-                      .read(imageGenerationNotifierProvider.notifier)
-                      .cancel()
-                  : () {
-                      if (params.prompt.isEmpty) {
-                        AppToast.info(
-                          context,
-                          context.l10n.generation_pleaseInputPrompt,
-                        );
-                        return;
-                      }
-                      ref
-                          .read(imageGenerationNotifierProvider.notifier)
-                          .generate(params);
-                    },
-              icon: isGenerating
-                  ? const Icon(Icons.stop)
-                  : const Icon(Icons.auto_awesome),
-              isLoading: isGenerating && false, // 不要显示加载圈，直接变 Cancel
-              label: Text(
-                isGenerating
-                    ? context.l10n.generation_cancelGeneration
-                    : context.l10n.generation_generateImage,
-              ),
-              style: isGenerating
-                  ? ThemedButtonStyle.outlined
-                  : ThemedButtonStyle.filled,
-            ),
-          ),
-          const SizedBox(height: 24),
+            child: isLauncherGenerating
+                ? Row(
+                    children: [
+                      if (canSkipCurrentBatch) ...[
+                        Expanded(
+                          child: ThemedButton(
+                            onPressed: () => ref
+                                .read(imageGenerationNotifierProvider.notifier)
+                                .skipCurrentRequest(),
+                            icon: const Icon(Icons.skip_next),
+                            label: Text(
+                              '${context.l10n.generation_skipCurrentBatch} $generationProgressText',
+                            ),
+                            style: ThemedButtonStyle.outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: ThemedButton(
+                          onPressed: () => ref
+                              .read(imageGenerationNotifierProvider.notifier)
+                              .cancel(),
+                          icon: const Icon(Icons.stop_circle_outlined),
+                          label: Text(
+                            context.l10n.generation_stopAllGeneration,
+                          ),
+                          style: ThemedButtonStyle.outlined,
+                        ),
+                      ),
+                    ],
+                  )
+                : ThemedButton(
+                    onPressed: isGenerating
+                        ? null
+                        : () async {
+                            if (ref
+                                .read(kritaBridgeNotifierProvider)
+                                .isBridgeGenerating) {
+                              AppToast.warning(
+                                context,
+                                context.l10n.kritaBridge_busyGenerating,
+                              );
+                              return;
+                            }
+                            if (params.prompt.isEmpty) {
+                              AppToast.info(
+                                context,
+                                context.l10n.generation_pleaseInputPrompt,
+                              );
+                              return;
+                            }
+                            final confirmed =
+                                await AssetProtectionGuard.confirmHighAnlasCost(
+                              context: context,
+                              ref: ref,
+                            );
+                            if (!confirmed || !context.mounted) {
+                              return;
+                            }
+                            ref
+                                .read(imageGenerationNotifierProvider.notifier)
+                                .generate(
+                                  ref.read(generationParamsNotifierProvider),
+                                );
+                          },
+                    icon: isGenerating ? null : const Icon(Icons.auto_awesome),
+                    isLoading: isGenerating,
+                    label: Text(
+                      isGenerating
+                          ? context.l10n.generation_generating
+                          : context.l10n.generation_generateImage,
+                    ),
+                    style: ThemedButtonStyle.filled,
+                  ),
+          ),          const SizedBox(height: 24),
           const ThemedDivider(),
           const SizedBox(height: 16),
         ],
@@ -271,7 +325,7 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
           value: params.scale,
           min: 1,
           max: 20,
-          divisions: 38,
+          divisions: 190,
           onChanged: (value) {
             ref
                 .read(generationParamsNotifierProvider.notifier)
@@ -289,6 +343,7 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
             Expanded(
               child: ThemedInput(
                 controller: _seedController,
+                focusNode: _seedFocusNode,
                 hintText: context.l10n.generation_seedRandom,
                 keyboardType: TextInputType.number,
                 onChanged: (value) {
@@ -376,7 +431,7 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
                 backgroundColor: ref
                         .watch(generationParamsNotifierProvider.notifier)
                         .isSeedLocked
-                    ? theme.colorScheme.primary.withOpacity(0.15)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.15)
                     : theme.colorScheme.surfaceContainerHighest,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -389,6 +444,11 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
         const SizedBox(height: 16),
 
         // ==================== 新功能面板 ====================
+
+        // 反推面板
+        const ReversePromptPanel(),
+
+        const SizedBox(height: 8),
 
         // 图生图面板
         const Img2ImgPanel(),
@@ -437,7 +497,8 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
                       child: Text(
                         '高分辨率采样优化',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     ),
@@ -512,18 +573,6 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
               ),
           ],
         ),
-
-        const SizedBox(height: 16),
-
-        // 重置按钮
-        ThemedButton(
-          onPressed: () {
-            ref.read(generationParamsNotifierProvider.notifier).reset();
-          },
-          icon: const Icon(Icons.restart_alt),
-          label: Text(context.l10n.generation_resetParams),
-          style: ThemedButtonStyle.outlined,
-        ),
       ],
     );
   }
@@ -534,6 +583,23 @@ class _ParameterPanelState extends ConsumerState<ParameterPanel> {
       style: theme.textTheme.titleSmall?.copyWith(
         fontWeight: FontWeight.w600,
       ),
+    );
+  }
+
+  void _syncSeedController(int seed) {
+    final nextText = resolveSeedFieldSyncText(
+      currentText: _seedController.text,
+      seed: seed,
+      hasFocus: _seedFocusNode.hasFocus,
+    );
+    if (nextText == null) {
+      return;
+    }
+
+    _seedController.value = _seedController.value.copyWith(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextText.length),
+      composing: TextRange.empty,
     );
   }
 }
@@ -557,6 +623,8 @@ class _SizeSelector extends StatefulWidget {
 class _SizeSelectorState extends State<_SizeSelector> {
   late TextEditingController _widthController;
   late TextEditingController _heightController;
+  late FocusNode _widthFocusNode;
+  late FocusNode _heightFocusNode;
   final FocusNode _dropdownFocusNode = FocusNode();
   String? _selectedPresetId;
 
@@ -565,6 +633,8 @@ class _SizeSelectorState extends State<_SizeSelector> {
     super.initState();
     _widthController = TextEditingController(text: widget.width.toString());
     _heightController = TextEditingController(text: widget.height.toString());
+    _widthFocusNode = FocusNode();
+    _heightFocusNode = FocusNode();
     _updateSelectedPreset();
   }
 
@@ -572,10 +642,39 @@ class _SizeSelectorState extends State<_SizeSelector> {
   void didUpdateWidget(covariant _SizeSelector oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.width != widget.width || oldWidget.height != widget.height) {
-      _widthController.text = widget.width.toString();
-      _heightController.text = widget.height.toString();
+      _syncFieldController(
+        controller: _widthController,
+        focusNode: _widthFocusNode,
+        targetValue: widget.width,
+      );
+      _syncFieldController(
+        controller: _heightController,
+        focusNode: _heightFocusNode,
+        targetValue: widget.height,
+      );
       _updateSelectedPreset();
     }
+  }
+
+  void _syncFieldController({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required int targetValue,
+  }) {
+    final nextText = resolveManualSizeFieldSyncText(
+      currentText: controller.text,
+      targetValue: targetValue,
+      hasFocus: focusNode.hasFocus,
+    );
+    if (nextText == null) {
+      return;
+    }
+
+    controller.value = controller.value.copyWith(
+      text: nextText,
+      selection: TextSelection.collapsed(offset: nextText.length),
+      composing: TextRange.empty,
+    );
   }
 
   void _updateSelectedPreset() {
@@ -588,6 +687,8 @@ class _SizeSelectorState extends State<_SizeSelector> {
   void dispose() {
     _widthController.dispose();
     _heightController.dispose();
+    _widthFocusNode.dispose();
+    _heightFocusNode.dispose();
     _dropdownFocusNode.dispose();
     super.dispose();
   }
@@ -742,6 +843,7 @@ class _SizeSelectorState extends State<_SizeSelector> {
             Expanded(
               child: ThemedTextField(
                 controller: _widthController,
+                focusNode: _widthFocusNode,
                 keyboardType: TextInputType.number,
                 labelText: l10n.resolution_width,
                 style: const TextStyle(fontSize: 13),
@@ -755,7 +857,7 @@ class _SizeSelectorState extends State<_SizeSelector> {
                 '×',
                 style: TextStyle(
                   fontSize: 16,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -763,6 +865,7 @@ class _SizeSelectorState extends State<_SizeSelector> {
             Expanded(
               child: ThemedTextField(
                 controller: _heightController,
+                focusNode: _heightFocusNode,
                 keyboardType: TextInputType.number,
                 labelText: l10n.resolution_height,
                 style: const TextStyle(fontSize: 13),
@@ -794,6 +897,42 @@ class _SizeSelectorState extends State<_SizeSelector> {
   }
 }
 
+@visibleForTesting
+String? resolveManualSizeFieldSyncText({
+  required String currentText,
+  required int targetValue,
+  required bool hasFocus,
+}) {
+  if (hasFocus) {
+    return null;
+  }
+
+  final nextText = targetValue.toString();
+  if (currentText == nextText) {
+    return null;
+  }
+
+  return nextText;
+}
+
+@visibleForTesting
+String? resolveSeedFieldSyncText({
+  required String currentText,
+  required int seed,
+  required bool hasFocus,
+}) {
+  if (hasFocus) {
+    return null;
+  }
+
+  final nextText = seed == -1 ? '' : seed.toString();
+  if (currentText == nextText) {
+    return null;
+  }
+
+  return nextText;
+}
+
 /// SMEA Auto 按钮 (V3 模型)
 class _SmeaAutoButton extends StatelessWidget {
   final bool isAuto;
@@ -810,7 +949,7 @@ class _SmeaAutoButton extends StatelessWidget {
 
     return Material(
       color: isAuto
-          ? theme.colorScheme.primary.withOpacity(0.15)
+          ? theme.colorScheme.primary.withValues(alpha: 0.15)
           : theme.colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
@@ -821,8 +960,8 @@ class _SmeaAutoButton extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(
               color: isAuto
-                  ? theme.colorScheme.primary.withOpacity(0.5)
-                  : theme.colorScheme.outline.withOpacity(0.3),
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                  : theme.colorScheme.outline.withValues(alpha: 0.3),
             ),
             borderRadius: BorderRadius.circular(8),
           ),
@@ -834,7 +973,7 @@ class _SmeaAutoButton extends StatelessWidget {
                 size: 18,
                 color: isAuto
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withOpacity(0.5),
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
               const SizedBox(width: 4),
               Text(
@@ -844,7 +983,7 @@ class _SmeaAutoButton extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                   color: isAuto
                       ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withOpacity(0.7),
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -910,10 +1049,10 @@ class _SmeaOptions extends StatelessWidget {
     required ThemeData theme,
   }) {
     final color = isDisabled
-        ? theme.colorScheme.onSurface.withOpacity(0.3)
+        ? theme.colorScheme.onSurface.withValues(alpha: 0.3)
         : (value
             ? theme.colorScheme.primary
-            : theme.colorScheme.onSurface.withOpacity(0.7));
+            : theme.colorScheme.onSurface.withValues(alpha: 0.7));
 
     return InkWell(
       onTap: isDisabled ? null : () => onChanged(!value),
@@ -968,16 +1107,16 @@ class _ToggleButtonState extends State<_ToggleButton> {
     Color backgroundColor;
     if (widget.isEnabled) {
       backgroundColor = _isHovered
-          ? theme.colorScheme.primary.withOpacity(0.85)
+          ? theme.colorScheme.primary.withValues(alpha: 0.85)
           : theme.colorScheme.primary;
     } else {
       final baseColor = isDark
-          ? Colors.white.withOpacity(0.08)
-          : Colors.black.withOpacity(0.05);
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.black.withValues(alpha: 0.05);
       backgroundColor = _isHovered
           ? (isDark
-              ? Colors.white.withOpacity(0.15)
-              : Colors.black.withOpacity(0.1))
+              ? Colors.white.withValues(alpha: 0.15)
+              : Colors.black.withValues(alpha: 0.1))
           : baseColor;
     }
 
@@ -998,8 +1137,8 @@ class _ToggleButtonState extends State<_ToggleButton> {
               color: widget.isEnabled
                   ? theme.colorScheme.primary
                   : (_isHovered
-                      ? theme.colorScheme.outline.withOpacity(0.4)
-                      : theme.colorScheme.outline.withOpacity(0.2)),
+                      ? theme.colorScheme.outline.withValues(alpha: 0.4)
+                      : theme.colorScheme.outline.withValues(alpha: 0.2)),
               width: 1,
             ),
           ),
@@ -1022,7 +1161,7 @@ class _ToggleButtonState extends State<_ToggleButton> {
                   color: widget.isEnabled
                       ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurface
-                          .withOpacity(_isHovered ? 0.8 : 0.6),
+                          .withValues(alpha: _isHovered ? 0.8 : 0.6),
                 ),
               ),
             ],
@@ -1071,7 +1210,7 @@ class _SeedIconButtonState extends State<_SeedIconButton> {
               size: 18,
               color: _isHovered
                   ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withOpacity(0.5),
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ),

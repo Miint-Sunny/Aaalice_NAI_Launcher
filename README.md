@@ -20,7 +20,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.0.0--beta4-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/Flutter-3.16+-blue?logo=flutter" alt="Flutter">
+  <img src="https://img.shields.io/badge/Flutter-3.35+-blue?logo=flutter" alt="Flutter">
   <a href="https://discord.gg/R48n6GwXzD"><img src="https://img.shields.io/badge/Discord-加入服务器-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
@@ -250,8 +250,8 @@
 
 #### 环境要求
 
-- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.16.0
-- [Dart SDK](https://dart.dev/get-dart) >= 3.2.0
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.35.0
+- [Dart SDK](https://dart.dev/get-dart) >= 3.10.7
 
 #### 构建步骤
 
@@ -442,8 +442,7 @@ nai_launcher/
 │   └── main.dart               # 入口文件
 ├── scripts/                    # 构建脚本
 ├── test/                       # 测试代码
-├── tool/                       # 工具脚本
-├── tools/                      # 构建工具
+├── tool/                       # 开发工具脚本（数据库、元数据、Krita、Vibe、测试辅助、诊断）
 ├── windows/                    # Windows 平台配置
 ├── pubspec.yaml                # 依赖配置
 └── README.md                   # 项目说明

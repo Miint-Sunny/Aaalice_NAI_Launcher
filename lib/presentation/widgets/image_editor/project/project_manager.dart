@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../../core/utils/app_logger.dart';
 import '../core/editor_state.dart';
 import '../layers/layer.dart';
 import 'project_data.dart';
@@ -143,8 +144,8 @@ class ProjectManager {
       height: state.canvasSize.height.toInt(),
       layers: layers,
       activeLayerId: state.layerManager.activeLayerId,
-      foregroundColor: state.foregroundColor.value,
-      backgroundColor: state.backgroundColor.value,
+      foregroundColor: state.foregroundColor.toARGB32(),
+      backgroundColor: state.backgroundColor.toARGB32(),
     );
   }
 
@@ -240,12 +241,19 @@ class ProjectManager {
     for (final fileInfo in validFiles.skip(keepCount)) {
       try {
         await fileInfo.file.delete();
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.d(
+          'Failed to delete old project file: $e',
+          'ProjectManager',
+        );
+      }
     }
   }
 
   /// 批量获取文件状态（每批20个，避免无界并发）
-  static Future<List<_FileStatInfo>> _getFilesWithStats(List<File> files) async {
+  static Future<List<_FileStatInfo>> _getFilesWithStats(
+    List<File> files,
+  ) async {
     const batchSize = 20;
     final result = <_FileStatInfo>[];
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/models/vibe/vibe_library_entry.dart';
 import '../../../../data/models/vibe/vibe_reference.dart';
+import '../../../widgets/common/decoded_memory_image.dart';
 
 /// 最近 Vibe 条目组件
 ///
@@ -30,7 +31,7 @@ class RecentVibeItem extends StatelessWidget {
           color: theme.colorScheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
         ),
         child: Column(
@@ -41,10 +42,11 @@ class RecentVibeItem extends StatelessWidget {
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(7)),
                 child: entry.hasThumbnail || entry.hasVibeThumbnail
-                    ? Image.memory(
-                        entry.thumbnail ?? entry.vibeThumbnail!,
+                    ? DecodedMemoryImage(
+                        bytes: entry.thumbnail ?? entry.vibeThumbnail!,
                         fit: BoxFit.cover,
-                        width: double.infinity,
+                        maxLogicalWidth: 72,
+                        maxLogicalHeight: 50,
                       )
                     : Container(
                         color: theme.colorScheme.surfaceContainerHighest,
@@ -73,8 +75,8 @@ class RecentVibeItem extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 2),
               decoration: BoxDecoration(
                 color: entry.isPreEncoded
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(7)),
               ),

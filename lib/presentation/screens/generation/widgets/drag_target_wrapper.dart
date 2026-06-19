@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../core/utils/vibe_file_parser.dart';
+import '../../../../core/utils/vibe_performance_diagnostics.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../data/models/image/image_params.dart';
 import '../../../../data/models/vibe/vibe_library_entry.dart';
@@ -16,6 +18,7 @@ import '../../../../data/services/vibe_library_storage_service.dart';
 import '../../../providers/image_generation_provider.dart';
 import '../../../widgets/common/app_toast.dart';
 import '../../vibe_library/widgets/vibe_selector_dialog.dart';
+import '../handlers/vibe_import_handler.dart';
 import 'empty_state_card.dart';
 import 'library_actions_row.dart';
 import 'vibe_card.dart';
@@ -47,7 +50,7 @@ class DragTargetWrapper extends ConsumerWidget {
         final currentCount =
             ref.read(generationParamsNotifierProvider).vibeReferencesV4.length;
         if (currentCount >= 16) {
-          AppToast.warning(context, '已达到最大数量 (16张)');
+          AppToast.warning(context, context.l10n.vibe_maxReached);
           return false;
         }
         panelNotifier.setDraggingOver(true);
@@ -73,7 +76,7 @@ class DragTargetWrapper extends ConsumerWidget {
                   )
                 : null,
             color: panelState.isDraggingOver
-                ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
                 : null,
           ),
           child: Column(
@@ -114,7 +117,10 @@ class DragTargetWrapper extends ConsumerWidget {
 
   /// 构建空状态 - 双卡片并排布局：从文件添加 + 从库导入
   Widget _buildEmptyState(
-      BuildContext context, WidgetRef ref, ThemeData theme,) {
+    BuildContext context,
+    WidgetRef ref,
+    ThemeData theme,
+  ) {
     return Row(
       children: [
         // 从文件添加
@@ -170,12 +176,16 @@ class DragTargetWrapper extends ConsumerWidget {
 
   /// 从文件添加 Vibe（供外部调用）
   static Future<void> addVibeFromFile(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     await _addVibeStatic(context, ref);
   }
 
   static Future<void> _addVibeStatic(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -252,17 +262,18 @@ class DragTargetWrapper extends ConsumerWidget {
                     final continueAnyway = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('编码失败'),
-                        content:
-                            const Text('图片编码失败，是否继续添加未编码的图片？\n\n生成时会再次尝试编码。'),
+                        title: Text(context.l10n.vibe_import_encodingFailed),
+                        content: Text(
+                          context.l10n.vibe_import_encodingFailedMessage,
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('取消'),
+                            child: Text(context.l10n.common_cancel),
                           ),
                           ElevatedButton(
                             onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('继续'),
+                            child: Text(context.l10n.common_continue),
                           ),
                         ],
                       ),
@@ -295,19 +306,30 @@ class DragTargetWrapper extends ConsumerWidget {
   }
 
   static Widget _buildEncodingDialogStatic(
-      BuildContext context, String fileName,) {
+    BuildContext context,
+    String fileName,
+  ) {
     return _buildEncodingDialogInternal(
-        context, fileName, AppLocalizations.of(context)!, Theme.of(context),);
+      context,
+      fileName,
+      AppLocalizations.of(context)!,
+      Theme.of(context),
+    );
   }
 
-  static Widget _buildEncodingDialogInternal(BuildContext context,
-      String fileName, AppLocalizations l10n, ThemeData theme,) {
+  static Widget _buildEncodingDialogInternal(
+    BuildContext context,
+    String fileName,
+    AppLocalizations l10n,
+    ThemeData theme,
+  ) {
     var encodeChecked = true;
     var autoSaveChecked = true;
 
     return StatefulBuilder(
       builder: (context, setState) {
-        final confirmButtonText = encodeChecked ? '确认编码' : '仅添加图片';
+        final confirmButtonText =
+            encodeChecked ? l10n.vibeConfirmEncode : l10n.vibe_addImageOnly;
 
         return AlertDialog(
           title: Text(l10n.vibeNoEncodingWarning),
@@ -357,7 +379,7 @@ class DragTargetWrapper extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        '立即编码（消耗 2 Anlas）',
+                        l10n.vibe_import_encodeNow,
                         style: theme.textTheme.bodyMedium,
                       ),
                     ),
@@ -390,11 +412,13 @@ class DragTargetWrapper extends ConsumerWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        '编码后自动保存到 Vibe 库',
+                        l10n.vibe_import_autoSave,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: encodeChecked
                               ? null
-                              : theme.colorScheme.onSurface.withOpacity(0.4),
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.4,
+                                ),
                         ),
                       ),
                     ),
@@ -432,11 +456,14 @@ class DragTargetWrapper extends ConsumerWidget {
     if (context.mounted) {
       String message;
       if (result.savedCount > 0 && result.reusedCount > 0) {
-        message = '新增 ${result.savedCount} 个，复用 ${result.reusedCount} 个';
+        message = context.l10n.vibe_saveToLibrary_mixed(
+          result.savedCount,
+          result.reusedCount,
+        );
       } else if (result.savedCount > 0) {
-        message = '已保存 ${result.savedCount} 个编码后的 Vibe 到库中';
+        message = context.l10n.vibe_saveToLibrary_saved(result.savedCount);
       } else {
-        message = '库中已存在 ${result.reusedCount} 个，已更新使用记录';
+        message = context.l10n.vibe_saveToLibrary_reused(result.reusedCount);
       }
       AppToast.success(context, message);
     }
@@ -444,175 +471,50 @@ class DragTargetWrapper extends ConsumerWidget {
 
   Future<void> _saveToLibrary(BuildContext context, WidgetRef ref) async {
     final params = ref.read(generationParamsNotifierProvider);
-    final panelNotifier = ref.read(referencePanelNotifierProvider.notifier);
     final currentVibes = params.vibeReferencesV4;
 
     if (currentVibes.isEmpty) return;
 
-    final firstVibe = currentVibes.first;
-    final nameController = TextEditingController(
-      text: currentVibes.length == 1 ? firstVibe.displayName : '',
-    );
-
-    final result = await showDialog<
-        (bool confirmed, double strength, double infoExtracted)?>(
-      context: context,
-      builder: (context) =>
-          _buildSaveToLibraryDialog(context, nameController, firstVibe),
-    );
-
-    if (result != null && result.$1 && context.mounted) {
-      final saveResult = await panelNotifier.saveCurrentVibesToLibrary(
-        currentVibes,
-        nameController.text.trim(),
-        strength: result.$2,
-        infoExtracted: result.$3,
-      );
-
-      if (context.mounted) {
-        String message;
-        if (saveResult.savedCount > 0 && saveResult.reusedCount > 0) {
-          message =
-              '新增 ${saveResult.savedCount} 个，复用 ${saveResult.reusedCount} 个';
-        } else if (saveResult.savedCount > 0) {
-          message = '已保存到 Vibe 库';
-        } else {
-          message = '库中已存在，已更新使用记录';
-        }
-        AppToast.success(context, message);
-      }
-    }
-
-    nameController.dispose();
-  }
-
-  Widget _buildSaveToLibraryDialog(
-    BuildContext context,
-    TextEditingController nameController,
-    VibeReference firstVibe,
-  ) {
-    var strengthValue = firstVibe.strength;
-    var infoExtractedValue = firstVibe.infoExtracted;
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return AlertDialog(
-          title: const Text('保存到 Vibe 库'),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('保存 ${vibes.length} 个 Vibe 到库中'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: '名称',
-                    hintText: '输入保存名称',
-                    border: OutlineInputBorder(),
-                  ),
-                  autofocus: true,
-                ),
-                const SizedBox(height: 24),
-                _buildDialogSlider(
-                  label: 'Reference Strength',
-                  value: strengthValue,
-                  onChanged: (value) => setState(() => strengthValue = value),
-                ),
-                const SizedBox(height: 16),
-                _buildDialogSlider(
-                  label: 'Information Extracted',
-                  value: infoExtractedValue,
-                  onChanged: (value) =>
-                      setState(() => infoExtractedValue = value),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(null),
-              child: Text(context.l10n.common_cancel),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.trim().isNotEmpty) {
-                  Navigator.of(context)
-                      .pop((true, strengthValue, infoExtractedValue));
-                }
-              },
-              child: Text(context.l10n.common_save),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildDialogSlider({
-    required String label,
-    required double value,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-            ),
-            Text(
-              value.toStringAsFixed(2),
-              style: const TextStyle(
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: value,
-          min: 0.0,
-          max: 1.0,
-          divisions: 100,
-          onChanged: onChanged,
-        ),
-      ],
-    );
+    final handler = VibeImportHandler(ref: ref, context: context);
+    await handler.saveToLibrary(currentVibes);
   }
 
   Future<void> _importFromLibrary(BuildContext context, WidgetRef ref) async {
+    final span = VibePerformanceDiagnostics.start(
+      'dragTarget.importFromLibrary',
+    );
     final storageService = ref.read(vibeLibraryStorageServiceProvider);
     final panelNotifier = ref.read(referencePanelNotifierProvider.notifier);
+    var selectedEntries = 0;
+    var bundleEntries = 0;
+    var totalAdded = 0;
+    var replacedExisting = false;
 
     try {
       final result = await VibeSelectorDialog.show(
         context: context,
         initialSelectedIds: const {},
         showReplaceOption: true,
-        title: '从库导入 Vibe',
+        title: context.l10n.vibe_import_title,
       );
 
       if (result == null || result.selectedEntries.isEmpty) return;
+      selectedEntries = result.selectedEntries.length;
 
       final notifier = ref.read(generationParamsNotifierProvider.notifier);
 
       if (result.shouldReplace) {
         notifier.clearVibeReferences();
+        replacedExisting = true;
       }
 
-      var totalAdded = 0;
       for (final entry in result.selectedEntries) {
         final currentCount =
             ref.read(generationParamsNotifierProvider).vibeReferencesV4.length;
         if (currentCount >= 16) break;
 
         if (entry.isBundle) {
+          bundleEntries++;
           final added = await panelNotifier.extractAndAddBundleVibes(
             entry,
             maxCount: 16,
@@ -626,7 +528,7 @@ class DragTargetWrapper extends ConsumerWidget {
               .toSet();
           if (!existingNames.contains(entry.displayName)) {
             final vibe = entry.toVibeReference();
-            notifier.addVibeReferences([vibe]);
+            notifier.addVibeReferences([vibe], recordUsage: false);
             totalAdded++;
           }
         }
@@ -637,13 +539,25 @@ class DragTargetWrapper extends ConsumerWidget {
       await panelNotifier.loadRecentEntries();
 
       if (context.mounted) {
-        AppToast.success(context, '已导入 $totalAdded 个 Vibe');
+        AppToast.success(context, context.l10n.vibe_import_result(totalAdded));
       }
     } catch (e, stackTrace) {
       AppLogger.e('Failed to import from library', e, stackTrace);
       if (context.mounted) {
-        AppToast.error(context, '导入失败: $e');
+        AppToast.error(
+          context,
+          context.l10n.vibe_import_failedWithError(e.toString()),
+        );
       }
+    } finally {
+      span.finish(
+        details: {
+          'selectedEntries': selectedEntries,
+          'bundleEntries': bundleEntries,
+          'totalAdded': totalAdded,
+          'replacedExisting': replacedExisting,
+        },
+      );
     }
   }
 
@@ -652,16 +566,35 @@ class DragTargetWrapper extends ConsumerWidget {
     WidgetRef ref,
     VibeLibraryEntry entry,
   ) async {
+    final span = VibePerformanceDiagnostics.start(
+      'dragTarget.addLibraryVibe',
+      details: {
+        'entryId': entry.id,
+        'isBundle': entry.isBundle,
+      },
+    );
+    var success = false;
     final panelNotifier = ref.read(referencePanelNotifierProvider.notifier);
 
-    final success = await panelNotifier.addLibraryVibe(entry);
+    try {
+      success = await panelNotifier.addLibraryVibe(entry);
 
-    if (context.mounted) {
-      if (success) {
-        AppToast.success(context, '已添加 Vibe: ${entry.displayName}');
-      } else {
-        AppToast.warning(context, '已达到最大数量 (16张)，请先移除一些 Vibe');
+      if (context.mounted) {
+        if (success) {
+          AppToast.success(
+            context,
+            context.l10n.vibe_addedNamed(entry.displayName),
+          );
+        } else {
+          AppToast.warning(context, context.l10n.vibe_maxReachedRemoveSome);
+        }
       }
+    } finally {
+      span.finish(
+        details: {
+          'success': success,
+        },
+      );
     }
   }
 }

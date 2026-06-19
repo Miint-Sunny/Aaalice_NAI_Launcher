@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/utils/localization_extension.dart';
 import '../../core/editor_state.dart';
 import '../../tools/tool_base.dart';
 import '../../../../widgets/common/themed_divider.dart';
@@ -7,7 +8,7 @@ import '../../../../widgets/common/themed_divider.dart';
 /// 检查是否可以清空当前图层
 bool _canClearActiveLayer(EditorState state) {
   final layer = state.layerManager.activeLayer;
-  return layer != null && !layer.locked && layer.strokes.isNotEmpty;
+  return layer != null && !layer.locked && layer.hasContent;
 }
 
 /// 桌面端垂直工具栏
@@ -15,13 +16,30 @@ class DesktopToolbar extends StatelessWidget {
   final EditorState state;
   final VoidCallback? onUndo;
   final VoidCallback? onRedo;
+  final VoidCallback? onClear;
+  final VoidCallback? onFillMask;
+  final bool Function()? canFillMask;
+  final Set<String>? allowedToolIds;
 
   const DesktopToolbar({
     super.key,
     required this.state,
     this.onUndo,
     this.onRedo,
+    this.onClear,
+    this.onFillMask,
+    this.canFillMask,
+    this.allowedToolIds,
   });
+
+  List<EditorTool> get _visibleTools {
+    if (allowedToolIds == null || allowedToolIds!.isEmpty) {
+      return state.tools;
+    }
+    return state.tools
+        .where((tool) => allowedToolIds!.contains(tool.id))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +65,7 @@ class DesktopToolbar extends StatelessWidget {
             valueListenable: state.toolNotifier,
             builder: (context, currentToolId, _) {
               return Column(
-                children: state.tools
+                children: _visibleTools
                     .map(
                       (tool) => _ToolButton(
                         tool: tool,
@@ -71,22 +89,31 @@ class DesktopToolbar extends StatelessWidget {
                 children: [
                   _ActionButton(
                     icon: Icons.undo,
-                    tooltip: '撤销 (Ctrl+Z)',
+                    tooltip: context.l10n.editor_shortcutUndo,
                     enabled: state.canUndo,
                     onTap: onUndo ?? () => state.undo(),
                   ),
                   _ActionButton(
                     icon: Icons.redo,
-                    tooltip: '重做 (Ctrl+Y)',
+                    tooltip: context.l10n.editor_shortcutRedo,
                     enabled: state.canRedo,
                     onTap: onRedo ?? () => state.redo(),
                   ),
                   _ActionButton(
                     icon: Icons.delete_outline,
-                    tooltip: '清空图层',
+                    tooltip: onClear != null
+                        ? context.l10n.editor_resetMask
+                        : context.l10n.editor_clearLayer,
                     enabled: _canClearActiveLayer(state),
-                    onTap: () => state.clearActiveLayerWithHistory(),
+                    onTap: onClear ?? () => state.clearActiveLayerWithHistory(),
                   ),
+                  if (onFillMask != null)
+                    _ActionButton(
+                      icon: Icons.format_color_fill,
+                      tooltip: context.l10n.editor_fillClosedRegion,
+                      enabled: canFillMask?.call() ?? false,
+                      onTap: onFillMask!,
+                    ),
                 ],
               );
             },
@@ -102,7 +129,7 @@ class DesktopToolbar extends StatelessWidget {
                 children: [
                   _ActionButton(
                     icon: Icons.zoom_in,
-                    tooltip: '放大',
+                    tooltip: context.l10n.editor_zoomIn,
                     onTap: () => state.canvasController.zoomIn(),
                   ),
                   Padding(
@@ -114,12 +141,12 @@ class DesktopToolbar extends StatelessWidget {
                   ),
                   _ActionButton(
                     icon: Icons.zoom_out,
-                    tooltip: '缩小',
+                    tooltip: context.l10n.editor_zoomOut,
                     onTap: () => state.canvasController.zoomOut(),
                   ),
                   _ActionButton(
                     icon: Icons.fit_screen,
-                    tooltip: '适应窗口',
+                    tooltip: context.l10n.editor_fitToWindow,
                     onTap: () =>
                         state.canvasController.fitToViewport(state.canvasSize),
                   ),
@@ -154,7 +181,7 @@ class _ToolButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Tooltip(
-        message: _buildTooltipMessage(),
+        message: _buildTooltipMessage(context),
         child: Material(
           color: isSelected
               ? theme.colorScheme.primaryContainer
@@ -188,17 +215,32 @@ class _ToolButton extends StatelessWidget {
     return keyLabel.isNotEmpty ? keyLabel.toUpperCase() : '';
   }
 
-  String _buildTooltipMessage() {
+  String _buildTooltipMessage(BuildContext context) {
     final shortcut =
         tool.shortcutKey != null ? ' (${_getShortcutLabel(tool)})' : '';
-    final base = '${tool.name}$shortcut';
+    final base = '${_localizedToolName(context)}$shortcut';
 
-    // 拾色器工具添加 Alt 快捷键说明
     if (tool.id == 'color_picker') {
-      return '$base\nAlt+点击: 临时取色';
+      return '$base\n${context.l10n.editor_tempColorPickerShortcut}';
     }
 
     return base;
+  }
+
+  String _localizedToolName(BuildContext context) {
+    return switch (tool.id) {
+      'brush' => context.l10n.editor_toolBrush,
+      'eraser' => context.l10n.editor_toolEraser,
+      'fill' => context.l10n.editor_toolFill,
+      'line' => context.l10n.editor_toolLine,
+      'rect_selection' => context.l10n.editor_toolRectSelect,
+      'ellipse_selection' => context.l10n.editor_toolEllipseSelect,
+      'lasso_selection' => context.l10n.editor_toolLassoSelect,
+      'color_picker' => context.l10n.editor_toolColorPicker,
+      'clone_stamp' => context.l10n.editor_toolCloneStamp,
+      'blur' => context.l10n.editor_toolBlur,
+      _ => tool.name,
+    };
   }
 }
 
@@ -239,7 +281,7 @@ class _ActionButton extends StatelessWidget {
                 size: 20,
                 color: enabled
                     ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurface.withOpacity(0.3),
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.3),
               ),
             ),
           ),

@@ -12,9 +12,6 @@ import '../../data/models/queue/failure_handling_strategy.dart';
 import 'image_generation_provider.dart';
 import 'notification_settings_provider.dart';
 import 'replication_queue_provider.dart';
-import 'fixed_tags_provider.dart';
-import 'quality_preset_provider.dart';
-import 'uc_preset_provider.dart';
 import '../../core/services/notification_service.dart';
 
 part 'queue_execution_provider.g.dart';
@@ -321,29 +318,12 @@ class QueueExecutionNotifier extends _$QueueExecutionNotifier {
 
   /// 填充提示词到主界面
   void _fillPrompt(ReplicationTask task) {
-    // 1. 应用固定词到队列任务的正面提示词
-    final fixedTagsState = ref.read(fixedTagsNotifierProvider);
-    var finalPrompt = fixedTagsState.applyToPrompt(task.prompt);
-
-    // 2. 应用质量词（如果启用）
-    final model = ref.read(generationParamsNotifierProvider).model;
-    final qualityContent = ref
-        .read(qualityPresetNotifierProvider.notifier)
-        .getEffectiveContent(model);
-    if (qualityContent?.isNotEmpty == true) {
-      finalPrompt = finalPrompt.isEmpty
-          ? qualityContent!
-          : '$finalPrompt, $qualityContent';
-    }
-
-    // 3. 获取主界面负面提示词（UC预设内容）
-    final ucContent =
-        ref.read(ucPresetNotifierProvider.notifier).getEffectiveContent(model);
-
-    // 4. 直接更新生成参数（确保生成时使用正确的提示词）
-    ref.read(generationParamsNotifierProvider.notifier)
-      ..updatePrompt(finalPrompt)
-      ..updateNegativePrompt(ucContent ?? '');
+    // 队列任务只回填用户基础正向提示词。
+    // 固定词、质量词和 UC 预设由生成链路统一组装，避免队列执行时重复拼接。
+    // 负向提示词沿用主界面设置，符合任务编辑器“负面提示词从主界面读取”的语义。
+    ref.read(generationParamsNotifierProvider.notifier).updatePrompt(
+          task.prompt,
+        );
   }
 
   /// 触发自动生成（自动执行模式下使用）

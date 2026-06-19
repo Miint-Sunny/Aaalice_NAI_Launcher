@@ -13,6 +13,7 @@ import '../diy/panels/visibility_rule_panel.dart';
 import '../diy/panels/time_condition_panel.dart';
 import '../diy/panels/post_process_rule_panel.dart';
 import '../../common/elevated_card.dart';
+import 'random_config_l10n.dart';
 import 'random_manager_widgets.dart';
 
 /// 词组卡片组件
@@ -47,6 +48,7 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final tagGroup = widget.tagGroup;
     final hasDiyAbility = tagGroup.hasConditionalBranch ||
         tagGroup.hasDependency ||
@@ -56,7 +58,7 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
         tagGroup.emphasisProbability > 0;
 
     // 获取标签预览内容
-    final tooltipText = _buildTagPreview(tagGroup);
+    final tooltipText = _buildTagPreview(l10n, tagGroup);
 
     return Tooltip(
       message: tooltipText,
@@ -84,7 +86,7 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
                 width: 135,
                 padding: const EdgeInsets.all(12),
                 transform: Matrix4.identity()
-                  ..translate(0.0, _isHovered ? -2.0 : 0.0),
+                  ..translateByDouble(0.0, _isHovered ? -2.0 : 0.0, 0, 1),
                 transformAlignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _isHovered
@@ -94,7 +96,7 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
                   boxShadow: _isHovered
                       ? [
                           BoxShadow(
-                            color: colorScheme.primary.withOpacity(0.15),
+                            color: colorScheme.primary.withValues(alpha: 0.15),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -111,8 +113,8 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
                           Container(
                             padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color:
-                                  colorScheme.primaryContainer.withOpacity(0.3),
+                              color: colorScheme.primaryContainer
+                                  .withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -123,7 +125,7 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
                         if (tagGroup.emoji.isNotEmpty) const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            tagGroup.name,
+                            l10n.randomTagGroupName(tagGroup),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.bold,
                               decoration: tagGroup.enabled
@@ -203,7 +205,10 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
   }
 
   /// 构建标签预览文本
-  String _buildTagPreview(RandomTagGroup tagGroup) {
+  String _buildTagPreview(
+    AppLocalizations l10n,
+    RandomTagGroup tagGroup,
+  ) {
     List<String> tags = [];
 
     if (tagGroup.sourceType == TagGroupSourceType.builtin) {
@@ -227,25 +232,28 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
       tags = tagGroup.tags.map((t) => t.tag).toList();
     }
 
-    if (tags.isEmpty) return '暂无标签';
+    if (tags.isEmpty) return l10n.naiMode_noTags;
 
     // 显示前10个标签
     const maxShow = 10;
     final preview = tags.take(maxShow).join(', ');
     if (tags.length > maxShow) {
-      return '$preview ... (共${tags.length}个)';
+      return '$preview ... (${l10n.tagGroup_tagCount(tags.length.toString())})';
     }
     return preview;
   }
 
   List<Widget> _buildDiyIcons(RandomTagGroup tagGroup) {
+    final l10n = AppLocalizations.of(context)!;
     final icons = <Widget>[];
 
     if (tagGroup.hasConditionalBranch) {
       icons.add(
         _DiyIcon(
           icon: Icons.call_split,
-          tooltip: '条件分支 (点击编辑)',
+          tooltip: l10n.randomManager_editHint(
+            l10n.randomManager_conditionalBranch,
+          ),
           onTap: () => _openDiyPanel(context, 'conditionalBranch'),
         ),
       );
@@ -254,7 +262,9 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
       icons.add(
         _DiyIcon(
           icon: Icons.link,
-          tooltip: '依赖配置 (点击编辑)',
+          tooltip: l10n.randomManager_editHint(
+            l10n.randomManager_dependencyConfig,
+          ),
           onTap: () => _openDiyPanel(context, 'dependency'),
         ),
       );
@@ -263,7 +273,9 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
       icons.add(
         _DiyIcon(
           icon: Icons.visibility,
-          tooltip: '可见性规则 (点击编辑)',
+          tooltip: l10n.randomManager_editHint(
+            l10n.randomManager_visibilityRules,
+          ),
           onTap: () => _openDiyPanel(context, 'visibility'),
         ),
       );
@@ -272,7 +284,9 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
       icons.add(
         _DiyIcon(
           icon: Icons.calendar_today,
-          tooltip: '时间条件 (点击编辑)',
+          tooltip: l10n.randomManager_editHint(
+            l10n.randomManager_timeCondition,
+          ),
           onTap: () => _openDiyPanel(context, 'timeCondition'),
         ),
       );
@@ -281,7 +295,9 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
       icons.add(
         _DiyIcon(
           icon: Icons.build,
-          tooltip: '后处理规则 (点击编辑)',
+          tooltip: l10n.randomManager_editHint(
+            l10n.randomManager_postProcessRules,
+          ),
           onTap: () => _openDiyPanel(context, 'postProcess'),
         ),
       );
@@ -290,8 +306,9 @@ class _TagGroupCardState extends ConsumerState<TagGroupCard> {
       icons.add(
         _DiyIcon(
           icon: Icons.bolt,
-          tooltip:
-              '强调概率: ${(tagGroup.emphasisProbability * 100).toStringAsFixed(0)}%',
+          tooltip: l10n.randomManager_emphasisProbabilityValue(
+            (tagGroup.emphasisProbability * 100).toStringAsFixed(0),
+          ),
           onTap: () => _showEditDialog(context), // 强调概率在主编辑对话框中
         ),
       );
@@ -357,13 +374,13 @@ class _DiyIconState extends State<_DiyIcon> {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 color: _isHovered
-                    ? colorScheme.primary.withOpacity(0.25)
-                    : colorScheme.secondaryContainer.withOpacity(0.5),
+                    ? colorScheme.primary.withValues(alpha: 0.25)
+                    : colorScheme.secondaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(3),
                 boxShadow: _isHovered
                     ? [
                         BoxShadow(
-                          color: colorScheme.primary.withOpacity(0.2),
+                          color: colorScheme.primary.withValues(alpha: 0.2),
                           blurRadius: 4,
                         ),
                       ]
@@ -441,6 +458,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -452,12 +470,12 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.08),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.16),
+              color: colorScheme.shadow.withValues(alpha: 0.16),
               blurRadius: 24,
               offset: const Offset(0, 12),
             ),
@@ -473,15 +491,15 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    colorScheme.primaryContainer.withOpacity(0.3),
-                    colorScheme.secondaryContainer.withOpacity(0.2),
+                    colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    colorScheme.secondaryContainer.withValues(alpha: 0.2),
                   ],
                 ),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(8)),
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.2),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
                 ),
               ),
@@ -490,7 +508,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -501,7 +519,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '编辑词组',
+                    l10n.randomManager_editTagGroup,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -512,8 +530,8 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                     icon: const Icon(Icons.close),
                     iconSize: 20,
                     style: IconButton.styleFrom(
-                      backgroundColor:
-                          colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      backgroundColor: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -523,13 +541,13 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
             TabBar(
               controller: _tabController,
               tabs: [
-                const Tab(
+                Tab(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.list_alt, size: 16),
-                      SizedBox(width: 6),
-                      Text('基础'),
+                      const Icon(Icons.list_alt, size: 16),
+                      const SizedBox(width: 6),
+                      Text(l10n.randomManager_basicTab),
                     ],
                   ),
                 ),
@@ -540,17 +558,20 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                       const Icon(Icons.label_outline, size: 16),
                       const SizedBox(width: 6),
                       Text(
-                          '标签 (${ref.watch(groupTagCountProvider(_editingTagGroup))})',),
+                        l10n.randomManager_tagsTab(
+                          ref.watch(groupTagCountProvider(_editingTagGroup)),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const Tab(
+                Tab(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.auto_awesome, size: 16),
-                      SizedBox(width: 6),
-                      Text('DIY 能力'),
+                      const Icon(Icons.auto_awesome, size: 16),
+                      const SizedBox(width: 6),
+                      Text(l10n.randomManager_diyAbilitiesTab),
                     ],
                   ),
                 ),
@@ -576,7 +597,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                     const BorderRadius.vertical(bottom: Radius.circular(8)),
                 border: Border(
                   top: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.2),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
                 ),
               ),
@@ -585,14 +606,18 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                 children: [
                   OutlinedButton(
                     onPressed: () => Navigator.pop(context),
-                    child: Text(widget.isPresetDefault ? '关闭' : '取消'),
+                    child: Text(
+                      widget.isPresetDefault
+                          ? AppLocalizations.of(context)!.common_close
+                          : AppLocalizations.of(context)!.common_cancel,
+                    ),
                   ),
                   if (!widget.isPresetDefault) ...[
                     const SizedBox(width: 12),
                     FilledButton.icon(
                       onPressed: _saveChanges,
                       icon: const Icon(Icons.check, size: 18),
-                      label: const Text('保存'),
+                      label: Text(AppLocalizations.of(context)!.common_save),
                     ),
                   ],
                 ],
@@ -607,6 +632,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
   Widget _buildBasicTab(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final isReadOnly = widget.isPresetDefault;
 
     return SingleChildScrollView(
@@ -619,7 +645,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
             controller: _nameController,
             enabled: !isReadOnly,
             decoration: InputDecoration(
-              labelText: '名称',
+              labelText: l10n.randomManager_tagGroupName,
               border: const OutlineInputBorder(),
               suffixIcon: isReadOnly
                   ? Icon(
@@ -642,7 +668,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           Row(
             children: [
               Text(
-                '概率:',
+                '${l10n.randomManager_probability}:',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(width: 16),
@@ -683,7 +709,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           Row(
             children: [
               Text(
-                '选择模式:',
+                '${l10n.randomManager_selectionMode}:',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(width: 16),
@@ -693,11 +719,26 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                   isExpanded: true,
                   items: SelectionMode.values.map((mode) {
                     final (label, desc) = switch (mode) {
-                      SelectionMode.single => ('单选', '加权随机选择一个'),
-                      SelectionMode.all => ('全选', '选择所有标签'),
-                      SelectionMode.multipleNum => ('多选数量', '选择指定数量'),
-                      SelectionMode.multipleProb => ('多选概率', '每个独立判断'),
-                      SelectionMode.sequential => ('顺序轮替', '跨批次保持状态'),
+                      SelectionMode.single => (
+                          l10n.randomManager_selectionSingle,
+                          l10n.randomManager_selectionSingleDesc,
+                        ),
+                      SelectionMode.all => (
+                          l10n.randomManager_selectionAll,
+                          l10n.randomManager_selectionAllDesc,
+                        ),
+                      SelectionMode.multipleNum => (
+                          l10n.randomManager_selectionMultipleCount,
+                          l10n.randomManager_selectionMultipleCountDesc,
+                        ),
+                      SelectionMode.multipleProb => (
+                          l10n.randomManager_selectionMultipleProbability,
+                          l10n.randomManager_selectionMultipleProbabilityDesc,
+                        ),
+                      SelectionMode.sequential => (
+                          l10n.randomManager_selectionSequential,
+                          l10n.randomManager_selectionSequentialDesc,
+                        ),
                     };
                     return DropdownMenuItem(
                       value: mode,
@@ -728,6 +769,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
   Widget _buildTagsTab(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final tagCount = ref.watch(groupTagCountProvider(_editingTagGroup));
 
     // 获取标签列表
@@ -763,7 +805,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
         children: [
           // 标签列表标题
           Text(
-            '标签列表 ($tagCount 个)',
+            l10n.randomManager_tagsTab(tagCount),
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -778,7 +820,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.shadow.withOpacity(0.05),
+                    color: colorScheme.shadow.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -787,7 +829,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
               child: isEmpty
                   ? Center(
                       child: Text(
-                        '暂无标签',
+                        l10n.randomManager_noTags,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -854,8 +896,8 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           // 条件分支
           _DiySection(
             icon: Icons.call_split,
-            title: '条件分支',
-            description: '根据变量值选择不同的标签子集',
+            title: l10n.randomManager_conditionalBranch,
+            description: l10n.randomManager_conditionalBranchDesc,
             enabled: _editingTagGroup.hasConditionalBranch,
             onAdd: () => _showConditionalBranchDialog(),
             onEdit: _editingTagGroup.hasConditionalBranch
@@ -866,8 +908,8 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           // 依赖配置
           _DiySection(
             icon: Icons.link,
-            title: '依赖配置',
-            description: '选择数量依赖其他类别的值',
+            title: l10n.randomManager_dependencyConfig,
+            description: l10n.randomManager_dependencyConfigDesc,
             enabled: _editingTagGroup.hasDependency,
             onAdd: () => _showDependencyConfigDialog(),
             onEdit: _editingTagGroup.hasDependency
@@ -878,8 +920,8 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           // 可见性规则
           _DiySection(
             icon: Icons.visibility,
-            title: '可见性规则',
-            description: '根据构图决定是否生成',
+            title: l10n.randomManager_visibilityRules,
+            description: l10n.randomManager_visibilityRulesDesc,
             enabled: _editingTagGroup.hasVisibilityRules,
             onAdd: () => _showVisibilityRuleDialog(),
             onEdit: _editingTagGroup.hasVisibilityRules
@@ -890,8 +932,8 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           // 时间条件
           _DiySection(
             icon: Icons.calendar_today,
-            title: '时间条件',
-            description: '特定日期范围启用',
+            title: l10n.randomManager_timeCondition,
+            description: l10n.randomManager_timeConditionDesc,
             enabled: _editingTagGroup.hasTimeCondition,
             onAdd: () => _showTimeConditionDialog(),
             onEdit: _editingTagGroup.hasTimeCondition
@@ -902,8 +944,8 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
           // 后处理规则
           _DiySection(
             icon: Icons.build,
-            title: '后处理规则',
-            description: '根据已选标签移除冲突',
+            title: l10n.randomManager_postProcessRules,
+            description: l10n.randomManager_postProcessRulesDesc,
             enabled: _editingTagGroup.hasPostProcessRules,
             onAdd: () => _showPostProcessRuleDialog(),
             onEdit: _editingTagGroup.hasPostProcessRules
@@ -919,7 +961,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: colorScheme.shadow.withOpacity(0.05),
+                  color: colorScheme.shadow.withValues(alpha: 0.05),
                   blurRadius: 4,
                   offset: const Offset(0, 1),
                 ),
@@ -930,7 +972,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: colorScheme.tertiaryContainer.withOpacity(0.5),
+                    color: colorScheme.tertiaryContainer.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(
@@ -941,7 +983,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '强调概率:',
+                  '${l10n.randomManager_emphasisProbability}:',
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(width: 16),
@@ -951,9 +993,9 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
                       trackHeight: 4,
                       activeTrackColor: colorScheme.tertiary,
                       inactiveTrackColor:
-                          colorScheme.tertiaryContainer.withOpacity(0.3),
+                          colorScheme.tertiaryContainer.withValues(alpha: 0.3),
                       thumbColor: colorScheme.tertiary,
-                      overlayColor: colorScheme.tertiary.withOpacity(0.1),
+                      overlayColor: colorScheme.tertiary.withValues(alpha: 0.1),
                     ),
                     child: Slider(
                       value: _editingTagGroup.emphasisProbability,
@@ -996,7 +1038,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
     showDialog(
       context: context,
       builder: (context) => _DiyConfigDialog(
-        title: '条件分支配置',
+        title: AppLocalizations.of(context)!.randomManager_conditionalBranch,
         child: ConditionalBranchPanel(
           config: _editingTagGroup.conditionalBranchConfig,
           onConfigChanged: (config) {
@@ -1016,7 +1058,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
     showDialog(
       context: context,
       builder: (context) => _DiyConfigDialog(
-        title: '依赖配置',
+        title: AppLocalizations.of(context)!.randomManager_dependencyConfig,
         child: DependencyConfigPanel(
           config: _editingTagGroup.dependencyConfig,
           onConfigChanged: (config) {
@@ -1037,7 +1079,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
     showDialog(
       context: context,
       builder: (context) => _DiyConfigDialog(
-        title: '可见性规则',
+        title: AppLocalizations.of(context)!.randomManager_visibilityRules,
         child: VisibilityRulePanel(
           rules: _editingTagGroup.visibilityRules,
           onRulesChanged: (rules) {
@@ -1058,7 +1100,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
     showDialog(
       context: context,
       builder: (context) => _DiyConfigDialog(
-        title: '时间条件',
+        title: AppLocalizations.of(context)!.randomManager_timeCondition,
         child: TimeConditionPanel(
           condition: _editingTagGroup.timeCondition,
           onConditionChanged: (condition) {
@@ -1078,7 +1120,7 @@ class _TagGroupEditDialogState extends ConsumerState<_TagGroupEditDialog>
     showDialog(
       context: context,
       builder: (context) => _DiyConfigDialog(
-        title: '后处理规则',
+        title: AppLocalizations.of(context)!.randomManager_postProcessRules,
         child: PostProcessRulePanel(
           rules: _editingTagGroup.postProcessRules,
           onRulesChanged: (rules) {
@@ -1143,7 +1185,7 @@ class _DiySectionState extends State<_DiySection> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: widget.enabled
-              ? colorScheme.primaryContainer.withOpacity(0.3)
+              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
               : _isHovered
                   ? colorScheme.surfaceContainerHighest
                   : colorScheme.surfaceContainerHigh,
@@ -1151,8 +1193,8 @@ class _DiySectionState extends State<_DiySection> {
           boxShadow: [
             BoxShadow(
               color: widget.enabled
-                  ? colorScheme.primary.withOpacity(0.15)
-                  : colorScheme.shadow.withOpacity(0.05),
+                  ? colorScheme.primary.withValues(alpha: 0.15)
+                  : colorScheme.shadow.withValues(alpha: 0.05),
               blurRadius: widget.enabled ? 8 : 4,
               offset: const Offset(0, 2),
             ),
@@ -1164,7 +1206,7 @@ class _DiySectionState extends State<_DiySection> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: widget.enabled
-                    ? colorScheme.primary.withOpacity(0.15)
+                    ? colorScheme.primary.withValues(alpha: 0.15)
                     : colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1207,7 +1249,7 @@ class _DiySectionState extends State<_DiySection> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
+                      color: colorScheme.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -1228,7 +1270,7 @@ class _DiySectionState extends State<_DiySection> {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text('编辑'),
+                      child: Text(AppLocalizations.of(context)!.common_edit),
                     ),
                   ],
                 ],
@@ -1244,7 +1286,7 @@ class _DiySectionState extends State<_DiySection> {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('添加'),
+                child: Text(AppLocalizations.of(context)!.common_add),
               ),
           ],
         ),
@@ -1278,12 +1320,12 @@ class _DiyConfigDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.08),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.16),
+              color: colorScheme.shadow.withValues(alpha: 0.16),
               blurRadius: 24,
               offset: const Offset(0, 12),
             ),
@@ -1299,15 +1341,15 @@ class _DiyConfigDialog extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    colorScheme.secondaryContainer.withOpacity(0.3),
-                    colorScheme.tertiaryContainer.withOpacity(0.2),
+                    colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                    colorScheme.tertiaryContainer.withValues(alpha: 0.2),
                   ],
                 ),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(8)),
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.2),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
                 ),
               ),
@@ -1316,7 +1358,7 @@ class _DiyConfigDialog extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: colorScheme.secondary.withOpacity(0.1),
+                      color: colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -1338,8 +1380,8 @@ class _DiyConfigDialog extends StatelessWidget {
                     icon: const Icon(Icons.close),
                     iconSize: 20,
                     style: IconButton.styleFrom(
-                      backgroundColor:
-                          colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      backgroundColor: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -1361,7 +1403,7 @@ class _DiyConfigDialog extends StatelessWidget {
                     const BorderRadius.vertical(bottom: Radius.circular(8)),
                 border: Border(
                   top: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.2),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
                 ),
               ),
@@ -1371,7 +1413,7 @@ class _DiyConfigDialog extends StatelessWidget {
                   FilledButton.icon(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.check, size: 18),
-                    label: const Text('确定'),
+                    label: Text(AppLocalizations.of(context)!.common_confirm),
                   ),
                 ],
               ),

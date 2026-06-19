@@ -6,19 +6,30 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
+import 'package:path/path.dart' as p;
 
+import '../../../../core/enums/precise_ref_type.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/file_explorer_utils.dart';
 import '../../../../core/utils/image_save_utils.dart';
 import '../../../../core/utils/localization_extension.dart';
+import '../../../../core/utils/prompt_preset_resolution.dart';
+import '../../../../core/utils/vibe_file_parser.dart';
 import '../../../../data/models/character/character_prompt.dart';
 import '../../../../data/repositories/gallery_folder_repository.dart';
 import '../../../../data/services/alias_resolver_service.dart';
 import '../../../../data/services/image_metadata_service.dart';
+import '../../../providers/generation/generation_params_selectors.dart';
 import '../../../providers/character_panel_dock_provider.dart';
 import '../../../providers/character_prompt_provider.dart';
+import '../../../providers/fixed_tags_provider.dart';
 import '../../../providers/image_generation_provider.dart';
 import '../../../providers/local_gallery_provider.dart';
+import '../../../providers/quality_preset_provider.dart';
+import '../../../providers/reverse_prompt_provider.dart';
 import '../../../providers/tag_library_page_provider.dart';
+import '../../../providers/uc_preset_provider.dart';
+import '../../../services/image_workflow_launcher.dart';
 import '../../../widgets/character/character_card_grid.dart';
 import '../../../widgets/character/character_edit_dialog.dart';
 import '../../../widgets/common/app_toast.dart';
@@ -27,10 +38,11 @@ import '../../../widgets/common/image_detail/image_detail_data.dart';
 import '../../../widgets/common/image_detail/image_detail_viewer.dart';
 import '../../../widgets/common/selectable_image_card.dart';
 import '../../../widgets/common/themed_switch.dart';
+import '../../../widgets/image_editor/image_editor_screen.dart';
 import '../../../utils/image_detail_opener.dart';
+import '../../../utils/krita_send_helper.dart';
 import '../../tag_library_page/widgets/entry_add_dialog.dart';
 import '../../../widgets/tag_library/tag_library_picker_dialog.dart';
-import 'upscale_dialog.dart';
 
 /// 图像预览组件
 class ImagePreviewWidget extends ConsumerStatefulWidget {
@@ -77,9 +89,11 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
     }
 
     // 使用批次分辨率（点击生成时捕获），fallback 到全局参数
-    final params = ref.watch(generationParamsNotifierProvider);
-    final batchWidth = state.batchWidth ?? params.width;
-    final batchHeight = state.batchHeight ?? params.height;
+    final previewDimensions = ref.watch(
+      generationParamsNotifierProvider.select(selectPreviewDimensionsViewData),
+    );
+    final batchWidth = state.batchWidth ?? previewDimensions.width;
+    final batchHeight = state.batchHeight ?? previewDimensions.height;
 
     // 生成中状态
     if (state.isGenerating) {
@@ -190,16 +204,13 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
           ),
           itemCount: images.length,
           itemBuilder: (context, index) {
-            final imageBytes = images[index].bytes;
-            return SelectableImageCard(
-              imageBytes: imageBytes,
+            final image = images[index];
+            return _buildGeneratedImageCard(
+              context: context,
+              ref: ref,
+              image: image,
               index: index,
               showIndex: true,
-              enableSelection: false,
-              onTap: () => _showFullscreenImage(imageBytes),
-              onUpscale: () => UpscaleDialog.show(context, image: imageBytes),
-              onSaveToLibrary: (bytes, _) =>
-                  _showSaveToLibraryDialog(context, bytes),
             );
           },
         );
@@ -251,16 +262,13 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
             }
 
             // 已完成的图像
-            final imageBytes = completedImages[index].bytes;
-            return SelectableImageCard(
-              imageBytes: imageBytes,
+            final image = completedImages[index];
+            return _buildGeneratedImageCard(
+              context: context,
+              ref: ref,
+              image: image,
               index: index,
               showIndex: true,
-              enableSelection: false,
-              onTap: () => _showFullscreenImage(imageBytes),
-              onUpscale: () => UpscaleDialog.show(context, image: imageBytes),
-              onSaveToLibrary: (bytes, _) =>
-                  _showSaveToLibraryDialog(context, bytes),
             );
           },
         );
@@ -277,32 +285,17 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
     int imageHeight,
   ) {
     final aspectRatio = imageWidth / imageHeight;
-    const maxHeight = 400.0;
-    const maxWidth = 400.0;
-
-    double cardWidth, cardHeight;
-    if (aspectRatio > 1) {
-      cardWidth = maxWidth;
-      cardHeight = maxWidth / aspectRatio;
-    } else {
-      cardHeight = maxHeight;
-      cardWidth = maxHeight * aspectRatio;
-    }
-
-    return Center(
-      child: SizedBox(
-        width: cardWidth,
-        height: cardHeight,
-        child: SelectableImageCard(
-          isGenerating: true,
-          currentImage: state.currentImage,
-          totalImages: state.totalImages,
-          progress: state.progress,
-          streamPreview: state.streamPreview,
-          imageWidth: imageWidth,
-          imageHeight: imageHeight,
-          enableSelection: false,
-        ),
+    return _buildSingleAspectRatioCard(
+      aspectRatio: aspectRatio,
+      child: SelectableImageCard(
+        isGenerating: true,
+        currentImage: state.currentImage,
+        totalImages: state.totalImages,
+        progress: state.progress,
+        streamPreview: state.streamPreview,
+        imageWidth: imageWidth,
+        imageHeight: imageHeight,
+        enableSelection: false,
       ),
     );
   }
@@ -314,20 +307,20 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
         Icon(
           Icons.image_outlined,
           size: 80,
-          color: theme.colorScheme.onSurface.withOpacity(0.2),
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
         ),
         const SizedBox(height: 16),
         Text(
           context.l10n.generation_emptyPromptHint,
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.4),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
           ),
         ),
         const SizedBox(height: 8),
         Text(
           context.l10n.generation_imageWillShowHere,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.3),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
           ),
         ),
       ],
@@ -364,7 +357,7 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
             child: Text(
               errorHint,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -450,25 +443,292 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
     GeneratedImage image,
     ThemeData theme,
   ) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 500,
-          maxHeight: 650,
-        ),
-        child: AspectRatio(
-          aspectRatio: image.aspectRatio,
-          child: SelectableImageCard(
-            imageBytes: image.bytes,
-            showIndex: false,
-            enableSelection: false,
-            onTap: () => _showFullscreenImage(image.bytes),
-            onUpscale: () => UpscaleDialog.show(context, image: image.bytes),
-            onSaveToLibrary: (bytes, _) =>
-                _showSaveToLibraryDialog(context, bytes),
-          ),
-        ),
+    return _buildSingleAspectRatioCard(
+      aspectRatio: image.aspectRatio,
+      child: _buildGeneratedImageCard(
+        context: context,
+        ref: ref,
+        image: image,
+        showIndex: false,
       ),
+    );
+  }
+
+  Widget _buildGeneratedImageCard({
+    required BuildContext context,
+    required WidgetRef ref,
+    required GeneratedImage image,
+    required bool showIndex,
+    int? index,
+  }) {
+    final imageBytes = image.bytes;
+    final canUseAsInput = image.canUseAsGenerationInput;
+    final isFailedSnapshot = image.isFailedStreamSnapshot;
+
+    return SelectableImageCard(
+      imageBytes: imageBytes,
+      sourceFilePath: image.filePath,
+      index: index,
+      showIndex: showIndex,
+      enableSelection: false,
+      enableSaveAction: image.canSave,
+      enableCopyAction: image.canSave,
+      statusBadgeLabel: isFailedSnapshot
+          ? context.l10n.generation_failedStreamSnapshot
+          : null,
+      statusBadgeTooltip: isFailedSnapshot
+          ? context.l10n.generation_failedStreamSnapshotHint
+          : null,
+      onTap: () => _showFullscreenImage(imageBytes),
+      onReversePrompt: canUseAsInput
+          ? () => unawaited(
+                _sendPreviewImageToReversePrompt(context, image),
+              )
+          : null,
+      onImageToImage: canUseAsInput
+          ? () => _sendPreviewImageToImageToImage(context, image)
+          : null,
+      onVibeTransfer: canUseAsInput
+          ? () => unawaited(
+                _sendPreviewImageToVibeTransfer(context, image),
+              )
+          : null,
+      onPreciseReference: canUseAsInput
+          ? () => unawaited(
+                _sendPreviewImageToPreciseReference(context, image),
+              )
+          : null,
+      onEditImage: canUseAsInput
+          ? () => ImageWorkflowLauncher.openEditor(
+                context,
+                ref,
+                imageBytes,
+                mode: ImageEditorMode.edit,
+              )
+          : null,
+      onInpaint: canUseAsInput
+          ? () => ImageWorkflowLauncher.openInpaint(
+                context,
+                ref,
+                imageBytes,
+              )
+          : null,
+      onGenerateVariations: canUseAsInput
+          ? () => ImageWorkflowLauncher.generateVariations(
+                context,
+                ref,
+                imageBytes,
+              )
+          : null,
+      onDirectorTools: canUseAsInput
+          ? () => ImageWorkflowLauncher.openDirectorTools(
+                context,
+                ref,
+                imageBytes,
+              )
+          : null,
+      onEnhance: canUseAsInput
+          ? () => ImageWorkflowLauncher.openEnhance(ref, imageBytes)
+          : null,
+      onUpscale: canUseAsInput
+          ? () => ImageWorkflowLauncher.openUpscale(ref, imageBytes)
+          : null,
+      onSendToKrita: canUseAsInput
+          ? () => KritaSendHelper.sendImageBytes(
+                context,
+                ref,
+                imageBytes,
+                name: _previewImageFileName(image),
+              )
+          : null,
+      onOpenInExplorer:
+          image.canSave ? () => _openImageInExplorer(context, image) : null,
+      onSaveToLibrary: canUseAsInput
+          ? (bytes, _) => _showSaveToLibraryDialog(context, bytes)
+          : null,
+    );
+  }
+
+  String _previewImageFileName(GeneratedImage image) {
+    final filePath = image.filePath;
+    if (filePath != null && filePath.isNotEmpty) {
+      return p.basename(filePath);
+    }
+    return 'generation_${image.id}.png';
+  }
+
+  Future<void> _sendPreviewImageToReversePrompt(
+    BuildContext context,
+    GeneratedImage image,
+  ) async {
+    final l10n = context.l10n;
+
+    try {
+      await ref.read(reversePromptProvider.notifier).addImage(
+            image.bytes,
+            name: _previewImageFileName(image),
+          );
+
+      if (!context.mounted) return;
+      AppToast.success(context, l10n.drop_addedToReversePrompt);
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.error(context, l10n.gallery_sendFailed(e.toString()));
+      }
+    }
+  }
+
+  void _sendPreviewImageToImageToImage(
+    BuildContext context,
+    GeneratedImage image,
+  ) {
+    ImageWorkflowLauncher.openImageToImage(ref, image.bytes);
+    AppToast.success(context, context.l10n.drop_addedToImg2Img);
+  }
+
+  Future<void> _sendPreviewImageToVibeTransfer(
+    BuildContext context,
+    GeneratedImage image,
+  ) async {
+    final l10n = context.l10n;
+
+    try {
+      final currentState = ref.read(generationParamsNotifierProvider);
+      final currentCount = currentState.vibeReferencesV4.length;
+      const maxCount = 16;
+      final vibes = await VibeFileParser.parseFile(
+        _previewImageFileName(image),
+        image.bytes,
+      );
+
+      if (!context.mounted) return;
+      if (currentCount + vibes.length > maxCount) {
+        AppToast.warning(context, l10n.toast_styleReferenceLimit(maxCount));
+        return;
+      }
+
+      ref
+          .read(generationParamsNotifierProvider.notifier)
+          .addVibeReferences(vibes);
+
+      final message = currentCount > 0
+          ? l10n.toast_appendedStyleReferences(vibes.length)
+          : vibes.length == 1
+              ? l10n.drop_addedToVibe
+              : l10n.drop_addedMultipleToVibe(vibes.length);
+      AppToast.success(context, message);
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.error(context, '${l10n.vibeParseFailed}: $e');
+      }
+    }
+  }
+
+  Future<void> _sendPreviewImageToPreciseReference(
+    BuildContext context,
+    GeneratedImage image,
+  ) async {
+    final l10n = context.l10n;
+
+    try {
+      await ref
+          .read(generationParamsNotifierProvider.notifier)
+          .addPreciseReferenceFromImage(
+            image.bytes,
+            type: PreciseRefType.character,
+            strength: 1.0,
+            fidelity: 1.0,
+          );
+
+      if (!context.mounted) return;
+      AppToast.success(context, l10n.drop_addedToCharacterRef);
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.error(context, l10n.gallery_sendFailed(e.toString()));
+      }
+    }
+  }
+
+  /// 在文件夹中定位图片。已保存的图片直接定位原文件，未保存时先保存再定位。
+  Future<void> _openImageInExplorer(
+    BuildContext context,
+    GeneratedImage image,
+  ) async {
+    try {
+      final existingPath = image.filePath;
+      if (existingPath != null &&
+          existingPath.isNotEmpty &&
+          await File(existingPath).exists()) {
+        await FileExplorerUtils.revealFile(existingPath);
+        return;
+      }
+
+      final saveDirPath = await GalleryFolderRepository.instance.getRootPath();
+      if (saveDirPath == null) return;
+      final saveDir = Directory(saveDirPath);
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+
+      final fileName = 'NAI_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(p.join(saveDirPath, fileName));
+      await file.writeAsBytes(image.bytes);
+
+      ref.read(localGalleryNotifierProvider.notifier).refresh();
+      await FileExplorerUtils.revealFile(file.path);
+
+      if (context.mounted) {
+        AppToast.success(context, context.l10n.image_imageSaved(saveDirPath));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppToast.error(context, context.l10n.image_saveFailed(e.toString()));
+      }
+    }
+  }
+
+  Widget _buildSingleAspectRatioCard({
+    required double aspectRatio,
+    required Widget child,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardSize = _fitAspectRatio(
+          aspectRatio: aspectRatio,
+          maxSize: Size(constraints.maxWidth, constraints.maxHeight),
+        );
+
+        return Center(
+          child: SizedBox(
+            width: cardSize.width,
+            height: cardSize.height,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Size _fitAspectRatio({
+    required double aspectRatio,
+    required Size maxSize,
+  }) {
+    final safeAspectRatio =
+        aspectRatio.isFinite && aspectRatio > 0 ? aspectRatio : 1.0;
+    final maxWidth = maxSize.width.isFinite ? max(0.0, maxSize.width) : 500.0;
+    final maxHeight =
+        maxSize.height.isFinite ? max(0.0, maxSize.height) : 650.0;
+
+    var width = maxWidth;
+    var height = width / safeAspectRatio;
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * safeAspectRatio;
+    }
+
+    return Size(
+      width.clamp(0.0, maxWidth).toDouble(),
+      height.clamp(0.0, maxHeight).toDouble(),
     );
   }
 
@@ -536,13 +796,18 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
           filePath: img.filePath!,
           cachedBytes: img.bytes,
           id: img.id,
+          initialMetadata: img.metadata,
+          showCopyButton: img.canSave,
         );
       }
 
       // 未保存的图像：使用 GeneratedImageDetailData 作为 fallback
       return GeneratedImageDetailData(
         imageBytes: img.bytes,
+        metadata: img.metadata,
         id: img.id,
+        showSaveButton: img.canSave,
+        showCopyButton: img.canSave,
       );
     }).toList();
 
@@ -554,7 +819,10 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
       showMetadataPanel: true,
       showThumbnails: allImages.length > 1,
       callbacks: ImageDetailCallbacks(
-        onSave: (image) => _saveImage(context, image),
+        onSave: (image) async {
+          if (!image.showSaveButton) return;
+          await _saveImage(context, image);
+        },
       ),
     );
   }
@@ -579,62 +847,106 @@ class _ImagePreviewWidgetState extends ConsumerState<ImagePreviewWidget> {
       final fileName = 'NAI_${DateTime.now().millisecondsSinceEpoch}.png';
       final filePath = '${saveDir.path}/$fileName';
 
-      final params = ref.read(generationParamsNotifierProvider);
-      final characterConfig = ref.read(characterPromptNotifierProvider);
+      if (ImageSaveUtils.hasEmbeddedNovelAiMetadata(imageBytes)) {
+        await File(filePath).writeAsBytes(imageBytes);
+      } else {
+        final params = ref.read(generationParamsNotifierProvider);
+        final characterConfig = ref.read(characterPromptNotifierProvider);
+        final fixedTagsState = ref.read(fixedTagsNotifierProvider);
 
-      // 解析别名
-      final aliasResolver = ref.read(aliasResolverServiceProvider.notifier);
-      final resolvedPrompt = aliasResolver.resolveAliases(params.prompt);
-      final resolvedNegative =
-          aliasResolver.resolveAliases(params.negativePrompt);
+        // 解析别名
+        final aliasResolver = ref.read(aliasResolverServiceProvider.notifier);
+        final resolvedPrompt = aliasResolver.resolveAliases(params.prompt);
+        final resolvedNegative =
+            aliasResolver.resolveAliases(params.negativePrompt);
+        final promptWithFixedTags =
+            fixedTagsState.applyToPrompt(resolvedPrompt);
+        final negativePromptWithFixedTags =
+            fixedTagsState.applyToNegativePrompt(resolvedNegative);
+        final qualityState = ref.read(qualityPresetNotifierProvider);
+        final qualityContent = ref
+            .read(qualityPresetNotifierProvider.notifier)
+            .getEffectiveContent(params.model);
+        final ucState = ref.read(ucPresetNotifierProvider);
+        final ucPresetContent = ref
+            .read(ucPresetNotifierProvider.notifier)
+            .getEffectiveContent(params.model);
+        final presetResolution = resolvePromptPresetSettings(
+          prompt: promptWithFixedTags,
+          negativePrompt: negativePromptWithFixedTags,
+          qualityMode: qualityState.mode,
+          qualityContent: qualityContent,
+          ucPresetType: ucState.presetType,
+          ucPresetContent: ucPresetContent,
+          useCustomUcPreset: ucState.isCustom,
+        );
 
-      // 尝试从图片元数据中提取实际的 seed
-      int actualSeed = params.seed;
-      if (actualSeed == -1) {
-        final extractedMeta =
-            await ImageMetadataService().getMetadataFromBytes(imageBytes);
-        if (extractedMeta != null &&
-            extractedMeta.seed != null &&
-            extractedMeta.seed! > 0) {
-          actualSeed = extractedMeta.seed!;
-        } else {
-          actualSeed = Random().nextInt(4294967295);
+        // 尝试从图片元数据中提取实际的 seed
+        int actualSeed = params.seed;
+        if (actualSeed == -1) {
+          final extractedMeta =
+              await ImageMetadataService().getMetadataFromBytes(imageBytes);
+          if (extractedMeta != null &&
+              extractedMeta.seed != null &&
+              extractedMeta.seed! > 0) {
+            actualSeed = extractedMeta.seed!;
+          } else {
+            actualSeed = Random().nextInt(4294967295);
+          }
         }
+
+        // 构建 V4 多角色提示词结构（解析别名）
+        final charCaptions = <Map<String, dynamic>>[];
+        final charNegCaptions = <Map<String, dynamic>>[];
+
+        for (final char in characterConfig.characters
+            .where((c) => c.enabled && c.prompt.isNotEmpty)) {
+          charCaptions.add({
+            'char_caption': aliasResolver.resolveAliases(char.prompt),
+            'centers': [
+              {'x': 0.5, 'y': 0.5},
+            ],
+          });
+          charNegCaptions.add({
+            'char_caption': aliasResolver.resolveAliases(char.negativePrompt),
+            'centers': [
+              {'x': 0.5, 'y': 0.5},
+            ],
+          });
+        }
+
+        final paramsForSave = params.copyWith(
+          prompt: presetResolution.prompt,
+          negativePrompt: presetResolution.negativePrompt,
+          qualityToggle: presetResolution.qualityToggle,
+          ucPreset: presetResolution.ucPreset,
+        );
+        await ImageSaveUtils.saveImageWithMetadata(
+          imageBytes: imageBytes,
+          filePath: filePath,
+          params: paramsForSave,
+          actualSeed: actualSeed,
+          fixedPrefixTags: fixedTagsState.enabledPrefixes
+              .map((entry) => entry.weightedContent)
+              .where((content) => content.isNotEmpty)
+              .toList(growable: false),
+          fixedSuffixTags: fixedTagsState.enabledSuffixes
+              .map((entry) => entry.weightedContent)
+              .where((content) => content.isNotEmpty)
+              .toList(growable: false),
+          fixedNegativePrefixTags: fixedTagsState.negativeEnabledPrefixes
+              .map((entry) => entry.weightedContent)
+              .where((content) => content.isNotEmpty)
+              .toList(growable: false),
+          fixedNegativeSuffixTags: fixedTagsState.negativeEnabledSuffixes
+              .map((entry) => entry.weightedContent)
+              .where((content) => content.isNotEmpty)
+              .toList(growable: false),
+          charCaptions: charCaptions,
+          charNegCaptions: charNegCaptions,
+          useCoords: !characterConfig.globalAiChoice,
+        );
       }
-
-      // 构建 V4 多角色提示词结构（解析别名）
-      final charCaptions = <Map<String, dynamic>>[];
-      final charNegCaptions = <Map<String, dynamic>>[];
-
-      for (final char in characterConfig.characters
-          .where((c) => c.enabled && c.prompt.isNotEmpty)) {
-        charCaptions.add({
-          'char_caption': aliasResolver.resolveAliases(char.prompt),
-          'centers': [
-            {'x': 0.5, 'y': 0.5},
-          ],
-        });
-        charNegCaptions.add({
-          'char_caption': aliasResolver.resolveAliases(char.negativePrompt),
-          'centers': [
-            {'x': 0.5, 'y': 0.5},
-          ],
-        });
-      }
-
-      final paramsForSave = params.copyWith(
-        prompt: resolvedPrompt,
-        negativePrompt: resolvedNegative,
-      );
-      await ImageSaveUtils.saveImageWithMetadata(
-        imageBytes: imageBytes,
-        filePath: filePath,
-        params: paramsForSave,
-        actualSeed: actualSeed,
-        charCaptions: charCaptions,
-        charNegCaptions: charNegCaptions,
-        useCoords: !characterConfig.globalAiChoice,
-      );
 
       // 立即解析并缓存刚保存图像的元数据
       unawaited(
@@ -692,7 +1004,7 @@ class _DockedCharacterPanel extends ConsumerWidget {
 
     return Container(
       // 使用半透明表面色，让背景微妙透出
-      color: colorScheme.surface.withOpacity(0.95),
+      color: colorScheme.surface.withValues(alpha: 0.95),
       child: Column(
         children: [
           // 标题栏 - 横跨整个宽度
@@ -727,7 +1039,7 @@ class _DockedCharacterPanel extends ConsumerWidget {
           Divider(
             height: 1,
             thickness: 0.5,
-            color: colorScheme.outlineVariant.withOpacity(0.15),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.15),
           ),
 
           // 主内容区：左侧竖直按钮栏 + 右侧角色网格
@@ -740,7 +1052,8 @@ class _DockedCharacterPanel extends ConsumerWidget {
                   decoration: BoxDecoration(
                     border: Border(
                       right: BorderSide(
-                        color: colorScheme.outlineVariant.withOpacity(0.15),
+                        color:
+                            colorScheme.outlineVariant.withValues(alpha: 0.15),
                       ),
                     ),
                   ),
@@ -775,7 +1088,7 @@ class _DockedCharacterPanel extends ConsumerWidget {
           Divider(
             height: 1,
             thickness: 0.5,
-            color: colorScheme.outlineVariant.withOpacity(0.15),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.15),
           ),
 
           // 底部工具栏 - 横跨整个宽度，紧贴边缘
@@ -808,7 +1121,8 @@ class _DockedCharacterPanel extends ConsumerWidget {
                       child: Icon(
                         Icons.info_outline,
                         size: 16,
-                        color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                        color:
+                            colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -993,8 +1307,8 @@ class _VerticalGenderButtonState extends State<_VerticalGenderButton> {
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
           decoration: BoxDecoration(
             color: _isHovered
-                ? widget.color.withOpacity(0.18)
-                : widget.color.withOpacity(0.08),
+                ? widget.color.withValues(alpha: 0.18)
+                : widget.color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -1054,8 +1368,8 @@ class _VerticalLibraryButtonState extends State<_VerticalLibraryButton> {
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
           decoration: BoxDecoration(
             color: _isHovered
-                ? accentColor.withOpacity(0.18)
-                : accentColor.withOpacity(0.08),
+                ? accentColor.withValues(alpha: 0.18)
+                : accentColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(
@@ -1106,10 +1420,10 @@ class _UndockButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: colorScheme.primary.withOpacity(0.6),
+              color: colorScheme.primary.withValues(alpha: 0.6),
               width: 1,
             ),
-            color: colorScheme.primary.withOpacity(0.12),
+            color: colorScheme.primary.withValues(alpha: 0.12),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

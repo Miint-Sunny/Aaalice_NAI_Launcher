@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../data/models/prompt/random_prompt_result.dart';
 import '../../../../data/services/random_prompt_generator.dart';
+import '../../../../core/utils/localization_extension.dart';
 import '../../../providers/random_preset_provider.dart';
 import '../../common/elevated_card.dart';
 import '../../common/app_toast.dart';
@@ -57,7 +58,7 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
       final preset = presetState.selectedPreset;
 
       if (preset == null) {
-        throw Exception('未选择预设');
+        throw Exception(context.l10n.randomManager_selectPresetRequired);
       }
 
       final result = await generator.generateFromPreset(
@@ -86,7 +87,7 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
   void _copyToClipboard() {
     if (_result == null) return;
     Clipboard.setData(ClipboardData(text: _result!.mergedPrompt));
-    AppToast.success(context, '已复制到剪贴板');
+    AppToast.success(context, context.l10n.randomManager_copiedToClipboard);
   }
 
   @override
@@ -109,8 +110,8 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      colorScheme.secondary.withOpacity(0.2),
-                      colorScheme.secondary.withOpacity(0.1),
+                      colorScheme.secondary.withValues(alpha: 0.2),
+                      colorScheme.secondary.withValues(alpha: 0.1),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(8),
@@ -123,7 +124,7 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
               ),
               const SizedBox(width: 12),
               Text(
-                '预览生成',
+                context.l10n.randomManager_previewGeneration,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -172,7 +173,7 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: colorScheme.shadow.withOpacity(0.05),
+                  color: colorScheme.shadow.withValues(alpha: 0.05),
                   blurRadius: 4,
                   offset: const Offset(0, 1),
                 ),
@@ -194,14 +195,18 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
             // 角色数量
             _StatChip(
               icon: Icons.person_outline,
-              label: '${_result!.characterCount}人',
+              label: context.l10n.randomManager_characterCountLabel(
+                _result!.characterCount,
+              ),
               color: colorScheme.primary,
             ),
             const SizedBox(width: 8),
             // 标签数量 (估算：按逗号分隔)
             _StatChip(
               icon: Icons.tag,
-              label: '${_result!.mergedPrompt.split(',').length}标签',
+              label: context.l10n.randomManager_tagCountLabel(
+                _result!.mergedPrompt.split(',').length,
+              ),
               color: colorScheme.secondary,
             ),
             const Spacer(),
@@ -210,9 +215,10 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
               onPressed: _copyToClipboard,
               icon: const Icon(Icons.copy_outlined),
               iconSize: 18,
-              tooltip: '复制',
+              tooltip: context.l10n.randomManager_copy,
               style: IconButton.styleFrom(
-                backgroundColor: colorScheme.primaryContainer.withOpacity(0.3),
+                backgroundColor:
+                    colorScheme.primaryContainer.withValues(alpha: 0.3),
               ),
             ),
             const SizedBox(width: 4),
@@ -221,10 +227,10 @@ class _PreviewGeneratorPanelState extends ConsumerState<PreviewGeneratorPanel>
               onPressed: _isGenerating ? null : _generate,
               icon: const Icon(Icons.refresh),
               iconSize: 18,
-              tooltip: '重新生成',
+              tooltip: context.l10n.randomManager_regenerate,
               style: IconButton.styleFrom(
                 backgroundColor:
-                    colorScheme.secondaryContainer.withOpacity(0.3),
+                    colorScheme.secondaryContainer.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -273,22 +279,22 @@ class _GenerateButtonState extends State<_GenerateButton> {
               colors: _isHovered || widget.isGenerating
                   ? [colorScheme.primary, colorScheme.secondary]
                   : [
-                      colorScheme.primary.withOpacity(0.9),
-                      colorScheme.secondary.withOpacity(0.8),
+                      colorScheme.primary.withValues(alpha: 0.9),
+                      colorScheme.secondary.withValues(alpha: 0.8),
                     ],
             ),
             borderRadius: BorderRadius.circular(8),
             boxShadow: _isHovered && !widget.isGenerating
                 ? [
                     BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.35),
+                      color: colorScheme.primary.withValues(alpha: 0.35),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.2),
+                      color: colorScheme.primary.withValues(alpha: 0.2),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -313,7 +319,9 @@ class _GenerateButtonState extends State<_GenerateButton> {
                     ),
               const SizedBox(width: 6),
               Text(
-                widget.isGenerating ? '生成中' : '生成',
+                widget.isGenerating
+                    ? context.l10n.randomManager_generating
+                    : context.l10n.randomManager_generate,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -346,18 +354,18 @@ class _EmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.auto_awesome_outlined,
               size: 32,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            '点击"生成"预览随机标签',
+            context.l10n.randomManager_previewHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -366,7 +374,7 @@ class _EmptyState extends StatelessWidget {
           FilledButton.tonalIcon(
             onPressed: onGenerate,
             icon: const Icon(Icons.shuffle, size: 16),
-            label: const Text('立即生成'),
+            label: Text(context.l10n.randomManager_generateNow),
           ),
         ],
       ),
@@ -389,7 +397,7 @@ class _ErrorDisplay extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colorScheme.errorContainer.withOpacity(0.3),
+          color: colorScheme.errorContainer.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -402,7 +410,7 @@ class _ErrorDisplay extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '生成失败',
+              context.l10n.randomManager_generationFailed,
               style: theme.textTheme.titleSmall?.copyWith(
                 color: colorScheme.error,
                 fontWeight: FontWeight.bold,
@@ -442,7 +450,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

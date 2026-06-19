@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/utils/localization_extension.dart';
 import '../../../providers/tag_library_page_provider.dart';
@@ -52,7 +53,16 @@ class TagLibraryToolbar extends ConsumerStatefulWidget {
 
 class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
+  late final FocusNode _searchFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocusNode = FocusNode(onKeyEvent: _handleSearchKeyEvent);
+    _syncSearchController(
+      ref.read(tagLibraryPageNotifierProvider).searchQuery,
+    );
+  }
 
   @override
   void dispose() {
@@ -63,6 +73,11 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String>(
+      tagLibraryPageNotifierProvider.select((state) => state.searchQuery),
+      (_, next) => _syncSearchController(next),
+    );
+
     final state = ref.watch(tagLibraryPageNotifierProvider);
     final selectionState = ref.watch(tagLibrarySelectionNotifierProvider);
     final theme = Theme.of(context);
@@ -94,25 +109,25 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
         actions: [
           BulkActionItem(
             icon: Icons.drive_file_move_outline,
-            label: '转移分类',
+            label: context.l10n.tagLibrary_transferCategory,
             onPressed: widget.onBulkMoveCategory,
             color: theme.colorScheme.secondary,
           ),
           BulkActionItem(
             icon: Icons.copy,
-            label: '复制内容',
+            label: context.l10n.tagLibrary_copyContent,
             onPressed: widget.onBulkCopy,
             color: theme.colorScheme.tertiary,
           ),
           BulkActionItem(
             icon: Icons.favorite_outline,
-            label: '收藏',
+            label: context.l10n.common_favorite,
             onPressed: widget.onBulkToggleFavorite,
             color: Colors.pink,
           ),
           BulkActionItem(
             icon: Icons.delete_outline,
-            label: '删除',
+            label: context.l10n.common_delete,
             onPressed: widget.onBulkDelete,
             color: theme.colorScheme.error,
             isDanger: true,
@@ -131,75 +146,133 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
           constraints: const BoxConstraints(minHeight: 62),
           decoration: BoxDecoration(
             color: isDark
-                ? theme.colorScheme.surfaceContainerHigh.withOpacity(0.9)
-                : theme.colorScheme.surface.withOpacity(0.8),
+                ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.9)
+                : theme.colorScheme.surface.withValues(alpha: 0.8),
             border: Border(
               bottom: BorderSide(
-                color: theme.dividerColor.withOpacity(isDark ? 0.2 : 0.3),
+                color: theme.dividerColor.withValues(alpha: isDark ? 0.2 : 0.3),
               ),
             ),
           ),
-          child: Row(
-            children: [
-              // 添加条目按钮
-              FilledButton.icon(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 900;
+              final addButton = FilledButton.icon(
                 onPressed: widget.onAddEntry,
                 icon: const Icon(Icons.add, size: 18),
                 label: Text(context.l10n.tagLibrary_addEntry),
-              ),
-              const SizedBox(width: 12),
+              );
 
-              // 搜索框
-              Expanded(
-                child: _buildSearchField(theme, state),
-              ),
+              Widget buildActions() {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 排序下拉菜单
+                    _buildSortDropdown(theme, state),
+                    const SizedBox(width: 8),
 
-              const SizedBox(width: 12),
+                    // 视图切换
+                    _buildViewModeToggle(theme, state),
 
-              // 排序下拉菜单
-              _buildSortDropdown(theme, state),
-              const SizedBox(width: 8),
+                    const SizedBox(width: 8),
 
-              // 视图切换
-              _buildViewModeToggle(theme, state),
+                    // 分隔线
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: theme.dividerColor.withValues(alpha: 0.3),
+                    ),
+                    const SizedBox(width: 8),
 
-              const SizedBox(width: 8),
+                    // 多选按钮
+                    _CompactIconButton(
+                      icon: Icons.checklist,
+                      label: context.l10n.common_multiSelect,
+                      onPressed: widget.onEnterSelectionMode,
+                    ),
+                    const SizedBox(width: 6),
 
-              // 分隔线
-              Container(
-                width: 1,
-                height: 24,
-                color: theme.dividerColor.withOpacity(0.3),
-              ),
-              const SizedBox(width: 8),
+                    // 导入按钮
+                    _CompactIconButton(
+                      icon: Icons.file_upload_outlined,
+                      label: context.l10n.common_import,
+                      onPressed: widget.onImport,
+                    ),
+                    const SizedBox(width: 6),
 
-              // 多选按钮
-              _CompactIconButton(
-                icon: Icons.checklist,
-                label: '多选',
-                onPressed: widget.onEnterSelectionMode,
-              ),
-              const SizedBox(width: 6),
+                    // 导出按钮
+                    _CompactIconButton(
+                      icon: Icons.file_download_outlined,
+                      label: context.l10n.common_export,
+                      onPressed: state.entries.isEmpty ? null : widget.onExport,
+                    ),
+                  ],
+                );
+              }
 
-              // 导入按钮
-              _CompactIconButton(
-                icon: Icons.file_upload_outlined,
-                label: '导入',
-                onPressed: widget.onImport,
-              ),
-              const SizedBox(width: 6),
+              if (compact) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        addButton,
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildSearchField(theme, state)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: buildActions(),
+                      ),
+                    ),
+                  ],
+                );
+              }
 
-              // 导出按钮
-              _CompactIconButton(
-                icon: Icons.file_download_outlined,
-                label: '导出',
-                onPressed: state.entries.isEmpty ? null : widget.onExport,
-              ),
-            ],
+              return Row(
+                children: [
+                  addButton,
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildSearchField(theme, state)),
+                  const SizedBox(width: 12),
+                  buildActions(),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
+  }
+
+  void _syncSearchController(String query) {
+    if (_searchController.text == query) return;
+
+    _searchController.value = TextEditingValue(
+      text: query,
+      selection: TextSelection.collapsed(offset: query.length),
+    );
+  }
+
+  KeyEventResult _handleSearchKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.keyA) {
+      return KeyEventResult.ignored;
+    }
+
+    final keyboard = HardwareKeyboard.instance;
+    if (!keyboard.isControlPressed && !keyboard.isMetaPressed) {
+      return KeyEventResult.ignored;
+    }
+
+    _searchController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _searchController.text.length,
+    );
+    return KeyEventResult.handled;
   }
 
   /// 构建搜索框
@@ -207,7 +280,7 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
     return Container(
       height: 36,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(18),
       ),
       child: TextField(
@@ -217,20 +290,21 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
         decoration: InputDecoration(
           hintText: context.l10n.tagLibrary_searchHint,
           hintStyle: TextStyle(
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             fontSize: 13,
           ),
           prefixIcon: Icon(
             Icons.search,
             size: 18,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
           suffixIcon: state.searchQuery.isNotEmpty
               ? IconButton(
                   icon: Icon(
                     Icons.close,
                     size: 16,
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.6),
                   ),
                   onPressed: () {
                     _searchController.clear();
@@ -257,7 +331,7 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
   Widget _buildViewModeToggle(ThemeData theme, TagLibraryPageState state) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -295,10 +369,10 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -319,24 +393,38 @@ class _TagLibraryToolbarState extends ConsumerState<TagLibraryToolbar> {
           items: [
             DropdownMenuItem(
               value: TagLibrarySortBy.order,
-              child: _buildSortItem(Icons.sort, '自定义排序'),
+              child: _buildSortItem(
+                Icons.sort,
+                context.l10n.tagLibrary_sortCustom,
+              ),
             ),
             DropdownMenuItem(
               value: TagLibrarySortBy.name,
-              child: _buildSortItem(Icons.sort_by_alpha, '名称'),
+              child: _buildSortItem(
+                Icons.sort_by_alpha,
+                context.l10n.tagLibrary_sortName,
+              ),
             ),
             DropdownMenuItem(
               value: TagLibrarySortBy.useCount,
-              child: _buildSortItem(Icons.trending_up, '使用频率'),
+              child: _buildSortItem(
+                Icons.trending_up,
+                context.l10n.tagLibrary_sortUseCount,
+              ),
             ),
             DropdownMenuItem(
               value: TagLibrarySortBy.updatedAt,
-              child: _buildSortItem(Icons.access_time, '更新时间'),
+              child: _buildSortItem(
+                Icons.access_time,
+                context.l10n.tagLibrary_sortUpdatedAt,
+              ),
             ),
           ],
           onChanged: (value) {
             if (value != null) {
-              ref.read(tagLibraryPageNotifierProvider.notifier).setSortBy(value);
+              ref
+                  .read(tagLibraryPageNotifierProvider.notifier)
+                  .setSortBy(value);
             }
           },
         ),
@@ -380,7 +468,7 @@ class _ViewModeButton extends StatelessWidget {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: isSelected
-                ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : null,
             borderRadius: BorderRadius.circular(8),
           ),
@@ -389,7 +477,7 @@ class _ViewModeButton extends StatelessWidget {
             size: 18,
             color: isSelected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
         ),
       ),
@@ -455,27 +543,29 @@ class _CompactIconButtonState extends State<_CompactIconButton>
         ? (_isHovered
             ? theme.colorScheme.primary
             : theme.colorScheme.onSurfaceVariant
-                .withOpacity(isDark ? 0.85 : 0.75))
-        : theme.colorScheme.onSurfaceVariant.withOpacity(0.35);
+                .withValues(alpha: isDark ? 0.85 : 0.75))
+        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.35);
     labelColor = isEnabled
         ? (_isHovered
             ? theme.colorScheme.primary
-            : theme.colorScheme.onSurface.withOpacity(isDark ? 0.85 : 0.75))
-        : theme.colorScheme.onSurface.withOpacity(0.35);
+            : theme.colorScheme.onSurface
+                .withValues(alpha: isDark ? 0.85 : 0.75))
+        : theme.colorScheme.onSurface.withValues(alpha: 0.35);
     bgColor = _isPressed
-        ? theme.colorScheme.primary.withOpacity(isDark ? 0.2 : 0.14)
+        ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.14)
         : (_isHovered
-            ? theme.colorScheme.primary.withOpacity(isDark ? 0.14 : 0.08)
+            ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.14 : 0.08)
             : (isDark
-                ? Colors.white.withOpacity(0.04)
-                : Colors.white.withOpacity(0.6)));
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.white.withValues(alpha: 0.6)));
     borderColor = _isHovered
-        ? theme.colorScheme.primary.withOpacity(isDark ? 0.5 : 0.35)
-        : theme.colorScheme.outline.withOpacity(isDark ? 0.2 : 0.15);
+        ? theme.colorScheme.primary.withValues(alpha: isDark ? 0.5 : 0.35)
+        : theme.colorScheme.outline.withValues(alpha: isDark ? 0.2 : 0.15);
     if (_isHovered && isEnabled) {
       shadows = [
         BoxShadow(
-          color: theme.colorScheme.shadow.withOpacity(isDark ? 0.15 : 0.08),
+          color:
+              theme.colorScheme.shadow.withValues(alpha: isDark ? 0.15 : 0.08),
           blurRadius: 6,
           spreadRadius: 0,
           offset: const Offset(0, 2),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/utils/localization_extension.dart';
 import '../../core/editor_state.dart';
 import '../../../../../core/utils/app_logger.dart';
 import 'package:nai_launcher/presentation/widgets/common/themed_input.dart';
@@ -27,7 +28,7 @@ class ColorPanel extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '颜色',
+                context.l10n.editor_colorPanelTitle,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -64,8 +65,8 @@ class ColorPanel extends StatelessWidget {
                       children: _quickColors.map((color) {
                         return _QuickColorButton(
                           color: color,
-                          isSelected:
-                              state.foregroundColor.value == color.value,
+                          isSelected: state.foregroundColor.toARGB32() ==
+                              color.toARGB32(),
                           onTap: () => state.setForegroundColor(color),
                         );
                       }).toList(),
@@ -78,7 +79,7 @@ class ColorPanel extends StatelessWidget {
 
               // 颜色值显示
               Text(
-                '#${state.foregroundColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                '#${state.foregroundColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontFamily: 'monospace',
                   color: theme.colorScheme.onSurfaceVariant,
@@ -195,7 +196,7 @@ class _ColorPreview extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 2,
                     ),
                   ],
@@ -265,7 +266,8 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
     super.initState();
     _hsvColor = HSVColor.fromColor(widget.initialColor);
     _hexController = TextEditingController(
-      text: widget.initialColor.value
+      text: widget.initialColor
+          .toARGB32()
           .toRadixString(16)
           .substring(2)
           .toUpperCase(),
@@ -283,7 +285,7 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      title: const Text('选择颜色'),
+      title: Text(context.l10n.editor_colorPickerTitle),
       content: SizedBox(
         width: 300,
         child: Column(
@@ -321,7 +323,8 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                                       Border.all(color: Colors.white, width: 2),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.3),
                                       blurRadius: 2,
                                     ),
                                   ],
@@ -402,14 +405,14 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(context.l10n.common_cancel),
         ),
         FilledButton(
           onPressed: () {
             widget.onColorChanged(_hsvColor.toColor());
             Navigator.pop(context);
           },
-          child: const Text('确定'),
+          child: Text(context.l10n.common_confirm),
         ),
       ],
     );
@@ -438,8 +441,12 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
   }
 
   void _updateHexController() {
-    _hexController.text =
-        _hsvColor.toColor().value.toRadixString(16).substring(2).toUpperCase();
+    _hexController.text = _hsvColor
+        .toColor()
+        .toARGB32()
+        .toRadixString(16)
+        .substring(2)
+        .toUpperCase();
   }
 
   void _parseHex(String value) {

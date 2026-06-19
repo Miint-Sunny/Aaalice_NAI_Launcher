@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/utils/localization_extension.dart';
 import '../../../../../data/models/tag_library/tag_library_category.dart';
 import '../../../../../data/models/tag_library/tag_library_entry.dart';
 import '../../../../providers/tag_library_page_provider.dart';
@@ -30,6 +31,7 @@ class GroupedEntriesView extends ConsumerWidget {
     final grouped = _groupEntriesByCategory(
       state.filteredEntries,
       state.categories,
+      context.l10n.tagLibrary_uncategorized,
     );
 
     // 过滤掉空分类（可选：根据需求决定是否显示空分类）
@@ -118,6 +120,7 @@ class GroupedEntriesView extends ConsumerWidget {
   List<CategoryGroup> _groupEntriesByCategory(
     List<TagLibraryEntry> entries,
     List<TagLibraryCategory> categories,
+    String uncategorizedLabel,
   ) {
     // 获取所有有条目的分类ID
     final categoryIdsWithEntries = entries.map((e) => e.categoryId).toSet();
@@ -131,28 +134,32 @@ class GroupedEntriesView extends ConsumerWidget {
     for (final category in sortedCategories) {
       // 只包含有条目的分类
       if (categoryIdsWithEntries.contains(category.id)) {
-        final categoryEntries = entries
-            .where((e) => e.categoryId == category.id)
-            .toList();
-        groups.add(CategoryGroup(
-          category: category,
-          entries: categoryEntries,
-        ),);
+        final categoryEntries =
+            entries.where((e) => e.categoryId == category.id).toList();
+        groups.add(
+          CategoryGroup(
+            category: category,
+            entries: categoryEntries,
+          ),
+        );
       }
     }
 
     // 处理未分类条目（categoryId 为 null）
-    final uncategorizedEntries = entries.where((e) => e.categoryId == null).toList();
+    final uncategorizedEntries =
+        entries.where((e) => e.categoryId == null).toList();
     if (uncategorizedEntries.isNotEmpty) {
-      groups.add(CategoryGroup(
-        category: TagLibraryCategory(
-          id: 'uncategorized',
-          name: '未分类',
-          sortOrder: -1,
-          createdAt: DateTime.now(),
+      groups.add(
+        CategoryGroup(
+          category: TagLibraryCategory(
+            id: 'uncategorized',
+            name: uncategorizedLabel,
+            sortOrder: -1,
+            createdAt: DateTime.now(),
+          ),
+          entries: uncategorizedEntries,
         ),
-        entries: uncategorizedEntries,
-      ),);
+      );
     }
 
     return groups;
@@ -168,11 +175,11 @@ class GroupedEntriesView extends ConsumerWidget {
           Icon(
             Icons.folder_open_outlined,
             size: 64,
-            color: theme.colorScheme.outline.withOpacity(0.5),
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
-            '暂无条目',
+            context.l10n.tagLibrary_empty,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.outline,
             ),

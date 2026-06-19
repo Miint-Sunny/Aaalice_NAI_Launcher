@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hive/hive.dart';
 
+import '../../../core/constants/api_constants.dart';
+import '../../../core/enums/precise_ref_type.dart';
 import '../../../core/utils/app_logger.dart';
+import '../image/image_params.dart';
 import '../vibe/vibe_reference.dart';
 
 part 'nai_image_metadata.freezed.dart';
@@ -131,9 +135,100 @@ class NaiImageMetadata with _$NaiImageMetadata {
 
     /// 保留完整prompt用于兼容旧数据（当分离字段为空时使用）
     @HiveField(29) String? originalPrompt,
+
+    /// Variety+ 开关
+    @HiveField(30) bool? varietyPlus,
+
+    /// Precise Reference 图像 Base64 数据
+    @HiveField(31) @Default([]) List<String> preciseReferenceImages,
+
+    /// Precise Reference 类型
+    @HiveField(32) @Default([]) List<String> preciseReferenceTypes,
+
+    /// Precise Reference 强度
+    @HiveField(33) @Default([]) List<double> preciseReferenceStrengths,
+
+    /// Precise Reference 保真度
+    @HiveField(34) @Default([]) List<double> preciseReferenceFidelities,
+
+    /// 负向固定前缀词列表
+    @HiveField(35, defaultValue: [])
+    @Default([])
+    List<String> fixedNegativePrefixTags,
+
+    /// 负向固定后缀词列表
+    @HiveField(36, defaultValue: [])
+    @Default([])
+    List<String> fixedNegativeSuffixTags,
   }) = _NaiImageMetadata;
 
   const NaiImageMetadata._();
+
+  /// 从 PNG Source 字段解析出的可用模型 ID。
+  String? get sourceModel => _modelIdFromSource(source);
+
+  /// 用于导入/展示的模型 ID。Source 是官方图片的模型来源，优先级高于旧缓存中的 model。
+  String? get effectiveModel => sourceModel ?? model;
+
+  /// 从旧缓存里的 rawJson 补齐后来新增或更鲁棒解析出的字段。
+  ///
+  /// 历史版本的缓存可能已经保存了原始 Comment JSON，但当时还没有解析
+  /// Vibe、Precise Reference 或 Variety+。读取缓存时重新按当前规则解析一次，
+  /// 避免用户必须手动清缓存才能看到这些元数据。
+  NaiImageMetadata upgradeFromRawJsonIfNeeded() {
+    final sourceResolvedModel = sourceModel;
+    final base = sourceResolvedModel != null && model != sourceResolvedModel
+        ? copyWith(model: sourceResolvedModel)
+        : this;
+
+    final raw = base.rawJson;
+    if (raw == null || raw.isEmpty) return base;
+    if (!_rawJsonMayContainUpgradableFields(raw)) return base;
+
+    try {
+      final reparsed = _parseMetadataFromRawJson(
+        raw,
+        software: base.software,
+        source: base.source,
+      );
+      if (reparsed == null || !reparsed.hasData) return base;
+
+      return base.copyWith(
+        model: base.model ?? reparsed.model,
+        characterPrompts: base.characterPrompts.isEmpty
+            ? reparsed.characterPrompts
+            : base.characterPrompts,
+        characterNegativePrompts: base.characterNegativePrompts.isEmpty
+            ? reparsed.characterNegativePrompts
+            : base.characterNegativePrompts,
+        characterInfos: base.characterInfos.isEmpty
+            ? reparsed.characterInfos
+            : base.characterInfos,
+        vibeReferences: base.vibeReferences.isEmpty
+            ? reparsed.vibeReferences
+            : base.vibeReferences,
+        varietyPlus: base.varietyPlus ?? reparsed.varietyPlus,
+        preciseReferenceImages: base.preciseReferenceImages.isEmpty
+            ? reparsed.preciseReferenceImages
+            : base.preciseReferenceImages,
+        preciseReferenceTypes: base.preciseReferenceTypes.isEmpty
+            ? reparsed.preciseReferenceTypes
+            : base.preciseReferenceTypes,
+        preciseReferenceStrengths: base.preciseReferenceStrengths.isEmpty
+            ? reparsed.preciseReferenceStrengths
+            : base.preciseReferenceStrengths,
+        preciseReferenceFidelities: base.preciseReferenceFidelities.isEmpty
+            ? reparsed.preciseReferenceFidelities
+            : base.preciseReferenceFidelities,
+      );
+    } catch (e) {
+      AppLogger.w(
+        'Failed to upgrade metadata from rawJson: $e',
+        'NaiImageMetadata',
+      );
+      return base;
+    }
+  }
 
   /// 从 JSON Map 构造
   factory NaiImageMetadata.fromJson(Map<String, dynamic> json) =>
@@ -142,7 +237,10 @@ class NaiImageMetadata with _$NaiImageMetadata {
   /// 从 NAI Comment JSON 构造
   ///
   /// 增强错误处理：即使部分字段解析失败，也会返回可用的元数据对象
-  factory NaiImageMetadata.fromNaiComment(Map<String, dynamic> json, {String? rawJson}) {
+  factory NaiImageMetadata.fromNaiComment(
+    Map<String, dynamic> json, {
+    String? rawJson,
+  }) {
     Map<String, dynamic>? commentData;
     String? software;
     String? source;
@@ -159,11 +257,19 @@ class NaiImageMetadata with _$NaiImageMetadata {
     }
 
     // 提取固定词（应用专属扩展）
-    Map<String, List<String>> parts = {'fixedPrefix': [], 'fixedSuffix': [], 'qualityTags': []};
+    Map<String, List<String>> parts = {
+      'fixedPrefix': [],
+      'fixedSuffix': [],
+      'fixedNegativePrefix': [],
+      'fixedNegativeSuffix': [],
+      'qualityTags': [],
+    };
     List<String> characterPrompts = [];
     List<String> characterNegativePrompts = [];
     List<CharacterPromptInfo> characterInfos = [];
     List<VibeReference> vibeReferences = [];
+    _PreciseReferenceMetadata preciseReferenceMetadata =
+        const _PreciseReferenceMetadata();
 
     try {
       parts = _extractFixedTags(commentData);
@@ -178,7 +284,10 @@ class NaiImageMetadata with _$NaiImageMetadata {
       characterNegativePrompts = charResult.$2;
       characterInfos = charResult.$3;
     } catch (e) {
-      AppLogger.w('Failed to extract character prompts: $e', 'NaiImageMetadata');
+      AppLogger.w(
+        'Failed to extract character prompts: $e',
+        'NaiImageMetadata',
+      );
     }
 
     try {
@@ -188,16 +297,39 @@ class NaiImageMetadata with _$NaiImageMetadata {
       AppLogger.w('Failed to extract vibe references: $e', 'NaiImageMetadata');
     }
 
+    try {
+      preciseReferenceMetadata = _extractPreciseReferenceMetadata(commentData);
+    } catch (e) {
+      AppLogger.w(
+        'Failed to extract precise references: $e',
+        'NaiImageMetadata',
+      );
+    }
+
     // 安全获取字段值
     String prompt = '';
     try {
       prompt = commentData['prompt'] as String? ?? '';
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.d(
+        'Failed to parse prompt field: $e',
+        'NaiImageMetadata',
+      );
+    }
 
     String negativePrompt = '';
     try {
       negativePrompt = commentData['uc'] as String? ?? '';
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.d(
+        'Failed to parse negative prompt field: $e',
+        'NaiImageMetadata',
+      );
+    }
+
+    final sourceModel = _modelIdFromSource(source);
+    final importedUcPreset = _toInt(commentData['uc_preset']);
+    final importedQualityToggle = _safeGetBool(commentData, 'quality_toggle');
 
     // 构建元数据对象（使用try-catch包装每个字段）
     try {
@@ -210,13 +342,14 @@ class NaiImageMetadata with _$NaiImageMetadata {
         scale: _extractScale(commentData),
         width: _toInt(commentData['width']),
         height: _toInt(commentData['height']),
-        model: _safeGetString(commentData, 'model'),
+        model: sourceModel,
         smea: _safeGetBool(commentData, 'sm'),
         smeaDyn: _safeGetBool(commentData, 'sm_dyn'),
+        varietyPlus: _extractVarietyPlus(commentData),
         noiseSchedule: _safeGetString(commentData, 'noise_schedule'),
         cfgRescale: _toDouble(commentData['cfg_rescale']),
-        ucPreset: _toInt(commentData['uc_preset']),
-        qualityToggle: _safeGetBool(commentData, 'quality_toggle'),
+        ucPreset: importedUcPreset,
+        qualityToggle: importedQualityToggle,
         isImg2Img: commentData['image'] != null,
         strength: _toDouble(commentData['strength']),
         noise: _toDouble(commentData['noise']),
@@ -228,13 +361,24 @@ class NaiImageMetadata with _$NaiImageMetadata {
         rawJson: rawJson,
         fixedPrefixTags: parts['fixedPrefix'] ?? [],
         fixedSuffixTags: parts['fixedSuffix'] ?? [],
+        fixedNegativePrefixTags: parts['fixedNegativePrefix'] ?? [],
+        fixedNegativeSuffixTags: parts['fixedNegativeSuffix'] ?? [],
         qualityTags: parts['qualityTags'] ?? [],
         characterInfos: characterInfos,
         vibeReferences: vibeReferences,
         originalPrompt: prompt,
+        preciseReferenceImages: preciseReferenceMetadata.images,
+        preciseReferenceTypes: preciseReferenceMetadata.types,
+        preciseReferenceStrengths: preciseReferenceMetadata.strengths,
+        preciseReferenceFidelities: preciseReferenceMetadata.fidelities,
       );
     } catch (e, stack) {
-      AppLogger.e('fromNaiComment failed, returning partial metadata', e, stack, 'NaiImageMetadata');
+      AppLogger.e(
+        'fromNaiComment failed, returning partial metadata',
+        e,
+        stack,
+        'NaiImageMetadata',
+      );
       // 返回最基本的元数据，确保不崩溃
       return NaiImageMetadata(
         prompt: prompt,
@@ -302,12 +446,14 @@ class NaiImageMetadata with _$NaiImageMetadata {
   }
 
   /// 提取 Comment 数据（支持官网格式和直接格式）
-  static (Map<String, dynamic> data, String? software, String? source) _extractCommentData(
+  static (Map<String, dynamic> data, String? software, String? source)
+      _extractCommentData(
     Map<String, dynamic> json,
   ) {
     if (json['Comment'] is String) {
       try {
-        final data = jsonDecode(json['Comment'] as String) as Map<String, dynamic>;
+        final data =
+            jsonDecode(json['Comment'] as String) as Map<String, dynamic>;
         return (data, json['Software'] as String?, json['Source'] as String?);
       } catch (_) {
         return (json, null, null);
@@ -316,23 +462,98 @@ class NaiImageMetadata with _$NaiImageMetadata {
     return (json, json['Software'] as String?, null);
   }
 
+  static bool _rawJsonMayContainUpgradableFields(String raw) {
+    final text = raw.toLowerCase();
+    const markers = [
+      'reference_image',
+      'vibereferences',
+      'vibe_references',
+      'director_reference_images',
+      'variety_plus',
+      'varietyplus',
+      'skip_cfg_above_sigma',
+      'v4_prompt',
+      'char_captions',
+    ];
+    return markers.any(text.contains);
+  }
+
+  static NaiImageMetadata? _parseMetadataFromRawJson(
+    String raw, {
+    String? software,
+    String? source,
+  }) {
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+
+    final data = Map<String, dynamic>.from(decoded);
+    final nestedComment = data['Comment'] ?? data['comment'];
+    final resolvedSoftware =
+        software ?? data['Software'] as String? ?? data['software'] as String?;
+    final resolvedSource =
+        source ?? data['Source'] as String? ?? data['source'] as String?;
+
+    if (nestedComment is String && nestedComment.isNotEmpty) {
+      return NaiImageMetadata.fromNaiComment(
+        {
+          'Comment': nestedComment,
+          'Software': resolvedSoftware,
+          'Source': resolvedSource,
+        },
+        rawJson: raw,
+      );
+    }
+
+    if (nestedComment is Map) {
+      return NaiImageMetadata.fromNaiComment(
+        {
+          'Comment': jsonEncode(nestedComment),
+          'Software': resolvedSoftware,
+          'Source': resolvedSource,
+        },
+        rawJson: raw,
+      );
+    }
+
+    return NaiImageMetadata.fromNaiComment(
+      {
+        'Comment': raw,
+        'Software': resolvedSoftware,
+        'Source': resolvedSource,
+      },
+      rawJson: raw,
+    );
+  }
+
   /// 提取固定词信息
-  static Map<String, List<String>> _extractFixedTags(Map<String, dynamic> commentData) {
+  static Map<String, List<String>> _extractFixedTags(
+    Map<String, dynamic> commentData,
+  ) {
     final parts = <String, List<String>>{
       'fixedPrefix': [],
       'fixedSuffix': [],
+      'fixedNegativePrefix': [],
+      'fixedNegativeSuffix': [],
       'qualityTags': [],
     };
 
     // 优先从应用专属字段读取
     final fixedPrefix = commentData['fixed_prefix'];
     final fixedSuffix = commentData['fixed_suffix'];
+    final fixedNegativePrefix = commentData['fixed_negative_prefix'];
+    final fixedNegativeSuffix = commentData['fixed_negative_suffix'];
 
     if (fixedPrefix is List) {
       parts['fixedPrefix'] = fixedPrefix.cast<String>();
     }
     if (fixedSuffix is List) {
       parts['fixedSuffix'] = fixedSuffix.cast<String>();
+    }
+    if (fixedNegativePrefix is List) {
+      parts['fixedNegativePrefix'] = fixedNegativePrefix.cast<String>();
+    }
+    if (fixedNegativeSuffix is List) {
+      parts['fixedNegativeSuffix'] = fixedNegativeSuffix.cast<String>();
     }
 
     // 如果没有读取到，从 prompt 提取
@@ -348,20 +569,34 @@ class NaiImageMetadata with _$NaiImageMetadata {
               caption['main_caption'] as String? ??
               '';
           if (baseCaption.isNotEmpty) {
-            return _extractPromptParts(baseCaption);
+            _mergeInferredPromptParts(parts, _extractPromptParts(baseCaption));
+            return parts;
           }
         }
       }
       if (promptStr.isNotEmpty) {
-        return _extractPromptParts(promptStr);
+        _mergeInferredPromptParts(parts, _extractPromptParts(promptStr));
+        return parts;
       }
     }
 
     return parts;
   }
 
+  static void _mergeInferredPromptParts(
+    Map<String, List<String>> target,
+    Map<String, List<String>> inferred,
+  ) {
+    for (final key in ['fixedPrefix', 'fixedSuffix', 'qualityTags']) {
+      if (target[key]?.isEmpty == true && inferred[key]?.isNotEmpty == true) {
+        target[key] = inferred[key]!;
+      }
+    }
+  }
+
   /// 提取角色提示词信息
-  static (List<String>, List<String>, List<CharacterPromptInfo>) _extractCharacterPrompts(
+  static (List<String>, List<String>, List<CharacterPromptInfo>)
+      _extractCharacterPrompts(
     Map<String, dynamic> commentData,
     Map<String, List<String>> parts,
   ) {
@@ -382,10 +617,12 @@ class NaiImageMetadata with _$NaiImageMetadata {
       if (char is! Map<String, dynamic>) continue;
       final prompt = char['char_caption'] as String? ?? '';
       prompts.add(prompt);
-      infos.add(CharacterPromptInfo(
-        prompt: prompt,
-        position: char['position'] as String?,
-      ),);
+      infos.add(
+        CharacterPromptInfo(
+          prompt: prompt,
+          position: char['position'] as String?,
+        ),
+      );
     }
 
     // 提取负向提示词
@@ -412,49 +649,437 @@ class NaiImageMetadata with _$NaiImageMetadata {
   }
 
   /// 提取 Vibe 引用
-  static List<VibeReference> _extractVibeReferences(Map<String, dynamic> commentData) {
+  static List<VibeReference> _extractVibeReferences(
+    Map<String, dynamic> commentData,
+  ) {
     final refs = <VibeReference>[];
+    final seenEncodings = <String>{};
 
-    // 尝试多 Vibe 格式
-    final multiRefs = commentData['reference_image_multiple'];
-    if (multiRefs is List) {
-      for (final ref in multiRefs) {
-        if (ref is Map<String, dynamic>) {
-          final vibe = _createVibeReference(ref, refs.length);
-          if (vibe != null) refs.add(vibe);
-        }
-      }
+    void add(VibeReference? vibe) {
+      if (vibe == null || vibe.vibeEncoding.isEmpty) return;
+      if (!seenEncodings.add(vibe.vibeEncoding)) return;
+      refs.add(vibe);
     }
 
-    // 尝试 legacy 单 Vibe 格式
-    if (refs.isEmpty) {
-      final legacy = commentData['reference_image'];
-      if (legacy is Map<String, dynamic>) {
-        final vibe = _createVibeReference(legacy, 0);
-        if (vibe != null) refs.add(vibe);
+    void addFromValue(
+      dynamic value, {
+      List<double> strengths = const [],
+      List<double> infoExtracted = const [],
+    }) {
+      if (value == null) return;
+      if (value is List) {
+        for (var i = 0; i < value.length; i++) {
+          add(
+            _createVibeReferenceFromValue(
+              value[i],
+              refs.length,
+              strength: i < strengths.length ? strengths[i] : null,
+              infoExtracted: i < infoExtracted.length ? infoExtracted[i] : null,
+            ),
+          );
+        }
+        return;
+      }
+
+      add(
+        _createVibeReferenceFromValue(
+          value,
+          refs.length,
+          strength: strengths.isNotEmpty ? strengths.first : null,
+          infoExtracted: infoExtracted.isNotEmpty ? infoExtracted.first : null,
+        ),
+      );
+    }
+
+    final multiStrengths = _firstDoubleList(
+      commentData,
+      const [
+        'reference_strength_multiple',
+        'reference_strengths',
+        'referenceStrengthMultiple',
+        'referenceStrengths',
+      ],
+    );
+    final multiInfoExtracted = _firstDoubleList(
+      commentData,
+      const [
+        'reference_information_extracted_multiple',
+        'reference_information_extracted',
+        'referenceInformationExtractedMultiple',
+        'referenceInformationExtracted',
+      ],
+    );
+
+    addFromValue(
+      _firstPresent(
+        commentData,
+        const [
+          'reference_image_multiple',
+          'reference_images',
+          'referenceImages',
+        ],
+      ),
+      strengths: multiStrengths,
+      infoExtracted: multiInfoExtracted,
+    );
+
+    addFromValue(
+      _firstPresent(
+        commentData,
+        const [
+          'reference_image',
+          'referenceImage',
+          'vibe_reference',
+          'vibeReference',
+        ],
+      ),
+      strengths: _firstDoubleList(
+        commentData,
+        const ['reference_strength', 'referenceStrength'],
+      ),
+      infoExtracted: _firstDoubleList(
+        commentData,
+        const [
+          'reference_information_extracted',
+          'referenceInformationExtracted',
+        ],
+      ),
+    );
+
+    addFromValue(
+      _firstPresent(
+        commentData,
+        const [
+          'vibe_references',
+          'vibeReferences',
+          'vibes',
+        ],
+      ),
+    );
+
+    final nestedReferenceData = _firstPresent(
+      commentData,
+      const ['references', 'referenceData', 'reference_data'],
+    );
+    if (nestedReferenceData is List) {
+      for (final item in nestedReferenceData) {
+        if (item is Map) {
+          final map = Map<String, dynamic>.from(item);
+          addFromValue(map['vibe'] ?? map['vibeReference'] ?? map);
+        }
       }
     }
 
     return refs;
   }
 
+  static VibeReference? _createVibeReferenceFromValue(
+    dynamic value,
+    int index, {
+    double? strength,
+    double? infoExtracted,
+  }) {
+    if (value is String) {
+      if (value.isEmpty) return null;
+      return VibeReference(
+        displayName: 'Vibe ${index + 1}',
+        vibeEncoding: value,
+        strength: VibeReference.sanitizeStrength(strength ?? 0.6),
+        infoExtracted:
+            VibeReference.sanitizeInfoExtracted(infoExtracted ?? 0.7),
+        sourceType: VibeSourceType.png,
+      );
+    }
+
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      final vibe = _createVibeReference(
+        map,
+        index,
+        strength: strength,
+        infoExtracted: infoExtracted,
+      );
+      if (vibe != null) return vibe;
+
+      for (final key in const [
+        'vibes',
+        'vibeReferences',
+        'vibe_references',
+        'references',
+      ]) {
+        final nested = map[key];
+        if (nested is List && nested.isNotEmpty) {
+          return _createVibeReferenceFromValue(
+            nested.first,
+            index,
+            strength: strength,
+            infoExtracted: infoExtracted,
+          );
+        }
+      }
+    }
+
+    return null;
+  }
+
   /// 创建 VibeReference
-  static VibeReference? _createVibeReference(Map<String, dynamic> data, int index) {
-    final encoding = data['vibe_encoding'] as String?;
+  static VibeReference? _createVibeReference(
+    Map<String, dynamic> data,
+    int index, {
+    double? strength,
+    double? infoExtracted,
+  }) {
+    final encoding = _extractVibeEncoding(data);
     if (encoding == null || encoding.isEmpty) return null;
 
+    final importInfo =
+        _asStringKeyMap(data['importInfo'] ?? data['import_info']);
     return VibeReference(
-      displayName: data['name'] as String? ?? 'Vibe ${index + 1}',
+      displayName: _firstString(
+            data,
+            const ['displayName', 'display_name', 'name', 'fileName'],
+          ) ??
+          'Vibe ${index + 1}',
       vibeEncoding: encoding,
-      strength: (data['strength'] as num?)?.toDouble() ?? 0.6,
-      infoExtracted: (data['info_extracted'] as num?)?.toDouble() ?? 0.7,
+      strength: VibeReference.sanitizeStrength(
+        strength ??
+            _firstDouble(
+              data,
+              const [
+                'strength',
+                'reference_strength',
+                'referenceStrength',
+              ],
+            ) ??
+            _firstDouble(
+              importInfo,
+              const ['strength', 'reference_strength', 'referenceStrength'],
+            ) ??
+            0.6,
+      ),
+      infoExtracted: VibeReference.sanitizeInfoExtracted(
+        infoExtracted ??
+            _firstDouble(
+              data,
+              const [
+                'infoExtracted',
+                'info_extracted',
+                'information_extracted',
+                'reference_information_extracted',
+                'referenceInformationExtracted',
+              ],
+            ) ??
+            _firstDouble(
+              importInfo,
+              const [
+                'infoExtracted',
+                'info_extracted',
+                'information_extracted',
+              ],
+            ) ??
+            0.7,
+      ),
       sourceType: VibeSourceType.png,
     );
   }
 
+  static String? _extractVibeEncoding(Map<String, dynamic> data) {
+    final direct = _firstString(
+      data,
+      const [
+        'vibeEncoding',
+        'vibe_encoding',
+        'encoding',
+        'reference_image',
+        'referenceImage',
+        'image',
+      ],
+    );
+    if (direct != null && direct.isNotEmpty) return direct;
+
+    final vibe = _asStringKeyMap(data['vibe']);
+    if (vibe != null) {
+      final nested = _extractVibeEncoding(vibe);
+      if (nested != null && nested.isNotEmpty) return nested;
+    }
+
+    return _extractNestedEncoding(data['encodings']);
+  }
+
+  static String? _extractNestedEncoding(dynamic value) {
+    if (value is String && value.isNotEmpty) return value;
+    if (value is List) {
+      for (final item in value) {
+        final nested = _extractNestedEncoding(item);
+        if (nested != null && nested.isNotEmpty) return nested;
+      }
+      return null;
+    }
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      final direct = _firstString(
+        map,
+        const ['encoding', 'vibeEncoding', 'vibe_encoding'],
+      );
+      if (direct != null && direct.isNotEmpty) return direct;
+      for (final nestedValue in map.values) {
+        final nested = _extractNestedEncoding(nestedValue);
+        if (nested != null && nested.isNotEmpty) return nested;
+      }
+    }
+    return null;
+  }
+
+  static _PreciseReferenceMetadata _extractPreciseReferenceMetadata(
+    Map<String, dynamic> commentData,
+  ) {
+    final rawImages = commentData['director_reference_images'];
+    if (rawImages is! List || rawImages.isEmpty) {
+      return const _PreciseReferenceMetadata();
+    }
+
+    final descriptions = commentData['director_reference_descriptions'];
+    final strengths = _toDoubleList(
+      commentData['director_reference_strengths'] ??
+          commentData['director_reference_strength_values'],
+    );
+    final secondaryStrengths = _toDoubleList(
+      commentData['director_reference_secondary_strengths'] ??
+          commentData['director_reference_secondary_strength_values'],
+    );
+
+    final images = <String>[];
+    final types = <String>[];
+    final referenceStrengths = <double>[];
+    final fidelities = <double>[];
+
+    for (var i = 0; i < rawImages.length; i++) {
+      final image = rawImages[i];
+      if (image is! String || image.isEmpty) continue;
+
+      images.add(image);
+      types.add(_extractPreciseType(descriptions, i).toApiString());
+      referenceStrengths.add(
+        (i < strengths.length ? strengths[i] : 1.0).clamp(0.0, 1.0).toDouble(),
+      );
+      final secondary =
+          i < secondaryStrengths.length ? secondaryStrengths[i] : 0.0;
+      fidelities.add((1.0 - secondary).clamp(0.0, 1.0).toDouble());
+    }
+
+    return _PreciseReferenceMetadata(
+      images: images,
+      types: types,
+      strengths: referenceStrengths,
+      fidelities: fidelities,
+    );
+  }
+
+  static PreciseRefType _extractPreciseType(dynamic descriptions, int index) {
+    if (descriptions is! List || index >= descriptions.length) {
+      return PreciseRefType.character;
+    }
+    final description = descriptions[index];
+    if (description is Map<String, dynamic>) {
+      final caption = description['caption'];
+      if (caption is Map<String, dynamic>) {
+        return _parsePreciseRefType(caption['base_caption'] as String?);
+      }
+    }
+    return PreciseRefType.character;
+  }
+
+  static PreciseRefType _parsePreciseRefType(String? value) {
+    switch (value?.trim().toLowerCase()) {
+      case 'style':
+        return PreciseRefType.style;
+      case 'character&style':
+      case 'character_and_style':
+      case 'character and style':
+        return PreciseRefType.characterAndStyle;
+      case 'character':
+      default:
+        return PreciseRefType.character;
+    }
+  }
+
+  static dynamic _firstPresent(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      if (data.containsKey(key)) return data[key];
+    }
+    return null;
+  }
+
+  static String? _firstString(Map<String, dynamic>? data, List<String> keys) {
+    if (data == null) return null;
+    for (final key in keys) {
+      final value = data[key];
+      if (value is String && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  static double? _firstDouble(Map<String, dynamic>? data, List<String> keys) {
+    if (data == null) return null;
+    for (final key in keys) {
+      final value = _toDouble(data[key]);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  static List<double> _firstDoubleList(
+    Map<String, dynamic> data,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      if (!data.containsKey(key)) continue;
+      final values = _toDoubleList(data[key]);
+      if (values.isNotEmpty) return values;
+    }
+    return const [];
+  }
+
+  static Map<String, dynamic>? _asStringKeyMap(dynamic value) {
+    if (value is! Map) return null;
+    return Map<String, dynamic>.from(value);
+  }
+
+  static List<double> _toDoubleList(dynamic value) {
+    if (value is List) {
+      return value.map(_toDouble).whereType<double>().toList(growable: false);
+    }
+    final single = _toDouble(value);
+    return single == null ? const [] : [single];
+  }
+
+  static bool? _extractVarietyPlus(Map<String, dynamic> data) {
+    final explicit =
+        _safeGetBool(data, 'variety_plus') ?? _safeGetBool(data, 'varietyPlus');
+    if (explicit != null) return explicit;
+
+    const skipCfgKeys = ['skip_cfg_above_sigma', 'skipCfgAboveSigma'];
+    for (final key in skipCfgKeys) {
+      if (!data.containsKey(key)) continue;
+      final value = data[key];
+      if (value == null) return false;
+      final skipCfgAbove = _toDouble(value);
+      if (skipCfgAbove != null) return skipCfgAbove > 0;
+    }
+
+    return null;
+  }
+
   /// 提取 scale 值（支持多种键名）
   static double? _extractScale(Map<String, dynamic> data) {
-    const keys = ['scale', 'cfg_scale', 'cfg', 'guidance', 'prompt_guidance', 'cfgScale'];
+    const keys = [
+      'scale',
+      'cfg_scale',
+      'cfg',
+      'guidance',
+      'prompt_guidance',
+      'cfgScale',
+    ];
     for (final key in keys) {
       final value = data[key];
       if (value is num) return value.toDouble();
@@ -463,16 +1088,75 @@ class NaiImageMetadata with _$NaiImageMetadata {
     return null;
   }
 
+  static String? _modelIdFromSource(String? source) {
+    final value = source?.trim();
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    final normalized = value.toLowerCase();
+
+    // Official PNG Source fingerprints are exact model identifiers. Do not
+    // fall back to prompt/UC inference when the Source text is ambiguous.
+    if (normalized.contains('v4.5')) {
+      if (normalized.contains('4bde2a90') || normalized.contains('v4.5 full')) {
+        return ImageModels.animeDiffusionV45Full;
+      }
+      if (normalized.contains('v4.5 curated')) {
+        return ImageModels.animeDiffusionV45Curated;
+      }
+      return null;
+    }
+
+    if (normalized.contains('v4')) {
+      if (normalized.contains('v4 full')) {
+        return ImageModels.animeDiffusionV4Full;
+      }
+      if (normalized.contains('v4 curated')) {
+        return ImageModels.animeDiffusionV4Curated;
+      }
+      return null;
+    }
+
+    if (normalized.contains('furry') && normalized.contains('v3')) {
+      return ImageModels.furryDiffusionV3;
+    }
+    if (normalized.contains('v3')) {
+      return ImageModels.animeDiffusionV3;
+    }
+    if (normalized.contains('furry')) {
+      return ImageModels.furryDiffusion;
+    }
+
+    return null;
+  }
+
   // 常见的固定前缀词
   static const _commonPrefixTags = [
-    'masterpiece', 'best quality', 'amazing quality', 'great quality',
-    'high quality', 'good quality', 'normal quality', 'low quality', 'worst quality',
+    'masterpiece',
+    'best quality',
+    'amazing quality',
+    'great quality',
+    'high quality',
+    'good quality',
+    'normal quality',
+    'low quality',
+    'worst quality',
   ];
 
   // 常见的质量/细节词
   static const _commonQualityTags = [
-    'very aesthetic', 'aesthetic', 'highres', 'absurdres', 'incredibly absurdres',
-    'ultra-detailed', 'highly detailed', 'detailed', '4k', '8k', 'wallpaper',
+    'very aesthetic',
+    'aesthetic',
+    'highres',
+    'absurdres',
+    'incredibly absurdres',
+    'ultra-detailed',
+    'highly detailed',
+    'detailed',
+    '4k',
+    '8k',
+    'wallpaper',
   ];
 
   /// 从主提示词中提取各部分（固定前缀、后缀、质量词）
@@ -480,12 +1164,18 @@ class NaiImageMetadata with _$NaiImageMetadata {
     final result = <String, List<String>>{
       'fixedPrefix': [],
       'fixedSuffix': [],
+      'fixedNegativePrefix': [],
+      'fixedNegativeSuffix': [],
       'qualityTags': [],
     };
 
     if (prompt.isEmpty) return result;
 
-    final tags = prompt.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+    final tags = prompt
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
 
     // 识别固定前缀词（通常位于开头）
     var prefixEnd = 0;
@@ -523,7 +1213,11 @@ class NaiImageMetadata with _$NaiImageMetadata {
   }
 
   /// 是否有有效数据
-  bool get hasData => prompt.isNotEmpty || seed != null;
+  bool get hasData =>
+      prompt.isNotEmpty ||
+      seed != null ||
+      vibeReferences.isNotEmpty ||
+      preciseReferenceImages.isNotEmpty;
 
   /// 是否有角色提示词
   bool get hasCharacters => characterPrompts.isNotEmpty;
@@ -532,9 +1226,44 @@ class NaiImageMetadata with _$NaiImageMetadata {
   bool get hasSeparatedFields =>
       fixedPrefixTags.isNotEmpty ||
       fixedSuffixTags.isNotEmpty ||
+      fixedNegativePrefixTags.isNotEmpty ||
+      fixedNegativeSuffixTags.isNotEmpty ||
       qualityTags.isNotEmpty ||
       characterInfos.isNotEmpty ||
-      vibeReferences.isNotEmpty;
+      vibeReferences.isNotEmpty ||
+      preciseReferenceImages.isNotEmpty;
+
+  /// 从元数据中还原可套用的 Precise Reference。
+  List<PreciseReference> get preciseReferences {
+    final results = <PreciseReference>[];
+    for (var i = 0; i < preciseReferenceImages.length; i++) {
+      try {
+        final image =
+            Uint8List.fromList(base64Decode(preciseReferenceImages[i]));
+        final type = i < preciseReferenceTypes.length
+            ? _parsePreciseRefType(preciseReferenceTypes[i])
+            : PreciseRefType.character;
+        results.add(
+          PreciseReference(
+            image: image,
+            type: type,
+            strength: i < preciseReferenceStrengths.length
+                ? preciseReferenceStrengths[i]
+                : 1.0,
+            fidelity: i < preciseReferenceFidelities.length
+                ? preciseReferenceFidelities[i]
+                : 1.0,
+          ),
+        );
+      } catch (e) {
+        AppLogger.w(
+          'Failed to decode precise reference image at index $i: $e',
+          'NaiImageMetadata',
+        );
+      }
+    }
+    return results;
+  }
 
   /// 获取主提示词（不含固定词和质量词）
   String get mainPrompt {
@@ -543,7 +1272,11 @@ class NaiImageMetadata with _$NaiImageMetadata {
       return prompt;
     }
 
-    final allTags = prompt.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+    final allTags = prompt
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
     final mainTags = <String>[];
 
     // 跳过前缀词
@@ -580,6 +1313,14 @@ class NaiImageMetadata with _$NaiImageMetadata {
     return buffer.toString();
   }
 
+  /// 获取详情页展示用的负向提示词。
+  ///
+  /// 详情页必须展示 PNG 元数据中记录的实际 `uc` 字段，避免 UI
+  /// 隐藏一段内容后和导出的元数据不一致。
+  String get displayNegativePrompt {
+    return negativePrompt;
+  }
+
   /// 获取格式化的尺寸字符串
   String get sizeString {
     if (width != null && height != null) {
@@ -600,4 +1341,18 @@ class NaiImageMetadata with _$NaiImageMetadata {
         .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
         .join(' ');
   }
+}
+
+class _PreciseReferenceMetadata {
+  final List<String> images;
+  final List<String> types;
+  final List<double> strengths;
+  final List<double> fidelities;
+
+  const _PreciseReferenceMetadata({
+    this.images = const [],
+    this.types = const [],
+    this.strengths = const [],
+    this.fidelities = const [],
+  });
 }

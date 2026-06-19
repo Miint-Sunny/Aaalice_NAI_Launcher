@@ -58,13 +58,13 @@ class _EntrySelectorDialogState extends ConsumerState<EntrySelectorDialog> {
     }).toList();
   }
 
-  String _getCategoryName(String? categoryId) {
-    if (categoryId == null) return '根分类';
+  String _getCategoryName(BuildContext context, String? categoryId) {
+    if (categoryId == null) return context.l10n.tagLibrary_rootCategory;
     final category = widget.categories.cast<TagLibraryCategory?>().firstWhere(
           (c) => c?.id == categoryId,
           orElse: () => null,
         );
-    return category?.displayName ?? '未知分类';
+    return category?.displayName ?? context.l10n.tagLibrary_unknownCategory;
   }
 
   @override
@@ -98,7 +98,7 @@ class _EntrySelectorDialogState extends ConsumerState<EntrySelectorDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '选择要更新的词条',
+                      l10n.tagLibrary_selectEntryToUpdate,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -118,7 +118,7 @@ class _EntrySelectorDialogState extends ConsumerState<EntrySelectorDialog> {
               TextField(
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: '搜索词条...',
+                  hintText: l10n.tagLibrary_searchHint,
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -141,21 +141,32 @@ class _EntrySelectorDialogState extends ConsumerState<EntrySelectorDialog> {
               Expanded(
                 child: filteredEntries.isEmpty
                     ? _buildEmptyState(theme)
-                    : ListView.builder(
-                        itemCount: filteredEntries.length,
-                        itemBuilder: (context, index) {
-                          final entry = filteredEntries[index];
-                          return _EntryListTile(
-                            entry: entry,
-                            categoryName: _getCategoryName(entry.categoryId),
-                            isSelected: _selectedEntryId == entry.id,
-                            onTap: () {
-                              setState(() {
-                                _selectedEntryId = entry.id;
-                              });
-                            },
-                          );
+                    : RadioGroup<String>(
+                        groupValue: _selectedEntryId,
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _selectedEntryId = value);
+                          }
                         },
+                        child: ListView.builder(
+                          itemCount: filteredEntries.length,
+                          itemBuilder: (context, index) {
+                            final entry = filteredEntries[index];
+                            return _EntryListTile(
+                              entry: entry,
+                              categoryName: _getCategoryName(
+                                context,
+                                entry.categoryId,
+                              ),
+                              isSelected: _selectedEntryId == entry.id,
+                              onTap: () {
+                                setState(() {
+                                  _selectedEntryId = entry.id;
+                                });
+                              },
+                            );
+                          },
+                        ),
                       ),
               ),
 
@@ -180,7 +191,7 @@ class _EntrySelectorDialogState extends ConsumerState<EntrySelectorDialog> {
                             Navigator.of(context).pop(selectedEntry);
                           },
                     icon: const Icon(Icons.update, size: 18),
-                    label: const Text('更新预览图'),
+                    label: Text(l10n.tagLibrary_updatePreview),
                   ),
                 ],
               ),
@@ -199,11 +210,11 @@ class _EntrySelectorDialogState extends ConsumerState<EntrySelectorDialog> {
           Icon(
             Icons.search_off_outlined,
             size: 48,
-            color: theme.colorScheme.outline.withOpacity(0.5),
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 12),
           Text(
-            '没有找到匹配的词条',
+            context.l10n.tagLibrary_noSearchResults,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.outline,
             ),
@@ -249,8 +260,6 @@ class _EntryListTile extends StatelessWidget {
               // 选择指示器
               Radio<String>(
                 value: entry.id,
-                groupValue: isSelected ? entry.id : null,
-                onChanged: (_) => onTap(),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
 
@@ -302,7 +311,7 @@ class _EntryListTile extends StatelessWidget {
               // 是否有预览图标记
               if (entry.thumbnail != null)
                 Tooltip(
-                  message: '将替换现有预览图',
+                  message: context.l10n.tagLibrary_replaceThumbnailHint,
                   child: Icon(
                     Icons.image_outlined,
                     size: 16,

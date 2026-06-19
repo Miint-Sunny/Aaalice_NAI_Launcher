@@ -25,6 +25,7 @@ import '../../../prompt_assistant/providers/prompt_assistant_history_provider.da
 import '../../../prompt_assistant/providers/prompt_assistant_state_provider.dart';
 import '../../../prompt_assistant/services/prompt_assistant_service.dart';
 import '../../../prompt_assistant/widgets/prompt_assistant_overlay.dart';
+import '../../../providers/fixed_tags_provider.dart';
 import '../comfyui_import_wrapper.dart';
 import '../nai_syntax_controller.dart';
 import 'unified_prompt_config.dart';
@@ -125,7 +126,13 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
   /// 自动补全策略 Future（异步初始化）
   Future<AutocompleteStrategy>? _autocompleteStrategyFuture;
   StreamSubscription<StreamingChunk>? _assistantStreamSub;
-  late final String _sessionId;
+  late String _sessionId;
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
+  bool _searchVisible = false;
+  List<TextRange> _searchMatches = const [];
+  int _activeSearchMatchIndex = -1;
+  String _lastSearchSourceText = '';
 
   bool get _isDesktop {
     switch (defaultTargetPlatform) {
@@ -136,6 +143,66 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
       default:
         return false;
     }
+  }
+
+  bool _handleHardwareKeyEvent(KeyEvent event) {
+    if (!_isDesktop || event is! KeyDownEvent) {
+      return false;
+    }
+
+    final promptFocused = _effectiveFocusNode.hasFocus;
+    final searchFocused = _searchFocusNode.hasFocus;
+    if (!promptFocused && !searchFocused) {
+      return false;
+    }
+
+    final logicalKey = event.logicalKey;
+
+    final isCtrl = HardwareKeyboard.instance.isControlPressed;
+    final isShift = HardwareKeyboard.instance.isShiftPressed;
+    final isMeta = HardwareKeyboard.instance.isMetaPressed;
+
+    if ((isCtrl || isMeta) &&
+        !isShift &&
+        logicalKey == LogicalKeyboardKey.keyF) {
+      _openSearch();
+      return true;
+    }
+
+    if (_searchVisible && searchFocused) {
+      if (logicalKey == LogicalKeyboardKey.escape) {
+        _closeSearch();
+        return true;
+      }
+      if (logicalKey == LogicalKeyboardKey.enter) {
+        _goToSearchMatch(previous: isShift);
+        return true;
+      }
+    }
+
+    if (!promptFocused || searchFocused) {
+      return false;
+    }
+
+    if (!widget.enableAssistant) {
+      return false;
+    }
+
+    final assistantConfig = ref.read(promptAssistantConfigProvider);
+    if (!assistantConfig.enabled || !assistantConfig.desktopOverlayEnabled) {
+      return false;
+    }
+
+    if (isCtrl && isShift && logicalKey == LogicalKeyboardKey.keyE) {
+      unawaited(_runAssistantAction(AssistantTaskType.llm));
+      return true;
+    }
+    if (isCtrl && isShift && logicalKey == LogicalKeyboardKey.keyT) {
+      unawaited(_runAssistantAction(AssistantTaskType.translate));
+      return true;
+    }
+
+    return false;
   }
 
   /// 获取有效的文本控制器
@@ -151,13 +218,38 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
     return widget.focusNode ?? _internalFocusNode!;
   }
 
+  String _resolveSessionId(String? sessionId) {
+    final providedSessionId = sessionId?.trim();
+    if (providedSessionId != null && providedSessionId.isNotEmpty) {
+      return providedSessionId;
+    }
+    return 'prompt_${identityHashCode(this)}';
+  }
+
+  bool _shouldResetAutocompleteStrategy(UnifiedPromptInput oldWidget) {
+    final oldConfig = oldWidget.config;
+    final newConfig = widget.config;
+    final oldAutocomplete = oldConfig.autocompleteConfig;
+    final newAutocomplete = newConfig.autocompleteConfig;
+
+    return oldConfig.enableAutocomplete != newConfig.enableAutocomplete ||
+        oldAutocomplete.maxSuggestions != newAutocomplete.maxSuggestions ||
+        oldAutocomplete.showTranslation != newAutocomplete.showTranslation ||
+        oldAutocomplete.showCategory != newAutocomplete.showCategory ||
+        oldAutocomplete.showCount != newAutocomplete.showCount ||
+        oldAutocomplete.enableChineseSearch !=
+            newAutocomplete.enableChineseSearch ||
+        oldAutocomplete.debounceDelay != newAutocomplete.debounceDelay ||
+        oldAutocomplete.minQueryLength != newAutocomplete.minQueryLength ||
+        oldAutocomplete.autoInsertComma != newAutocomplete.autoInsertComma ||
+        oldAutocomplete.replaceUnderscoreWithSpace !=
+            newAutocomplete.replaceUnderscoreWithSpace;
+  }
+
   @override
   void initState() {
     super.initState();
-    final providedSessionId = widget.sessionId?.trim();
-    _sessionId = (providedSessionId != null && providedSessionId.isNotEmpty)
-        ? providedSessionId
-        : 'prompt_${identityHashCode(this)}';
+    _sessionId = _resolveSessionId(widget.sessionId);
 
     // 初始化内部控制器（如果需要）
     if (widget.controller == null) {
@@ -177,6 +269,9 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
     if (widget.focusNode == null) {
       _internalFocusNode = FocusNode();
     }
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
+    _searchController.addListener(_onSearchQueryChanged);
 
     // 监听外部控制器变化
     widget.controller?.addListener(_syncFromExternalController);
@@ -186,11 +281,23 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
 
     // 初始化自动补全策略（延迟到第一次 build 后，因为需要 ref）
     // 策略将在 _ensureAutocompleteStrategy 中惰性创建
+    HardwareKeyboard.instance.addHandler(_handleHardwareKeyEvent);
   }
 
   @override
   void didUpdateWidget(UnifiedPromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    final oldEffectiveFocusNode = oldWidget.focusNode ?? _internalFocusNode!;
+    final newEffectiveFocusNode = widget.focusNode ?? _internalFocusNode!;
+    if (oldEffectiveFocusNode != newEffectiveFocusNode) {
+      oldEffectiveFocusNode.removeListener(_onFocusChanged);
+      newEffectiveFocusNode.addListener(_onFocusChanged);
+    }
+
+    if (widget.sessionId != oldWidget.sessionId) {
+      _sessionId = _resolveSessionId(widget.sessionId);
+    }
 
     // 外部控制器变化
     if (widget.controller != oldWidget.controller) {
@@ -223,46 +330,59 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
         _syntaxController = null;
       }
     }
+
+    if (_shouldResetAutocompleteStrategy(oldWidget)) {
+      _autocompleteStrategyFuture = null;
+    }
   }
 
   @override
   void dispose() {
     _assistantStreamSub?.cancel();
+    _searchController.removeListener(_onSearchQueryChanged);
+    _clearSearchHighlights();
+    HardwareKeyboard.instance.removeHandler(_handleHardwareKeyEvent);
     _effectiveFocusNode.removeListener(_onFocusChanged);
     widget.controller?.removeListener(_syncFromExternalController);
     _internalController?.dispose();
     _syntaxController?.dispose();
     _internalFocusNode?.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
   Future<void> _runAssistantAction(AssistantTaskType taskType) async {
-    final text = _effectiveController.text.trim();
+    final text = _assistantInputText().trim();
     if (text.isEmpty) {
-      if (mounted) AppToast.warning(context, '请输入提示词后再操作');
+      if (mounted) {
+        AppToast.warning(context, context.l10n.promptAssistant_needPrompt);
+      }
       return;
     }
 
+    final beforeText = _effectiveController.text;
     ref
         .read(promptAssistantHistoryProvider.notifier)
-        .push(_sessionId, _effectiveController.text);
+        .push(_sessionId, beforeText);
 
     final stateNotifier = ref.read(promptAssistantStateProvider.notifier);
-    final label = taskType == AssistantTaskType.llm ? '优化中' : '翻译中';
+    final label = taskType == AssistantTaskType.llm
+        ? context.l10n.promptAssistant_optimizeProcessing
+        : context.l10n.promptAssistant_translateProcessing;
     stateNotifier.startProcessing(_sessionId, label);
 
     final service = ref.read(promptAssistantServiceProvider);
-    final config = ref.read(promptAssistantConfigProvider);
     final buffer = StringBuffer();
 
     await _assistantStreamSub?.cancel();
     final stream = taskType == AssistantTaskType.llm
         ? service.optimizePrompt(
-            _effectiveController.text,
+            text,
             sessionId: _sessionId,
           )
         : service.translatePrompt(
-            _effectiveController.text,
+            text,
             sessionId: _sessionId,
           );
 
@@ -271,34 +391,43 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
         if (chunk.done) return;
         if (chunk.delta.isEmpty) return;
         buffer.write(chunk.delta);
-        if (config.streamOutput) {
-          final nextText = buffer.toString();
-          if (nextText.isNotEmpty) {
-            _effectiveController.text = nextText;
-            _effectiveController.selection =
-                TextSelection.collapsed(offset: _effectiveController.text.length);
-          }
-        }
       },
       onError: (e) {
         stateNotifier.setError(_sessionId, e.toString());
-        if (mounted) AppToast.error(context, '助手请求失败: $e');
+        if (mounted) {
+          AppToast.error(
+            context,
+            context.l10n.promptAssistant_requestFailed(e),
+          );
+        }
       },
       onDone: () {
-        if (!config.streamOutput && buffer.isNotEmpty) {
+        if (buffer.isNotEmpty) {
           final finalText = buffer.toString();
           _effectiveController.text = finalText;
           _effectiveController.selection =
               TextSelection.collapsed(offset: _effectiveController.text.length);
         }
         stateNotifier.finishProcessing(_sessionId);
+        final afterText = _effectiveController.text;
+        ref.read(promptAssistantHistoryProvider.notifier).recordExternalChange(
+              _sessionId,
+              before: beforeText,
+              after: afterText,
+            );
         ref.read(promptAssistantHistoryProvider.notifier).push(
               _sessionId,
-              _effectiveController.text,
+              afterText,
             );
       },
       cancelOnError: true,
     );
+  }
+
+  String _assistantInputText() {
+    return ref
+        .read(fixedTagsNotifierProvider)
+        .stripFromPrompt(_effectiveController.text);
   }
 
   /// 焦点变化回调
@@ -383,6 +512,10 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
     if (_syntaxController != null && _syntaxController!.text != externalText) {
       _syntaxController!.text = externalText;
     }
+
+    if (_searchVisible && externalText != _lastSearchSourceText) {
+      _refreshSearchMatches(preserveActive: true);
+    }
   }
 
   /// 处理文本变化
@@ -394,6 +527,10 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
 
     // 触发回调
     widget.onChanged?.call(text);
+
+    if (_searchVisible && text != _lastSearchSourceText) {
+      _refreshSearchMatches(preserveActive: true);
+    }
   }
 
   /// 处理清空操作
@@ -406,6 +543,173 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
 
     widget.onChanged?.call('');
     widget.config.onClearPressed?.call();
+  }
+
+  void _openSearch() {
+    final selectedText = _selectedPromptText();
+    final shouldUseSelection = !_searchVisible && selectedText.isNotEmpty;
+
+    if (!_searchVisible) {
+      setState(() {
+        _searchVisible = true;
+      });
+    }
+
+    if (shouldUseSelection) {
+      _searchController.text = selectedText;
+    } else {
+      _refreshSearchMatches(preserveActive: false);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _searchFocusNode.requestFocus();
+      _searchController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _searchController.text.length,
+      );
+    });
+  }
+
+  void _closeSearch() {
+    if (!_searchVisible) {
+      return;
+    }
+    setState(() {
+      _searchVisible = false;
+      _searchMatches = const [];
+      _activeSearchMatchIndex = -1;
+    });
+    _clearSearchHighlights();
+    _effectiveFocusNode.requestFocus();
+  }
+
+  String _selectedPromptText() {
+    final selection = _effectiveController.selection;
+    final text = _effectiveController.text;
+    if (!selection.isValid || selection.isCollapsed) {
+      return '';
+    }
+    final start = selection.start.clamp(0, text.length);
+    final end = selection.end.clamp(0, text.length);
+    if (start >= end) {
+      return '';
+    }
+    return text.substring(start, end);
+  }
+
+  void _onSearchQueryChanged() {
+    if (!_searchVisible) {
+      return;
+    }
+    _refreshSearchMatches(preserveActive: false);
+  }
+
+  void _refreshSearchMatches({required bool preserveActive}) {
+    final sourceText = _effectiveController.text;
+    final matches = _findSearchMatches(sourceText, _searchController.text);
+    final activeIndex = _resolveActiveSearchIndex(
+      matches,
+      preserveActive: preserveActive,
+    );
+
+    setState(() {
+      _searchMatches = matches;
+      _activeSearchMatchIndex = activeIndex;
+      _lastSearchSourceText = sourceText;
+    });
+    _syncSearchHighlights();
+    _selectActiveSearchMatch();
+  }
+
+  List<TextRange> _findSearchMatches(String source, String query) {
+    final needle = query.trim();
+    if (source.isEmpty || needle.isEmpty) {
+      return const [];
+    }
+
+    final lowerSource = source.toLowerCase();
+    final lowerNeedle = needle.toLowerCase();
+    final matches = <TextRange>[];
+    var start = 0;
+
+    while (start < lowerSource.length) {
+      final index = lowerSource.indexOf(lowerNeedle, start);
+      if (index < 0) {
+        break;
+      }
+      matches.add(TextRange(start: index, end: index + needle.length));
+      start = index + needle.length;
+    }
+
+    return matches;
+  }
+
+  int _resolveActiveSearchIndex(
+    List<TextRange> matches, {
+    required bool preserveActive,
+  }) {
+    if (matches.isEmpty) {
+      return -1;
+    }
+    if (preserveActive &&
+        _activeSearchMatchIndex >= 0 &&
+        _activeSearchMatchIndex < matches.length) {
+      return _activeSearchMatchIndex;
+    }
+    final selection = _effectiveController.selection;
+    if (selection.isValid) {
+      final index = matches.indexWhere((match) => match.start >= selection.end);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return 0;
+  }
+
+  void _goToSearchMatch({required bool previous}) {
+    if (_searchMatches.isEmpty) {
+      return;
+    }
+    final nextIndex = previous
+        ? (_activeSearchMatchIndex - 1 + _searchMatches.length) %
+            _searchMatches.length
+        : (_activeSearchMatchIndex + 1) % _searchMatches.length;
+
+    setState(() {
+      _activeSearchMatchIndex = nextIndex;
+    });
+    _syncSearchHighlights();
+    _selectActiveSearchMatch();
+  }
+
+  void _selectActiveSearchMatch() {
+    if (_activeSearchMatchIndex < 0 ||
+        _activeSearchMatchIndex >= _searchMatches.length) {
+      return;
+    }
+    final match = _searchMatches[_activeSearchMatchIndex];
+    _effectiveController.selection = TextSelection(
+      baseOffset: match.start,
+      extentOffset: match.end,
+    );
+  }
+
+  void _syncSearchHighlights() {
+    final controller = _effectiveController;
+    if (controller is NaiSyntaxController) {
+      controller.updateSearchHighlights(
+        matches: _searchMatches,
+        activeMatchIndex: _activeSearchMatchIndex,
+      );
+    }
+  }
+
+  void _clearSearchHighlights() {
+    final controller = _effectiveController;
+    if (controller is NaiSyntaxController) {
+      controller.clearSearchHighlights();
+    }
   }
 
   /// 构建自定义上下文菜单，添加"保存到词库"选项
@@ -462,7 +766,6 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
 
   @override
   Widget build(BuildContext context) {
-    final assistantConfig = ref.watch(promptAssistantConfigProvider);
     Widget result = _buildTextField();
 
     // 如果启用 ComfyUI 导入，包装 ComfyuiImportWrapper
@@ -475,38 +778,132 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
       );
     }
 
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (!_isDesktop ||
-            event is! KeyDownEvent ||
-            !widget.enableAssistant ||
-            !assistantConfig.enabled ||
-            !assistantConfig.desktopOverlayEnabled) {
-          return KeyEventResult.ignored;
-        }
-        final isCtrl = HardwareKeyboard.instance.isControlPressed;
-        final isShift = HardwareKeyboard.instance.isShiftPressed;
-        if (isCtrl && isShift && event.logicalKey == LogicalKeyboardKey.keyE) {
-          unawaited(_runAssistantAction(AssistantTaskType.llm));
-          return KeyEventResult.handled;
-        }
-        if (isCtrl && isShift && event.logicalKey == LogicalKeyboardKey.keyT) {
-          unawaited(_runAssistantAction(AssistantTaskType.translate));
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        fit: StackFit.expand,
+    final inputStack = Stack(
+      fit: StackFit.expand,
+      children: [
+        result,
+        if (widget.enableAssistant)
+          PromptAssistantOverlay(
+            sessionId: _sessionId,
+            controller: _effectiveController,
+            onOpenSettings: widget.onOpenAssistantSettings,
+          ),
+      ],
+    );
+
+    if (!_searchVisible) {
+      return inputStack;
+    }
+
+    if (widget.expands) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          result,
-          if (widget.enableAssistant)
-            PromptAssistantOverlay(
-              sessionId: _sessionId,
-              controller: _effectiveController,
-              onOpenSettings: widget.onOpenAssistantSettings,
-            ),
+          _buildSearchToolbar(context),
+          const SizedBox(height: 8),
+          Expanded(child: inputStack),
         ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSearchToolbar(context),
+        const SizedBox(height: 8),
+        inputStack,
+      ],
+    );
+  }
+
+  Widget _buildSearchToolbar(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final total = _searchMatches.length;
+    final current = total == 0 ? 0 : _activeSearchMatchIndex + 1;
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Material(
+          elevation: 0,
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 34,
+                    child: TextField(
+                      key: const ValueKey('prompt_input_search_field'),
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      textInputAction: TextInputAction.search,
+                      style: theme.textTheme.bodyMedium,
+                      decoration: InputDecoration(
+                        hintText: context.l10n.prompt_searchHint,
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        isDense: true,
+                        filled: true,
+                        fillColor: colorScheme.surface.withValues(alpha: 0.86),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(9),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                      ),
+                      onSubmitted: (_) => _goToSearchMatch(previous: false),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  context.l10n.prompt_searchMatchCount(current, total),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: total == 0 && _searchController.text.isNotEmpty
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 2),
+                _PromptSearchIconButton(
+                  icon: Icons.keyboard_arrow_up,
+                  tooltip: context.l10n.prompt_searchPrevious,
+                  onPressed: total == 0
+                      ? null
+                      : () => _goToSearchMatch(previous: true),
+                ),
+                _PromptSearchIconButton(
+                  icon: Icons.keyboard_arrow_down,
+                  tooltip: context.l10n.prompt_searchNext,
+                  onPressed: total == 0
+                      ? null
+                      : () => _goToSearchMatch(previous: false),
+                ),
+                _PromptSearchIconButton(
+                  icon: Icons.close,
+                  tooltip: context.l10n.prompt_searchClose,
+                  onPressed: _closeSearch,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -559,6 +956,16 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
       expands: widget.expands,
       textAlignVertical: widget.expands ? TextAlignVertical.top : null,
       readOnly: widget.config.readOnly,
+      inputFormatters: widget.config.readOnly
+          ? null
+          : [
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                return TextSelectionUtils.wrapSelectionOnBracketReplacement(
+                  oldValue,
+                  newValue,
+                );
+              }),
+            ],
       onChanged: widget.config.enableAutocomplete ? null : _handleTextChanged,
       onSubmitted: widget.onSubmitted,
       showClearButton: widget.config.showClearButton,
@@ -590,5 +997,29 @@ class _UnifiedPromptInputState extends ConsumerState<UnifiedPromptInput> {
     }
 
     return result;
+  }
+}
+
+class _PromptSearchIconButton extends StatelessWidget {
+  const _PromptSearchIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(icon, size: 18),
+      tooltip: tooltip,
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+    );
   }
 }

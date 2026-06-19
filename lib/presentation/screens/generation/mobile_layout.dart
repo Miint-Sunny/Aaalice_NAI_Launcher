@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../../data/models/image/image_params.dart';
 import '../../providers/image_generation_provider.dart';
+import '../../providers/krita/krita_bridge_notifier.dart';
 import '../../providers/prompt_maximize_provider.dart';
+import '../../utils/asset_protection_guard.dart';
 import '../../widgets/anlas/anlas_balance_chip.dart';
 import '../../widgets/common/themed_divider.dart';
 import '../../widgets/common/themed_scaffold.dart';
@@ -32,9 +33,12 @@ class _MobileGenerationLayoutState
   @override
   Widget build(BuildContext context) {
     final generationState = ref.watch(imageGenerationNotifierProvider);
-    final params = ref.watch(generationParamsNotifierProvider);
+    final kritaBridgeState = ref.watch(kritaBridgeNotifierProvider);
     final isPromptMaximized = ref.watch(promptMaximizeNotifierProvider);
     final theme = Theme.of(context);
+    final isLauncherGenerating = generationState.isGenerating;
+    final isGenerating =
+        isLauncherGenerating || kritaBridgeState.isBridgeGenerating;
 
     return ThemedScaffold(
       // 使用 GlobalKey 来控制 Drawer
@@ -153,11 +157,16 @@ class _MobileGenerationLayoutState
               // 生成按钮（集成价格徽章）
               Expanded(
                 child: _MobileGenerateButton(
-                  isGenerating: generationState.isGenerating,
-                  onGenerate: () => _handleGenerate(context, ref, params),
+                  isGenerating: isGenerating,
+                  showCancel: isLauncherGenerating,
+                  generationState: generationState,
+                  onGenerate: () => _handleGenerate(context, ref),
                   onCancel: () => ref
                       .read(imageGenerationNotifierProvider.notifier)
                       .cancel(),
+                  onSkipCurrent: () => ref
+                      .read(imageGenerationNotifierProvider.notifier)
+                      .skipCurrentRequest(),
                 ),
               ),
             ],
@@ -167,13 +176,25 @@ class _MobileGenerationLayoutState
     );
   }
 
-  void _handleGenerate(
+  Future<void> _handleGenerate(
     BuildContext context,
     WidgetRef ref,
-    ImageParams params,
-  ) {
+  ) async {
+    final params = ref.read(generationParamsNotifierProvider);
+    if (ref.read(kritaBridgeNotifierProvider).isBridgeGenerating) {
+      AppToast.warning(context, context.l10n.toast_kritaBusy);
+      return;
+    }
     if (params.prompt.isEmpty) {
       AppToast.info(context, context.l10n.generation_pleaseInputPrompt);
+      return;
+    }
+
+    final confirmed = await AssetProtectionGuard.confirmHighAnlasCost(
+      context: context,
+      ref: ref,
+    );
+    if (!confirmed || !context.mounted) {
       return;
     }
 
@@ -206,13 +227,13 @@ class _MobileRandomModeToggle extends ConsumerWidget {
           height: 48,
           decoration: BoxDecoration(
             color: enabled
-                ? theme.colorScheme.primary.withOpacity(0.15)
+                ? theme.colorScheme.primary.withValues(alpha: 0.15)
                 : theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: enabled
-                  ? theme.colorScheme.primary.withOpacity(0.5)
-                  : theme.colorScheme.outline.withOpacity(0.3),
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                  : theme.colorScheme.outline.withValues(alpha: 0.3),
               width: enabled ? 1.5 : 1,
             ),
           ),
@@ -221,7 +242,7 @@ class _MobileRandomModeToggle extends ConsumerWidget {
             size: 22,
             color: enabled
                 ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withOpacity(0.5),
+                : theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -232,36 +253,75 @@ class _MobileRandomModeToggle extends ConsumerWidget {
 /// 移动端生成按钮（集成价格徽章）
 class _MobileGenerateButton extends ConsumerWidget {
   final bool isGenerating;
+  final bool showCancel;
+  final ImageGenerationState generationState;
   final VoidCallback onGenerate;
   final VoidCallback onCancel;
+  final VoidCallback onSkipCurrent;
 
   const _MobileGenerateButton({
     required this.isGenerating,
+    required this.showCancel,
+    required this.generationState,
     required this.onGenerate,
     required this.onCancel,
+    required this.onSkipCurrent,
   });
+
+  bool get _canSkipCurrentBatch =>
+      showCancel &&
+      generationState.currentImage > 0 &&
+      generationState.totalImages > generationState.currentImage;
+
+  String _progressText() =>
+      '${generationState.currentImage}/${generationState.totalImages}';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (showCancel) {
+      return Row(
+        children: [
+          if (_canSkipCurrentBatch) ...[
+            Expanded(
+              child: ThemedButton(
+                onPressed: onSkipCurrent,
+                icon: const Icon(Icons.skip_next),
+                label: Text(
+                  '${context.l10n.generation_skipCurrentBatch} ${_progressText()}',
+                ),
+                style: ThemedButtonStyle.outlined,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: ThemedButton(
+              onPressed: onCancel,
+              icon: const Icon(Icons.stop_circle_outlined),
+              label: Text(context.l10n.generation_stopAllGeneration),
+              style: ThemedButtonStyle.outlined,
+            ),
+          ),
+        ],
+      );
+    }
+
     return ThemedButton(
-      onPressed: isGenerating ? onCancel : onGenerate,
-      icon: isGenerating
-          ? const Icon(Icons.stop)
-          : const Icon(Icons.auto_awesome),
-      isLoading: false,
+      onPressed: isGenerating ? null : onGenerate,
+      icon: isGenerating ? null : const Icon(Icons.auto_awesome),
+      isLoading: isGenerating,
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             isGenerating
-                ? context.l10n.generation_cancelGeneration
+                ? context.l10n.generation_generating
                 : context.l10n.generation_generate,
           ),
           AnlasCostBadge(isGenerating: isGenerating),
         ],
       ),
-      style:
-          isGenerating ? ThemedButtonStyle.outlined : ThemedButtonStyle.filled,
+      style: ThemedButtonStyle.filled,
     );
   }
 }

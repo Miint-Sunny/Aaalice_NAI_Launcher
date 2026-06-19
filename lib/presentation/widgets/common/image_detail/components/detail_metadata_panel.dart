@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -81,64 +79,83 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
   void _startMetadataLoading() {
     final image = widget.currentImage;
     if (image == null) {
-      AppLogger.w('[MetadataFlow] _startMetadataLoading: image is null',
-          'DetailMetadataPanel',);
+      AppLogger.w(
+        '[MetadataFlow] _startMetadataLoading: image is null',
+        'DetailMetadataPanel',
+      );
       return;
     }
 
     AppLogger.i(
-        '[MetadataFlow] _startMetadataLoading: identifier=${image.identifier}, type=${image.runtimeType}',
-        'DetailMetadataPanel',);
+      '[MetadataFlow] _startMetadataLoading: identifier=${image.identifier}, type=${image.runtimeType}',
+      'DetailMetadataPanel',
+    );
 
     // 1. 先检查同步可用的元数据
     final syncMetadata = image.metadata;
     AppLogger.d(
-        '[MetadataFlow] syncMetadata check: hasData=${syncMetadata?.hasData}, has prompt="${syncMetadata?.fullPrompt.isNotEmpty == true}"',
-        'DetailMetadataPanel',);
+      '[MetadataFlow] syncMetadata check: hasData=${syncMetadata?.hasData}, has prompt="${syncMetadata?.fullPrompt.isNotEmpty == true}"',
+      'DetailMetadataPanel',
+    );
 
     if (syncMetadata != null && syncMetadata.hasData) {
-      AppLogger.i('[MetadataFlow] Using sync metadata (cache hit)',
-          'DetailMetadataPanel',);
+      AppLogger.i(
+        '[MetadataFlow] Using sync metadata (cache hit)',
+        'DetailMetadataPanel',
+      );
       _loadedMetadata = syncMetadata;
       _metadataFuture = null;
       return;
     }
 
     // 2. 异步加载元数据（支持所有数据源）
-    AppLogger.i('[MetadataFlow] Cache miss, starting async load...',
-        'DetailMetadataPanel',);
+    AppLogger.i(
+      '[MetadataFlow] Cache miss, starting async load...',
+      'DetailMetadataPanel',
+    );
     Future<NaiImageMetadata?>? future;
     if (image is FileImageDetailData) {
-      AppLogger.d('[MetadataFlow] Using FileImageDetailData.getMetadataAsync()',
-          'DetailMetadataPanel',);
+      AppLogger.d(
+        '[MetadataFlow] Using FileImageDetailData.getMetadataAsync()',
+        'DetailMetadataPanel',
+      );
       future = image.getMetadataAsync();
     } else if (image is GeneratedImageDetailData) {
       AppLogger.d(
-          '[MetadataFlow] Using GeneratedImageDetailData.getMetadataAsync()',
-          'DetailMetadataPanel',);
+        '[MetadataFlow] Using GeneratedImageDetailData.getMetadataAsync()',
+        'DetailMetadataPanel',
+      );
       future = image.getMetadataAsync();
     } else if (image is LocalImageDetailData) {
       AppLogger.d(
-          '[MetadataFlow] Using LocalImageDetailData.getMetadataAsync()',
-          'DetailMetadataPanel',);
+        '[MetadataFlow] Using LocalImageDetailData.getMetadataAsync()',
+        'DetailMetadataPanel',
+      );
       future = image.getMetadataAsync();
     } else {
-      AppLogger.w('[MetadataFlow] Unknown image type: ${image.runtimeType}',
-          'DetailMetadataPanel',);
+      AppLogger.w(
+        '[MetadataFlow] Unknown image type: ${image.runtimeType}',
+        'DetailMetadataPanel',
+      );
     }
 
     if (future != null) {
       _metadataFuture = future.then((metadata) {
         AppLogger.i(
-            '[MetadataFlow] Async load completed: hasData=${metadata?.hasData}, prompt length=${metadata?.fullPrompt.length ?? 0}',
-            'DetailMetadataPanel',);
+          '[MetadataFlow] Async load completed: hasData=${metadata?.hasData}, prompt length=${metadata?.fullPrompt.length ?? 0}',
+          'DetailMetadataPanel',
+        );
         if (mounted) {
           setState(() => _loadedMetadata = metadata);
         }
         return metadata;
       }).catchError((e, stack) {
-        AppLogger.e('[MetadataFlow] Async load failed', e, stack,
-            'DetailMetadataPanel',);
+        AppLogger.e(
+          '[MetadataFlow] Async load failed',
+          e,
+          stack,
+          'DetailMetadataPanel',
+        );
         throw e;
       });
     } else {
@@ -171,20 +188,19 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
           bottomLeft: Radius.circular(16),
         ),
       ),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          color: colorScheme.surface.withOpacity(0.92),
-          // 使用 OverflowBox 允许子组件按固定宽度布局，避免动画过程中的溢出警告
-          child: OverflowBox(
-            maxWidth: widget.expandedWidth,
-            alignment: Alignment.topLeft,
-            child: SizedBox(
-              width: widget.expandedWidth,
-              child: _isExpanded
-                  ? _buildExpandedPanel(theme)
-                  : _buildCollapsedPanel(theme),
-            ),
+      child: Container(
+        // Windows Flutter 在大图预览 + 窗口焦点切换时对 BackdropFilter
+        // 合成层存在原生崩溃风险；这里保留半透明面板，避免实时背景模糊。
+        color: colorScheme.surface.withValues(alpha: 0.96),
+        // 使用 OverflowBox 允许子组件按固定宽度布局，避免动画过程中的溢出警告
+        child: OverflowBox(
+          maxWidth: widget.expandedWidth,
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: widget.expandedWidth,
+            child: _isExpanded
+                ? _buildExpandedPanel(theme)
+                : _buildCollapsedPanel(theme),
           ),
         ),
       ),
@@ -192,6 +208,7 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
   }
 
   Widget _buildExpandedPanel(ThemeData theme) {
+    final l10n = context.l10n;
     final metadata = _currentMetadata;
     final isLoading = _metadataFuture != null && _loadedMetadata == null;
     final colorScheme = theme.colorScheme;
@@ -207,7 +224,7 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
           child: widget.currentImage == null
               ? Center(
                   child: Text(
-                    '无图片',
+                    l10n.detail_noImage,
                     style: TextStyle(color: colorScheme.onSurfaceVariant),
                   ),
                 )
@@ -255,7 +272,7 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
           ),
           const SizedBox(height: 16),
           Text(
-            '正在解析元数据...',
+            context.l10n.detail_parsingMetadata,
             style: TextStyle(
               color: colorScheme.onSurfaceVariant,
               fontSize: 12,
@@ -278,11 +295,11 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
             Icon(
               Icons.info_outline,
               size: 48,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
-              '此图片无元数据',
+              context.l10n.detail_noMetadata,
               style: TextStyle(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -314,7 +331,7 @@ class _DetailMetadataPanelState extends State<DetailMetadataPanel> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '元数据',
+                  context.l10n.detail_metadata,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -354,7 +371,7 @@ class _PanelHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '图片详情',
+            context.l10n.detail_imageDetails,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -366,7 +383,9 @@ class _PanelHeader extends StatelessWidget {
               size: 20,
             ),
             onPressed: onToggle,
-            tooltip: isExpanded ? '收起' : '展开',
+            tooltip: isExpanded
+                ? context.l10n.common_collapse
+                : context.l10n.common_expand,
             visualDensity: VisualDensity.compact,
           ),
         ],
@@ -387,22 +406,27 @@ class _MetadataContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayModel = metadata.effectiveModel ?? metadata.source;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // 基本信息（仅在有文件信息时显示）
         if (fileInfo != null) ...[
           _InfoSection(
-            title: '基本信息',
+            title: context.l10n.detail_basicInfo,
             icon: Icons.insert_drive_file_outlined,
             children: [
-              _InfoRow(label: '文件名', value: fileInfo!.fileName),
               _InfoRow(
-                label: '修改时间',
+                label: context.l10n.detail_fileName,
+                value: fileInfo!.fileName,
+              ),
+              _InfoRow(
+                label: context.l10n.detail_modifiedTime,
                 value: _formatTime(context, fileInfo!.modifiedAt),
               ),
               _InfoRow(
-                label: '文件大小',
+                label: context.l10n.detail_fileSize,
                 value: _formatSize(fileInfo!.size),
               ),
             ],
@@ -414,30 +438,36 @@ class _MetadataContent extends StatelessWidget {
           title: context.l10n.gallery_generationParams,
           icon: Icons.tune,
           children: [
-            if (metadata.model != null)
+            if (displayModel?.isNotEmpty == true)
               _InfoRow(
-                  label: context.l10n.gallery_metaModel,
-                  value: metadata.model!,),
+                label: context.l10n.gallery_metaModel,
+                value: displayModel!,
+              ),
             if (metadata.seed != null)
               _InfoRow(
-                  label: context.l10n.gallery_metaSeed,
-                  value: metadata.seed.toString(),),
+                label: context.l10n.gallery_metaSeed,
+                value: metadata.seed.toString(),
+              ),
             if (metadata.steps != null)
               _InfoRow(
-                  label: context.l10n.gallery_metaSteps,
-                  value: metadata.steps.toString(),),
+                label: context.l10n.gallery_metaSteps,
+                value: metadata.steps.toString(),
+              ),
             if (metadata.scale != null)
               _InfoRow(
-                  label: context.l10n.gallery_metaCfgScale,
-                  value: metadata.scale.toString(),),
+                label: context.l10n.gallery_metaCfgScale,
+                value: metadata.scale.toString(),
+              ),
             if (metadata.sampler != null)
               _InfoRow(
-                  label: context.l10n.gallery_metaSampler,
-                  value: metadata.displaySampler,),
+                label: context.l10n.gallery_metaSampler,
+                value: metadata.displaySampler,
+              ),
             if (metadata.sizeString.isNotEmpty)
               _InfoRow(
-                  label: context.l10n.gallery_metaResolution,
-                  value: metadata.sizeString,),
+                label: context.l10n.gallery_metaResolution,
+                value: metadata.sizeString,
+              ),
             if (metadata.smea == true || metadata.smeaDyn == true)
               _InfoRow(
                 label: context.l10n.gallery_metaSmea,
@@ -473,20 +503,25 @@ class _MetadataContent extends StatelessWidget {
         ...metadata.fixedPrefixTags,
         ...metadata.fixedSuffixTags,
       ];
+      final fixedNegativeTags = [
+        ...metadata.fixedNegativePrefixTags,
+        ...metadata.fixedNegativeSuffixTags,
+      ];
 
       // 主提示词包含角色提示词
       final mainPromptWithChars = _buildMainPromptWithCharacters();
       final mainPromptTags = _extractTags(mainPromptWithChars);
 
       // 负面提示词标签
-      final negativeTags = _extractTags(metadata.negativePrompt);
+      final negativePrompt = metadata.displayNegativePrompt;
+      final negativeTags = _extractTags(negativePrompt);
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 主提示词（包含角色提示词）
           PromptSection(
-            title: '主提示词',
+            title: context.l10n.metadataImport_mainPrompt,
             icon: Icons.text_fields,
             content: mainPromptWithChars,
             tags: mainPromptTags,
@@ -499,25 +534,41 @@ class _MetadataContent extends StatelessWidget {
           if (fixedTags.isNotEmpty) ...[
             const SizedBox(height: 12),
             PromptSection(
-              title: '固定词',
+              title: context.l10n.metadataImport_fixedTags,
               icon: Icons.push_pin_outlined,
               content: fixedTags.join(', '),
               tags: fixedTags,
               initiallyExpanded: false,
             ),
           ],
+          // 负向固定词（前缀+后缀合并）
+          if (fixedNegativeTags.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            PromptSection(
+              title: context.l10n.fixedTags_negativeTitle,
+              icon: Icons.push_pin_outlined,
+              content: fixedNegativeTags.join(', '),
+              tags: fixedNegativeTags,
+              initiallyExpanded: false,
+              contentColor:
+                  Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+              borderColor: Theme.of(context).colorScheme.error,
+            ),
+          ],
           // 质量词
           if (metadata.qualityTags.isNotEmpty) ...[
             const SizedBox(height: 12),
             PromptSection(
-              title: '质量词',
+              title: context.l10n.qualityTags_label,
               icon: Icons.high_quality,
               content: metadata.qualityTags.join(', '),
               tags: metadata.qualityTags,
               initiallyExpanded: false,
               showAddToLibrary: true,
               onAddToLibrary: () => _showAddToLibraryDialog(
-                  context, metadata.qualityTags.join(', '),),
+                context,
+                metadata.qualityTags.join(', '),
+              ),
             ),
           ],
           // 角色提示词详细卡片
@@ -535,16 +586,16 @@ class _MetadataContent extends StatelessWidget {
             ),
           ],
           // 负向提示词（使用标签形式）
-          if (metadata.negativePrompt.isNotEmpty) ...[
+          if (negativePrompt.isNotEmpty) ...[
             const SizedBox(height: 12),
             PromptSection(
               title: context.l10n.prompt_negativePrompt,
               icon: Icons.block,
-              content: metadata.negativePrompt,
+              content: negativePrompt,
               tags: negativeTags,
               initiallyExpanded: false,
               contentColor:
-                  Theme.of(context).colorScheme.error.withOpacity(0.8),
+                  Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
               borderColor: Theme.of(context).colorScheme.error,
             ),
           ],
@@ -554,7 +605,8 @@ class _MetadataContent extends StatelessWidget {
 
     // 旧数据：使用简单展示
     final mainPromptTags = _extractTags(metadata.fullPrompt);
-    final negativeTags = _extractTags(metadata.negativePrompt);
+    final negativePrompt = metadata.displayNegativePrompt;
+    final negativeTags = _extractTags(negativePrompt);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -563,7 +615,9 @@ class _MetadataContent extends StatelessWidget {
         PromptSection(
           title: context.l10n.prompt_positivePrompt,
           icon: Icons.text_fields,
-          content: metadata.fullPrompt.isNotEmpty ? metadata.fullPrompt : '(无)',
+          content: metadata.fullPrompt.isNotEmpty
+              ? metadata.fullPrompt
+              : context.l10n.metadataImport_noData,
           tags: mainPromptTags,
           initiallyExpanded: true,
           showAddToLibrary: metadata.fullPrompt.isNotEmpty,
@@ -571,15 +625,16 @@ class _MetadataContent extends StatelessWidget {
               _showAddToLibraryDialog(context, metadata.fullPrompt),
         ),
         // 负向提示词（使用标签形式）
-        if (metadata.negativePrompt.isNotEmpty) ...[
+        if (negativePrompt.isNotEmpty) ...[
           const SizedBox(height: 12),
           PromptSection(
             title: context.l10n.prompt_negativePrompt,
             icon: Icons.block,
-            content: metadata.negativePrompt,
+            content: negativePrompt,
             tags: negativeTags,
             initiallyExpanded: false,
-            contentColor: Theme.of(context).colorScheme.error.withOpacity(0.8),
+            contentColor:
+                Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
             borderColor: Theme.of(context).colorScheme.error,
           ),
         ],
@@ -617,7 +672,7 @@ class _MetadataContent extends StatelessWidget {
   /// 构建角色提示词分组（带折叠功能）
   Widget _buildCharacterSection(BuildContext context) {
     return PromptSection(
-      title: '角色提示词',
+      title: context.l10n.metadataImport_characterPrompts,
       icon: Icons.people_outline,
       content: metadata.characterInfos.map((c) => c.prompt).join(', '),
       initiallyExpanded: false,
@@ -646,7 +701,9 @@ class _MetadataContent extends StatelessWidget {
 
   /// 显示添加到词库对话框
   Future<void> _showAddToLibraryDialog(
-      BuildContext context, String content,) async {
+    BuildContext context,
+    String content,
+  ) async {
     await AddToLibraryDialog.show(
       context,
       content: content,
@@ -656,7 +713,9 @@ class _MetadataContent extends StatelessWidget {
 
   /// 显示保存 Vibe 对话框
   Future<void> _showSaveVibeDialog(
-      BuildContext context, VibeReference vibe,) async {
+    BuildContext context,
+    VibeReference vibe,
+  ) async {
     await SaveVibeDialog.show(
       context,
       vibe: vibe,
@@ -721,10 +780,10 @@ class _InfoSection extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: colorScheme.outline.withOpacity(0.1),
+              color: colorScheme.outline.withValues(alpha: 0.1),
             ),
           ),
           child: Column(
@@ -807,11 +866,15 @@ class _ActionButtons extends StatelessWidget {
               Expanded(
                 child: _ActionButton(
                   icon: Icons.copy,
-                  label: context.l10n.prompt_positivePrompt,
+                  label: context.l10n.detail_copyLabel(
+                    context.l10n.prompt_positivePrompt,
+                  ),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: metadata.fullPrompt));
                     AppToast.success(
-                        context, context.l10n.gallery_promptCopied,);
+                      context,
+                      context.l10n.gallery_promptCopied,
+                    );
                   },
                 ),
               ),
@@ -820,13 +883,15 @@ class _ActionButtons extends StatelessWidget {
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.tag,
-                    label: 'Seed',
+                    label: context.l10n.detail_copyLabel('Seed'),
                     onPressed: () {
                       Clipboard.setData(
                         ClipboardData(text: metadata.seed.toString()),
                       );
                       AppToast.success(
-                          context, context.l10n.gallery_seedCopied,);
+                        context,
+                        context.l10n.gallery_seedCopied,
+                      );
                     },
                   ),
                 ),
@@ -839,7 +904,7 @@ class _ActionButtons extends StatelessWidget {
               Expanded(
                 child: _ActionButton(
                   icon: Icons.bookmark_add,
-                  label: '保存预设',
+                  label: context.l10n.detail_savePreset,
                   onPressed: () =>
                       SaveAsPresetDialog.show(context, metadata: metadata),
                 ),
@@ -887,13 +952,13 @@ class _ActionButtonState extends State<_ActionButton> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: _isHovered
-                ? colorScheme.primary.withOpacity(0.1)
-                : colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                ? colorScheme.primary.withValues(alpha: 0.1)
+                : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: _isHovered
-                  ? colorScheme.primary.withOpacity(0.3)
-                  : colorScheme.outline.withOpacity(0.15),
+                  ? colorScheme.primary.withValues(alpha: 0.3)
+                  : colorScheme.outline.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
@@ -908,7 +973,7 @@ class _ActionButtonState extends State<_ActionButton> {
               ),
               const SizedBox(width: 6),
               Text(
-                '复制${widget.label}',
+                widget.label,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: _isHovered
                       ? colorScheme.primary

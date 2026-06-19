@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/shortcuts/default_shortcuts.dart';
+import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/vibe/vibe_library_entry.dart';
+import '../../../../data/models/vibe/vibe_reference.dart';
+import '../../../../data/services/vibe_library_storage_service.dart';
 import '../../../providers/vibe_library_provider.dart';
 import '../../../widgets/common/app_toast.dart';
 import '../../../widgets/shortcuts/shortcut_aware_widget.dart';
@@ -19,8 +23,10 @@ class VibeDetailCallbacks {
     VibeLibraryEntry entry,
     double strength,
     double infoExtracted,
-    bool isShiftPressed,
-  )? onSendToGeneration;
+    bool isShiftPressed, {
+    required bool applyParamOverrides,
+    int? bundleChildParamOverrideIndex,
+  })? onSendToGeneration;
 
   /// 导出回调
   final void Function(VibeLibraryEntry entry)? onExport;
@@ -32,19 +38,20 @@ class VibeDetailCallbacks {
   final Future<String?> Function(VibeLibraryEntry entry, String newName)?
       onRename;
 
-  /// 参数更新回调（可选，用于保存调整后的参数）
-  final void Function(
+  /// 显式保存参数回调（仅在用户点击保存时触发）
+  final Future<VibeLibraryEntry?> Function(
     VibeLibraryEntry entry,
     double strength,
     double infoExtracted,
-  )? onParamsChanged;
+    int? bundleChildIndex,
+  )? onSaveParams;
 
   const VibeDetailCallbacks({
     this.onSendToGeneration,
     this.onExport,
     this.onDelete,
     this.onRename,
-    this.onParamsChanged,
+    this.onSaveParams,
   });
 }
 
@@ -100,17 +107,172 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
   late VibeLibraryEntry _entry;
   late double _strength;
   late double _infoExtracted;
+  List<double>? _bundleStrengths;
+  List<double>? _bundleInfoExtracted;
+  final Map<int, Uint8List> _bundleChildRawImageBytes = {};
+  final Set<int> _bundleChildImageLoads = {};
   bool _isRenaming = false;
+  bool _isSavingParams = false;
 
   /// Bundle: 当前选中的子 vibe 索引（-1 表示"使用全部"）
   int _selectedSubVibeIndex = -1;
+
+  bool get _hasParamChanges {
+    if (_entry.isBundle) {
+      final index = _selectedSubVibeIndex;
+      final strengths = _bundleStrengths;
+      final infoExtracted = _bundleInfoExtracted;
+      if (index < 0 ||
+          strengths == null ||
+          infoExtracted == null ||
+          index >= strengths.length ||
+          index >= infoExtracted.length) {
+        return false;
+      }
+
+      final savedStrengths = _entry.bundledVibeStrengths;
+      final savedInfoExtracted = _entry.bundledVibeInfoExtracted;
+      final savedStrength =
+          savedStrengths != null && index < savedStrengths.length
+              ? savedStrengths[index]
+              : _entry.strength;
+      final savedInfo =
+          savedInfoExtracted != null && index < savedInfoExtracted.length
+              ? savedInfoExtracted[index]
+              : _entry.infoExtracted;
+      return strengths[index] != savedStrength ||
+          infoExtracted[index] != savedInfo;
+    }
+    return _strength != _entry.strength ||
+        _infoExtracted != _entry.infoExtracted;
+  }
+
+  bool get _canPersistParamChanges {
+    if (_entry.isBundle) return _selectedSubVibeIndex >= 0;
+    final infoChanged = _infoExtracted != _entry.infoExtracted;
+    if (!infoChanged) return true;
+    return _entry.canReencodeFromRawSource;
+  }
 
   @override
   void initState() {
     super.initState();
     _entry = widget.entry;
+    _hydrateBundleParamCache(_entry);
+    _selectFirstBundleChildIfNeeded();
+    _syncDisplayedParamsWithSelection();
+    unawaited(_loadSelectedBundleImage());
+    unawaited(_loadActualEntry());
+  }
+
+  void _hydrateBundleParamCache(VibeLibraryEntry entry) {
+    if (!entry.isBundle) {
+      _bundleStrengths = null;
+      _bundleInfoExtracted = null;
+      return;
+    }
+
+    final names = entry.bundledVibeNames ?? const <String>[];
+    if (names.isEmpty) {
+      _bundleStrengths = null;
+      _bundleInfoExtracted = null;
+      return;
+    }
+
+    final strengths = entry.bundledVibeStrengths;
+    final infoExtracted = entry.bundledVibeInfoExtracted;
+
+    _bundleStrengths = List<double>.generate(
+      names.length,
+      (index) {
+        final value = strengths != null && index < strengths.length
+            ? strengths[index]
+            : entry.strength;
+        return VibeReference.sanitizeStrength(value);
+      },
+      growable: false,
+    );
+
+    _bundleInfoExtracted = List<double>.generate(
+      names.length,
+      (index) {
+        final value = infoExtracted != null && index < infoExtracted.length
+            ? infoExtracted[index]
+            : entry.infoExtracted;
+        return VibeReference.sanitizeInfoExtracted(value);
+      },
+      growable: false,
+    );
+  }
+
+  void _selectFirstBundleChildIfNeeded() {
+    if (!_entry.isBundle || _selectedSubVibeIndex >= 0) return;
+    final names = _entry.bundledVibeNames;
+    if (names != null && names.isNotEmpty) {
+      _selectedSubVibeIndex = 0;
+    }
+  }
+
+  void _syncDisplayedParamsWithSelection() {
+    final selectedIndex = _selectedSubVibeIndex;
+    final strengths = _bundleStrengths;
+    final infoExtracted = _bundleInfoExtracted;
+    final hasSelectedBundleItem = _entry.isBundle &&
+        selectedIndex >= 0 &&
+        strengths != null &&
+        infoExtracted != null &&
+        selectedIndex < strengths.length &&
+        selectedIndex < infoExtracted.length;
+
+    if (hasSelectedBundleItem) {
+      _strength = strengths[selectedIndex];
+      _infoExtracted = infoExtracted[selectedIndex];
+      return;
+    }
+
     _strength = _entry.strength;
     _infoExtracted = _entry.infoExtracted;
+  }
+
+  void _selectSubVibeIndex(int index) {
+    if (!_entry.isBundle) return;
+    final maxIndex = (_entry.bundledVibeNames?.length ?? 1) - 1;
+    final clampedIndex = index.clamp(-1, maxIndex);
+    setState(() {
+      _selectedSubVibeIndex = clampedIndex;
+      _syncDisplayedParamsWithSelection();
+    });
+    unawaited(_loadSelectedBundleImage());
+  }
+
+  void _onStrengthChanged(double value) {
+    setState(() {
+      if (_entry.isBundle &&
+          _selectedSubVibeIndex >= 0 &&
+          _bundleStrengths != null &&
+          _selectedSubVibeIndex < _bundleStrengths!.length) {
+        final updatedStrengths = List<double>.from(_bundleStrengths!);
+        updatedStrengths[_selectedSubVibeIndex] =
+            VibeReference.sanitizeStrength(value);
+        _bundleStrengths = updatedStrengths;
+      }
+      _strength = VibeReference.sanitizeStrength(value);
+    });
+  }
+
+  void _onInfoExtractedChanged(double value) {
+    setState(() {
+      if (_entry.isBundle &&
+          _selectedSubVibeIndex >= 0 &&
+          _bundleInfoExtracted != null &&
+          _selectedSubVibeIndex < _bundleInfoExtracted!.length) {
+        final updatedInfoExtracted = List<double>.from(_bundleInfoExtracted!);
+        updatedInfoExtracted[_selectedSubVibeIndex] =
+            VibeReference.sanitizeInfoExtracted(value);
+        _bundleInfoExtracted = updatedInfoExtracted;
+      }
+      _infoExtracted = VibeReference.sanitizeInfoExtracted(value);
+    });
   }
 
   // ============================================================
@@ -118,8 +280,20 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
   // ============================================================
 
   Uint8List? get _imageBytes {
-    // Bundle 模式：选中子 vibe 时显示对应缩略图
+    // Bundle 模式：主预览优先使用子 Vibe 原图，底部画廊条才使用缩略图。
     if (_entry.isBundle && _selectedSubVibeIndex >= 0) {
+      final loadedRaw = _bundleChildRawImageBytes[_selectedSubVibeIndex];
+      if (loadedRaw != null && loadedRaw.isNotEmpty) {
+        return loadedRaw;
+      }
+
+      if (_selectedSubVibeIndex == 0) {
+        final firstRaw = _entry.rawImageData;
+        if (firstRaw != null && firstRaw.isNotEmpty) {
+          return firstRaw;
+        }
+      }
+
       final previews = _entry.bundledVibePreviews;
       if (previews != null && _selectedSubVibeIndex < previews.length) {
         return previews[_selectedSubVibeIndex];
@@ -135,14 +309,18 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
   void _sendToGeneration() {
     // 检测是否按住 Shift 键
     final physicalKeys = HardwareKeyboard.instance.physicalKeysPressed;
-    final isShiftPressed = physicalKeys.contains(PhysicalKeyboardKey.shiftLeft) ||
-        physicalKeys.contains(PhysicalKeyboardKey.shiftRight);
+    final isShiftPressed =
+        physicalKeys.contains(PhysicalKeyboardKey.shiftLeft) ||
+            physicalKeys.contains(PhysicalKeyboardKey.shiftRight);
 
     widget.callbacks?.onSendToGeneration?.call(
       _entry,
       _strength,
       _infoExtracted,
       isShiftPressed,
+      applyParamOverrides: _hasParamChanges,
+      bundleChildParamOverrideIndex:
+          _entry.isBundle ? _selectedSubVibeIndex : null,
     );
     Navigator.of(context).pop();
   }
@@ -170,17 +348,19 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
           builder: (context, setState) {
             void validate(String value) {
               setState(() {
-                errorText = value.trim().isEmpty ? '名称不能为空' : null;
+                errorText = value.trim().isEmpty
+                    ? context.l10n.vibe_nameRequired
+                    : null;
               });
             }
 
             return AlertDialog(
-              title: const Text('重命名 Vibe'),
+              title: Text(context.l10n.shortcut_action_vibe_detail_rename),
               content: TextField(
                 controller: controller,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: '输入新名称',
+                  hintText: 'Enter a new name',
                   errorText: errorText,
                 ),
                 onChanged: validate,
@@ -196,7 +376,7 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('取消'),
+                  child: Text(context.l10n.common_cancel),
                 ),
                 FilledButton(
                   onPressed: () {
@@ -207,7 +387,7 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
                     }
                     Navigator.of(context).pop(trimmed);
                   },
-                  child: const Text('确定'),
+                  child: Text(context.l10n.common_confirm),
                 ),
               ],
             );
@@ -233,7 +413,7 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
     });
 
     if (errorMessage == null) {
-      AppToast.success(context, '重命名成功');
+      AppToast.success(context, context.l10n.toast_renameSuccess);
     } else {
       AppToast.error(context, errorMessage);
     }
@@ -272,32 +452,95 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
     _handleThumbnailChanged(previews[index]);
   }
 
-  void _close() {
-    if (_strength != _entry.strength ||
-        _infoExtracted != _entry.infoExtracted) {
-      widget.callbacks?.onParamsChanged
-          ?.call(_entry, _strength, _infoExtracted);
+  void _close() => Navigator.of(context).pop();
+
+  Future<void> _saveParams() async {
+    final callback = widget.callbacks?.onSaveParams;
+    if (callback == null || !_hasParamChanges || !_canPersistParamChanges) {
+      return;
     }
-    Navigator.of(context).pop();
+
+    setState(() => _isSavingParams = true);
+    try {
+      final updatedEntry = await callback(
+        _entry,
+        _strength,
+        _infoExtracted,
+        _entry.isBundle ? _selectedSubVibeIndex : null,
+      );
+      if (!mounted) return;
+
+      if (updatedEntry != null) {
+        setState(() {
+          _entry = updatedEntry;
+          _hydrateBundleParamCache(updatedEntry);
+          _syncDisplayedParamsWithSelection();
+        });
+        AppToast.success(context, context.l10n.toast_paramsSaved);
+      } else {
+        AppToast.error(context, context.l10n.toast_paramsSaveFailed);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingParams = false);
+      }
+    }
+  }
+
+  Future<void> _loadActualEntry() async {
+    final actualEntry =
+        await ref.read(vibeLibraryStorageServiceProvider).getEntry(_entry.id);
+    if (!mounted || actualEntry == null) return;
+    setState(() {
+      _entry = actualEntry;
+      final maxIndex = (_entry.bundledVibeNames?.length ?? 1) - 1;
+      if (_selectedSubVibeIndex > maxIndex) {
+        _selectedSubVibeIndex = maxIndex >= 0 ? 0 : -1;
+      }
+      _hydrateBundleParamCache(actualEntry);
+      _selectFirstBundleChildIfNeeded();
+      _syncDisplayedParamsWithSelection();
+    });
+    unawaited(_loadSelectedBundleImage());
+  }
+
+  Future<void> _loadSelectedBundleImage() async {
+    if (!_entry.isBundle || _selectedSubVibeIndex < 0) return;
+
+    final index = _selectedSubVibeIndex;
+    if (_bundleChildRawImageBytes.containsKey(index) ||
+        _bundleChildImageLoads.contains(index)) {
+      return;
+    }
+
+    _bundleChildImageLoads.add(index);
+    final entryId = _entry.id;
+    final childVibe = await ref
+        .read(vibeLibraryStorageServiceProvider)
+        .loadBundleChildVibe(entryId, index);
+
+    _bundleChildImageLoads.remove(index);
+    if (!mounted || _entry.id != entryId) return;
+
+    final rawImageData = childVibe?.rawImageData;
+    if (rawImageData == null || rawImageData.isEmpty) return;
+
+    setState(() {
+      _bundleChildRawImageBytes[index] = rawImageData;
+    });
   }
 
   void _prevSubVibe() {
     if (!_entry.isBundle) return;
-    setState(() {
-      if (_selectedSubVibeIndex > -1) {
-        _selectedSubVibeIndex--;
-      }
-    });
+    if (_selectedSubVibeIndex <= -1) return;
+    _selectSubVibeIndex(_selectedSubVibeIndex - 1);
   }
 
   void _nextSubVibe() {
     if (!_entry.isBundle) return;
     final maxIndex = (_entry.bundledVibeNames?.length ?? 1) - 1;
-    setState(() {
-      if (_selectedSubVibeIndex < maxIndex) {
-        _selectedSubVibeIndex++;
-      }
-    });
+    if (_selectedSubVibeIndex >= maxIndex) return;
+    _selectSubVibeIndex(_selectedSubVibeIndex + 1);
   }
 
   // ============================================================
@@ -333,9 +576,7 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.only(bottom: isBundle ? 100.0 : 0.0),
-                child: isDesktop
-                    ? _buildDesktopLayout()
-                    : _buildMobileLayout(),
+                child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
               ),
             ),
 
@@ -351,11 +592,9 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
                     vibeNames: _entry.bundledVibeNames ?? [],
                     vibePreviews: _entry.bundledVibePreviews,
                     selectedIndex: _selectedSubVibeIndex,
-                    onSelected: (index) =>
-                        setState(() => _selectedSubVibeIndex = index),
+                    onSelected: _selectSubVibeIndex,
                     onLongPressSetCover: _setSubVibeAsCover,
-                    onUseAll: () =>
-                        setState(() => _selectedSubVibeIndex = -1),
+                    onUseAll: () => _selectSubVibeIndex(-1),
                   ),
                 ),
               ),
@@ -406,12 +645,18 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
   }
 
   Widget _buildParamPanel() {
+    final bundleParamHint = _entry.isBundle
+        ? _selectedSubVibeIndex >= 0
+            ? 'Showing import parameters for child Vibe ${_selectedSubVibeIndex + 1}.'
+            : 'Showing Bundle default parameters. Click a child item below to view its parameters.'
+        : null;
+
     return VibeDetailParamPanel(
       entry: _entry,
       strength: _strength,
       infoExtracted: _infoExtracted,
-      onStrengthChanged: (v) => setState(() => _strength = v),
-      onInfoExtractedChanged: (v) => setState(() => _infoExtracted = v),
+      onStrengthChanged: _onStrengthChanged,
+      onInfoExtractedChanged: _onInfoExtractedChanged,
       onSendToGeneration: _sendToGeneration,
       onExport: _export,
       onDelete: _delete,
@@ -419,6 +664,13 @@ class _VibeDetailViewerState extends ConsumerState<VibeDetailViewer> {
       onToggleFavorite: _toggleFavorite,
       onTagsChanged: _updateTags,
       isRenaming: _isRenaming,
+      onSaveParams: _saveParams,
+      canSaveParams: _hasParamChanges && _canPersistParamChanges,
+      showInfoExtractedControl:
+          _entry.isBundle || _entry.canReencodeFromRawSource,
+      parametersEditable: !_entry.isBundle || _selectedSubVibeIndex >= 0,
+      parameterHint: bundleParamHint,
+      isSavingParams: _isSavingParams,
     );
   }
 }

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nai_launcher/core/utils/localization_extension.dart';
 
-import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/gallery/nai_image_metadata.dart';
 import '../../../../data/models/prompt/prompt_config.dart';
-import '../../../../presentation/providers/prompt_config_provider.dart'
-    show promptConfigNotifierProvider;
+import '../../../../data/services/random_prompt_legacy_adapter.dart';
+import '../../../../presentation/providers/random_preset_provider.dart'
+    show randomPresetNotifierProvider;
 import 'app_toast.dart';
 
 /// 保存为预设对话框
@@ -98,6 +99,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
 
   /// 从元数据构建预设配置列表
   List<PromptConfig> _buildConfigs(NaiImageMetadata metadata) {
+    final l10n = context.l10n;
     final configs = <PromptConfig>[];
 
     // 主提示词处理 - 将提示词中的标签作为配置内容
@@ -106,7 +108,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
       if (promptTags.isNotEmpty) {
         configs.add(
           PromptConfig.create(
-            name: '主提示词',
+            name: l10n.metadataImport_mainPrompt,
             selectionMode: SelectionMode.all,
             stringContents: promptTags,
           ),
@@ -120,7 +122,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
       if (qualityTags.isNotEmpty) {
         configs.add(
           PromptConfig.create(
-            name: '质量词',
+            name: l10n.qualityTags_label,
             selectionMode: SelectionMode.all,
             stringContents: qualityTags,
           ),
@@ -133,11 +135,13 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
       final fixedTags = <String>[
         ...metadata.fixedPrefixTags,
         ...metadata.fixedSuffixTags,
+        ...metadata.fixedNegativePrefixTags,
+        ...metadata.fixedNegativeSuffixTags,
       ];
       if (fixedTags.isNotEmpty) {
         configs.add(
           PromptConfig.create(
-            name: '固定词',
+            name: l10n.metadataImport_fixedTags,
             selectionMode: SelectionMode.all,
             stringContents: fixedTags,
           ),
@@ -146,12 +150,13 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
     }
 
     // 负向提示词处理
-    if (_includeNegativePrompt && metadata.negativePrompt.isNotEmpty) {
-      final negativeTags = _extractTags(metadata.negativePrompt);
+    final negativePrompt = metadata.displayNegativePrompt;
+    if (_includeNegativePrompt && negativePrompt.isNotEmpty) {
+      final negativeTags = _extractTags(negativePrompt);
       if (negativeTags.isNotEmpty) {
         configs.add(
           PromptConfig.create(
-            name: '负向提示词',
+            name: l10n.prompt_negativePrompt,
             selectionMode: SelectionMode.all,
             stringContents: negativeTags,
           ),
@@ -182,7 +187,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
     final name = _nameController.text.trim();
 
     if (name.isEmpty) {
-      AppToast.warning(context, '请输入预设名称');
+      AppToast.warning(context, context.l10n.toast_presetNameRequired);
       return;
     }
 
@@ -190,33 +195,35 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
 
     try {
       // 获取 notifier
-      final notifier = ref.read(promptConfigNotifierProvider.notifier);
+      final notifier = ref.read(randomPresetNotifierProvider.notifier);
 
       // 构建配置列表
       final configs = _buildConfigs(widget.metadata);
 
       if (configs.isEmpty) {
-        AppToast.warning(context, '请至少选择一项要保存的内容');
+        AppToast.warning(context, context.l10n.toast_selectPresetContent);
         setState(() => _isSaving = false);
         return;
       }
 
-      // 创建预设
-      final preset = RandomPromptPreset.create(
+      // 创建预设并转换到随机配置页使用的 canonical RandomPreset 管线。
+      final legacyPreset = RandomPromptPreset.create(
         name: name,
         configs: configs,
       );
+      final preset = RandomPromptLegacyAdapter.fromPreset(legacyPreset)
+          .copyWith(description: 'Saved from image metadata');
 
       // 保存预设
       await notifier.addPreset(preset);
 
       if (mounted) {
-        AppToast.success(context, '预设保存成功');
+        AppToast.success(context, context.l10n.toast_presetSaved);
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        AppToast.error(context, '保存失败: \$e');
+        AppToast.error(context, context.l10n.image_saveFailed(e.toString()));
       }
     } finally {
       if (mounted) {
@@ -272,7 +279,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
         children: [
           Icon(Icons.bookmark_add, color: colorScheme.primary),
           const SizedBox(width: 8),
-          const Text('保存为预设'),
+          const Text('Save as Preset'),
         ],
       ),
       content: SizedBox(
@@ -283,11 +290,11 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
             // 预设名称
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: '预设名称',
-                hintText: '输入预设名称',
-                prefixIcon: Icon(Icons.edit),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.preset_presetName,
+                hintText: 'Enter preset name',
+                prefixIcon: const Icon(Icons.edit),
+                border: const OutlineInputBorder(),
               ),
               autofocus: true,
             ),
@@ -299,13 +306,13 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                 TextButton.icon(
                   onPressed: _selectAll,
                   icon: const Icon(Icons.select_all, size: 18),
-                  label: const Text('全选'),
+                  label: Text(l10n.common_selectAll),
                 ),
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _deselectAll,
                   icon: const Icon(Icons.deselect, size: 18),
-                  label: const Text('清空'),
+                  label: Text(l10n.common_clear),
                 ),
               ],
             ),
@@ -319,24 +326,30 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 提示词分组
-                    _buildSectionTitle('提示词', Icons.text_fields),
+                    _buildSectionTitle(
+                      l10n.metadataImport_promptsSection,
+                      Icons.text_fields,
+                    ),
                     const SizedBox(height: 8),
                     _buildCheckbox(
-                      label: '主提示词',
+                      label: l10n.metadataImport_mainPrompt,
                       value: _includePrompt,
                       hasData: widget.metadata.prompt.isNotEmpty,
                       onChanged: (v) => setState(() => _includePrompt = v),
                     ),
                     if (widget.metadata.hasSeparatedFields) ...[
                       _buildCheckbox(
-                        label: '固定词',
+                        label: l10n.metadataImport_fixedTags,
                         value: _includeFixedTags,
                         hasData: widget.metadata.fixedPrefixTags.isNotEmpty ||
-                            widget.metadata.fixedSuffixTags.isNotEmpty,
+                            widget.metadata.fixedSuffixTags.isNotEmpty ||
+                            widget
+                                .metadata.fixedNegativePrefixTags.isNotEmpty ||
+                            widget.metadata.fixedNegativeSuffixTags.isNotEmpty,
                         onChanged: (v) => setState(() => _includeFixedTags = v),
                       ),
                       _buildCheckbox(
-                        label: '质量词',
+                        label: l10n.qualityTags_label,
                         value: _includeQualityTags,
                         hasData: widget.metadata.qualityTags.isNotEmpty,
                         onChanged: (v) =>
@@ -344,7 +357,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                       ),
                     ],
                     _buildCheckbox(
-                      label: '负向提示词',
+                      label: l10n.prompt_negativePrompt,
                       value: _includeNegativePrompt,
                       hasData: widget.metadata.negativePrompt.isNotEmpty,
                       onChanged: (v) =>
@@ -356,20 +369,23 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                     const SizedBox(height: 8),
 
                     // 生成参数分组
-                    _buildSectionTitle('生成参数', Icons.tune),
+                    _buildSectionTitle(
+                      l10n.metadataImport_generationSection,
+                      Icons.tune,
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 4,
                       children: [
                         _buildCompactCheckbox(
-                          label: '种子',
+                          label: l10n.generation_seed,
                           value: _includeSeed,
                           hasData: widget.metadata.seed != null,
                           onChanged: (v) => setState(() => _includeSeed = v),
                         ),
                         _buildCompactCheckbox(
-                          label: '步数',
+                          label: l10n.gallery_metaSteps,
                           value: _includeSteps,
                           hasData: widget.metadata.steps != null,
                           onChanged: (v) => setState(() => _includeSteps = v),
@@ -381,20 +397,20 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                           onChanged: (v) => setState(() => _includeScale = v),
                         ),
                         _buildCompactCheckbox(
-                          label: '尺寸',
+                          label: l10n.queue_size,
                           value: _includeSize,
                           hasData: widget.metadata.width != null &&
                               widget.metadata.height != null,
                           onChanged: (v) => setState(() => _includeSize = v),
                         ),
                         _buildCompactCheckbox(
-                          label: '采样器',
+                          label: l10n.generation_sampler,
                           value: _includeSampler,
                           hasData: widget.metadata.sampler != null,
                           onChanged: (v) => setState(() => _includeSampler = v),
                         ),
                         _buildCompactCheckbox(
-                          label: '模型',
+                          label: l10n.generation_model,
                           value: _includeModel,
                           hasData: widget.metadata.model != null,
                           onChanged: (v) => setState(() => _includeModel = v),
@@ -415,7 +431,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                       const SizedBox(height: 8),
                       _buildCheckbox(
                         label:
-                            'Vibe数据 (${widget.metadata.vibeReferences.length}个)',
+                            'Vibe Data (${widget.metadata.vibeReferences.length})',
                         value: _includeVibe,
                         hasData: true,
                         onChanged: (v) => setState(() => _includeVibe = v),
@@ -442,7 +458,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.save, size: 18),
-          label: Text(_isSaving ? '保存中...' : l10n.common_save),
+          label: Text(_isSaving ? l10n.common_saving : l10n.common_save),
         ),
       ],
     );
@@ -512,7 +528,7 @@ class _SaveAsPresetDialogState extends ConsumerState<SaveAsPresetDialog> {
       showCheckmark: true,
       backgroundColor: colorScheme.surfaceContainerHighest,
       selectedColor: colorScheme.primaryContainer,
-      disabledColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+      disabledColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
     );

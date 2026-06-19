@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../../core/utils/localization_extension.dart';
 import '../../../../../data/models/gallery/local_image_record.dart';
 import '../../../../providers/local_gallery_provider.dart';
 import '../../animated_favorite_button.dart';
@@ -18,6 +19,8 @@ class DetailTopBar extends StatelessWidget {
   final VoidCallback? onFavoriteToggle;
   final VoidCallback? onSave;
   final VoidCallback? onCopyImage;
+  final VoidCallback? onSendToImg2Img;
+  final VoidCallback? onSendToReversePrompt;
 
   const DetailTopBar({
     super.key,
@@ -29,10 +32,13 @@ class DetailTopBar extends StatelessWidget {
     this.onFavoriteToggle,
     this.onSave,
     this.onCopyImage,
+    this.onSendToImg2Img,
+    this.onSendToReversePrompt,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final metadata = currentImage.metadata;
 
     return Container(
@@ -47,7 +53,7 @@ class DetailTopBar extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(0.7),
+            Colors.black.withValues(alpha: 0.7),
             Colors.transparent,
           ],
         ),
@@ -58,7 +64,7 @@ class DetailTopBar extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: onClose,
-            tooltip: '关闭',
+            tooltip: l10n.common_close,
           ),
 
           const SizedBox(width: 16),
@@ -81,7 +87,7 @@ class DetailTopBar extends StatelessWidget {
                   Text(
                     metadata!.model!,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 12,
                     ),
                   ),
@@ -94,7 +100,7 @@ class DetailTopBar extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.save_alt, color: Colors.white),
               onPressed: onSave,
-              tooltip: '保存',
+              tooltip: l10n.common_save,
             ),
 
           // 复用参数按钮
@@ -102,7 +108,23 @@ class DetailTopBar extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.input, color: Colors.white),
               onPressed: onReuseMetadata,
-              tooltip: '复用参数',
+              tooltip: l10n.shortcut_action_reuse_params,
+            ),
+
+          // 发送到图生图
+          if (onSendToImg2Img != null)
+            IconButton(
+              icon: const Icon(Icons.image_search, color: Colors.white),
+              onPressed: onSendToImg2Img,
+              tooltip: l10n.detail_sendToImg2Img,
+            ),
+
+          // 发送到反推模块
+          if (onSendToReversePrompt != null)
+            IconButton(
+              icon: const Icon(Icons.auto_fix_high, color: Colors.white),
+              onPressed: onSendToReversePrompt,
+              tooltip: l10n.detail_sendToReversePrompt,
             ),
 
           // 复制图像按钮
@@ -110,7 +132,7 @@ class DetailTopBar extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.copy, color: Colors.white),
               onPressed: onCopyImage,
-              tooltip: '复制图像',
+              tooltip: l10n.shortcut_action_copy_image,
             ),
 
           // 收藏按钮（仅本地图库显示）
@@ -120,9 +142,9 @@ class DetailTopBar extends StatelessWidget {
                 // 如果是本地图库图片，实时监听收藏状态
                 final isLocalImage = currentImage.identifier.isNotEmpty &&
                     currentImage is LocalImageDetailData;
-                
+
                 bool isFavorite = currentImage.isFavorite;
-                
+
                 if (isLocalImage) {
                   final galleryState = ref.watch(localGalleryNotifierProvider);
                   final record = galleryState.currentImages
@@ -135,13 +157,13 @@ class DetailTopBar extends StatelessWidget {
                     isFavorite = record.isFavorite;
                   }
                 }
-                
+
                 return AnimatedFavoriteButton(
                   isFavorite: isFavorite,
                   size: 24,
                   inactiveColor: Colors.white,
                   showBackground: true,
-                  backgroundColor: Colors.black.withOpacity(0.4),
+                  backgroundColor: Colors.black.withValues(alpha: 0.4),
                   onToggle: onFavoriteToggle,
                 );
               },

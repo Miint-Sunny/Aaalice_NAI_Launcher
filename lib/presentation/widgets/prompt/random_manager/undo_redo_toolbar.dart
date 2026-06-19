@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/localization_extension.dart';
 import '../../common/elevated_card.dart';
 
 /// 操作历史记录
@@ -93,14 +94,14 @@ class _UndoRedoToolbarState extends State<UndoRedoToolbar> {
       children: [
         _UndoRedoButton(
           icon: Icons.undo,
-          tooltip: '撤销 (Ctrl+Z)',
+          tooltip: '${context.l10n.common_undo} (Ctrl+Z)',
           enabled: widget.canUndo,
           onPressed: widget.onUndo,
         ),
         const SizedBox(width: 4),
         _UndoRedoButton(
           icon: Icons.redo,
-          tooltip: '重做 (Ctrl+Y)',
+          tooltip: '${context.l10n.common_redo} (Ctrl+Y)',
           enabled: widget.canRedo,
           onPressed: widget.onRedo,
         ),
@@ -122,7 +123,7 @@ class _UndoRedoToolbarState extends State<UndoRedoToolbar> {
           // 撤销按钮
           _UndoRedoButton(
             icon: Icons.undo,
-            tooltip: '撤销 (Ctrl+Z)',
+            tooltip: '${context.l10n.common_undo} (Ctrl+Z)',
             enabled: widget.canUndo,
             onPressed: widget.onUndo,
             badge: widget.showCounts && widget.undoCount > 0
@@ -134,12 +135,12 @@ class _UndoRedoToolbarState extends State<UndoRedoToolbar> {
             width: 1,
             height: 20,
             margin: const EdgeInsets.symmetric(horizontal: 8),
-            color: colorScheme.outlineVariant.withOpacity(0.3),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
           // 重做按钮
           _UndoRedoButton(
             icon: Icons.redo,
-            tooltip: '重做 (Ctrl+Y)',
+            tooltip: '${context.l10n.common_redo} (Ctrl+Y)',
             enabled: widget.canRedo,
             onPressed: widget.onRedo,
             badge: widget.showCounts && widget.redoCount > 0
@@ -200,9 +201,9 @@ class _UndoRedoButtonState extends State<_UndoRedoButton> {
             height: 36,
             decoration: BoxDecoration(
               color: _isPressed && widget.enabled
-                  ? colorScheme.primary.withOpacity(0.2)
+                  ? colorScheme.primary.withValues(alpha: 0.2)
                   : _isHovered && widget.enabled
-                      ? colorScheme.primary.withOpacity(0.1)
+                      ? colorScheme.primary.withValues(alpha: 0.1)
                       : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
             ),
@@ -219,7 +220,7 @@ class _UndoRedoButtonState extends State<_UndoRedoButton> {
                         ? (_isHovered
                             ? colorScheme.primary
                             : colorScheme.onSurfaceVariant)
-                        : colorScheme.onSurfaceVariant.withOpacity(0.4),
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                   ),
                 ),
                 // 数量徽章
@@ -262,8 +263,8 @@ class HistoryDropdown<T> extends StatelessWidget {
     required this.items,
     required this.itemBuilder,
     required this.onSelect,
-    this.title = '操作历史',
-    this.emptyMessage = '无历史记录',
+    this.title = '',
+    this.emptyMessage = '',
   });
 
   final List<T> items;
@@ -276,6 +277,11 @@ class HistoryDropdown<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final effectiveTitle =
+        title.isEmpty ? context.l10n.randomManager_operationHistory : title;
+    final effectiveEmptyMessage = emptyMessage.isEmpty
+        ? context.l10n.randomManager_noHistory
+        : emptyMessage;
 
     return Container(
       width: 280,
@@ -285,12 +291,12 @@ class HistoryDropdown<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.1),
+            color: colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.15),
+            color: colorScheme.shadow.withValues(alpha: 0.15),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -317,14 +323,14 @@ class HistoryDropdown<T> extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  title,
+                  effectiveTitle,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
                 Text(
-                  '${items.length} 项',
+                  '${items.length} ${context.l10n.common_items}',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -337,7 +343,7 @@ class HistoryDropdown<T> extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(24),
               child: Text(
-                emptyMessage,
+                effectiveEmptyMessage,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -398,7 +404,7 @@ class _HistoryItemState extends State<_HistoryItem> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: _isHovered
-                ? colorScheme.primary.withOpacity(0.1)
+                ? colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:nai_launcher/core/utils/localization_extension.dart';
 import 'package:nai_launcher/data/models/prompt/random_preset.dart';
 import '../../../../widgets/common/app_toast.dart';
 import 'package:nai_launcher/presentation/widgets/common/themed_input.dart';
@@ -104,7 +105,7 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
   void _copyToClipboard() {
     Clipboard.setData(ClipboardData(text: _controller.text)).then((_) {
       if (mounted) {
-        AppToast.success(context, '已复制到剪贴板');
+        AppToast.success(context, context.l10n.image_copiedToClipboard);
       }
     });
   }
@@ -124,18 +125,18 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.08),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
             BoxShadow(
-              color: colorScheme.shadow.withOpacity(0.16),
+              color: colorScheme.shadow.withValues(alpha: 0.16),
               blurRadius: 24,
               offset: const Offset(0, 12),
             ),
           ],
           border: Border.all(
-            color: colorScheme.outlineVariant.withOpacity(0.2),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
         ),
         child: Column(
@@ -150,19 +151,19 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
                   end: Alignment.bottomRight,
                   colors: widget.isExport
                       ? [
-                          colorScheme.tertiaryContainer.withOpacity(0.3),
-                          colorScheme.secondaryContainer.withOpacity(0.2),
+                          colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+                          colorScheme.secondaryContainer.withValues(alpha: 0.2),
                         ]
                       : [
-                          colorScheme.primaryContainer.withOpacity(0.3),
-                          colorScheme.secondaryContainer.withOpacity(0.2),
+                          colorScheme.primaryContainer.withValues(alpha: 0.3),
+                          colorScheme.secondaryContainer.withValues(alpha: 0.2),
                         ],
                 ),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(20)),
                 border: Border(
                   bottom: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.2),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
                 ),
               ),
@@ -174,7 +175,7 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
                       color: (widget.isExport
                               ? colorScheme.tertiary
                               : colorScheme.primary)
-                          .withOpacity(0.1),
+                          .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -200,8 +201,8 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
                     icon: const Icon(Icons.close),
                     iconSize: 20,
                     style: IconButton.styleFrom(
-                      backgroundColor:
-                          colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      backgroundColor: colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ],
@@ -258,8 +259,9 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: _error != null
-                              ? colorScheme.error.withOpacity(0.5)
-                              : colorScheme.outlineVariant.withOpacity(0.3),
+                              ? colorScheme.error.withValues(alpha: 0.5)
+                              : colorScheme.outlineVariant
+                                  .withValues(alpha: 0.3),
                         ),
                       ),
                       child: ClipRRect(
@@ -290,7 +292,8 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: colorScheme.errorContainer.withOpacity(0.3),
+                          color:
+                              colorScheme.errorContainer.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
@@ -384,7 +387,7 @@ class _PresetImportDialogState extends State<PresetImportDialog> {
                     const BorderRadius.vertical(bottom: Radius.circular(20)),
                 border: Border(
                   top: BorderSide(
-                    color: colorScheme.outlineVariant.withOpacity(0.2),
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
                 ),
               ),

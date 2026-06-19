@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../utils/queue_export_utils.dart';
+import '../../../core/utils/localization_extension.dart';
 import '../../providers/replication_queue_provider.dart';
 import '../common/app_toast.dart';
 
@@ -51,6 +52,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     return Dialog(
       child: Container(
@@ -67,7 +69,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
                   const Icon(Icons.import_export),
                   const SizedBox(width: 8),
                   Text(
-                    '导入/导出队列',
+                    l10n.queue_exportImport,
                     style: theme.textTheme.titleLarge,
                   ),
                   const Spacer(),
@@ -82,9 +84,9 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
             // Tab 栏
             TabBar(
               controller: _tabController,
-              tabs: const [
-                Tab(text: '导出'),
-                Tab(text: '导入'),
+              tabs: [
+                Tab(text: l10n.queue_export),
+                Tab(text: l10n.queue_import),
               ],
             ),
 
@@ -106,7 +108,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -134,6 +136,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
   }
 
   Widget _buildExportTab() {
+    final l10n = context.l10n;
     final queueState = ref.watch(replicationQueueNotifierProvider);
 
     return Padding(
@@ -142,19 +145,29 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '选择导出格式',
+            l10n.queue_exportFormat,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 12),
 
           // 格式选择
-          ...ExportFormat.values.map(
-            (format) => RadioListTile<ExportFormat>(
-              title: Text(format.displayName),
-              subtitle: Text(_getFormatDescription(format)),
-              value: format,
-              groupValue: _exportFormat,
-              onChanged: (value) => setState(() => _exportFormat = value!),
+          RadioGroup<ExportFormat>(
+            groupValue: _exportFormat,
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _exportFormat = value);
+              }
+            },
+            child: Column(
+              children: ExportFormat.values
+                  .map(
+                    (format) => RadioListTile<ExportFormat>(
+                      title: Text(_getFormatDisplayName(format)),
+                      subtitle: Text(_getFormatDescription(format)),
+                      value: format,
+                    ),
+                  )
+                  .toList(),
             ),
           ),
 
@@ -171,7 +184,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
               children: [
                 const Icon(Icons.info_outline, size: 20),
                 const SizedBox(width: 8),
-                Text('当前队列包含 ${queueState.count} 个任务'),
+                Text(l10n.queue_currentQueueInfo(queueState.count)),
               ],
             ),
           ),
@@ -190,7 +203,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.upload_file),
-              label: const Text('导出'),
+              label: Text(l10n.queue_export),
             ),
           ),
         ],
@@ -199,25 +212,37 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
   }
 
   Widget _buildImportTab() {
+    final l10n = context.l10n;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '导入策略',
+            l10n.queue_importStrategy,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 12),
 
           // 策略选择
-          ...ImportStrategy.values.map(
-            (strategy) => RadioListTile<ImportStrategy>(
-              title: Text(strategy.displayName),
-              subtitle: Text(strategy.description),
-              value: strategy,
-              groupValue: _importStrategy,
-              onChanged: (value) => setState(() => _importStrategy = value!),
+          RadioGroup<ImportStrategy>(
+            groupValue: _importStrategy,
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _importStrategy = value);
+              }
+            },
+            child: Column(
+              children: ImportStrategy.values
+                  .map(
+                    (strategy) => RadioListTile<ImportStrategy>(
+                      title: Text(_getStrategyDisplayName(strategy)),
+                      subtitle: Text(_getStrategyDescription(strategy)),
+                      value: strategy,
+                    ),
+                  )
+                  .toList(),
             ),
           ),
 
@@ -230,14 +255,17 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('支持的格式:', style: TextStyle(fontWeight: FontWeight.w500)),
-                SizedBox(height: 4),
-                Text('• JSON 文件 (.json)'),
-                Text('• CSV 文件 (.csv)'),
-                Text('• 纯文本文件 (.txt) - 每行一个提示词'),
+                Text(
+                  l10n.queue_supportedFormats,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 4),
+                Text(l10n.queue_supportedFormatJson),
+                Text(l10n.queue_supportedFormatCsv),
+                Text(l10n.queue_supportedFormatText),
               ],
             ),
           ),
@@ -256,7 +284,7 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.download),
-              label: const Text('选择文件导入'),
+              label: Text(l10n.queue_selectFile),
             ),
           ),
         ],
@@ -264,18 +292,49 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
     );
   }
 
+  String _getFormatDisplayName(ExportFormat format) {
+    switch (format) {
+      case ExportFormat.json:
+        return context.l10n.queue_exportFormatJson;
+      case ExportFormat.csv:
+        return context.l10n.queue_exportFormatCsv;
+      case ExportFormat.text:
+        return context.l10n.queue_exportFormatText;
+    }
+  }
+
   String _getFormatDescription(ExportFormat format) {
     switch (format) {
       case ExportFormat.json:
-        return '完整数据，包含所有参数';
+        return context.l10n.queue_exportFormatJsonDesc;
       case ExportFormat.csv:
-        return '表格格式，包含提示词和基本信息';
+        return context.l10n.queue_exportFormatCsvDesc;
       case ExportFormat.text:
-        return '仅提示词，每行一个';
+        return context.l10n.queue_exportFormatTextDesc;
+    }
+  }
+
+  String _getStrategyDisplayName(ImportStrategy strategy) {
+    switch (strategy) {
+      case ImportStrategy.merge:
+        return context.l10n.queue_importStrategyMerge;
+      case ImportStrategy.replace:
+        return context.l10n.queue_importStrategyReplace;
+    }
+  }
+
+  String _getStrategyDescription(ImportStrategy strategy) {
+    switch (strategy) {
+      case ImportStrategy.merge:
+        return context.l10n.queue_importStrategyMergeDesc;
+      case ImportStrategy.replace:
+        return context.l10n.queue_importStrategyReplaceDesc;
     }
   }
 
   Future<void> _export() async {
+    final l10n = context.l10n;
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -308,21 +367,29 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
       // 分享文件
       await Share.shareXFiles(
         [XFile(file.path)],
-        subject: '队列导出',
+        subject: l10n.queue_shareSubject,
       );
 
-      if (mounted) {
-        Navigator.pop(context);
-        AppToast.success(context, '导出成功');
+      if (!mounted) {
+        return;
       }
+
+      Navigator.pop(context);
+      AppToast.success(context, l10n.queue_exportSuccess);
     } catch (e) {
-      setState(() => _error = '导出失败: $e');
+      if (mounted) {
+        setState(() => _error = l10n.queue_exportFailed(e.toString()));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _import() async {
+    final l10n = context.l10n;
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -333,6 +400,10 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
         type: FileType.custom,
         allowedExtensions: ['json', 'csv', 'txt'],
       );
+
+      if (!mounted) {
+        return;
+      }
 
       if (result == null || result.files.isEmpty) {
         setState(() => _isLoading = false);
@@ -355,11 +426,13 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
           tasks = QueueExportUtils.importFromText(content);
           break;
         default:
-          throw FormatException('不支持的文件格式: $extension');
+          throw FormatException(
+            l10n.queue_unsupportedFileFormat(extension),
+          );
       }
 
       if (tasks.isEmpty) {
-        throw const FormatException('文件中没有有效的任务');
+        throw FormatException(l10n.queue_noValidTasks);
       }
 
       final queueNotifier = ref.read(replicationQueueNotifierProvider.notifier);
@@ -370,14 +443,20 @@ class _QueueExportDialogState extends ConsumerState<QueueExportDialog>
 
       final added = await queueNotifier.addAll(tasks.cast());
 
-      if (mounted) {
-        Navigator.pop(context);
-        AppToast.success(context, '成功导入 $added 个任务');
+      if (!mounted) {
+        return;
       }
+
+      Navigator.pop(context);
+      AppToast.success(context, l10n.queue_importSuccess(added));
     } catch (e) {
-      setState(() => _error = '导入失败: $e');
+      if (mounted) {
+        setState(() => _error = l10n.queue_importFailed(e.toString()));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 }

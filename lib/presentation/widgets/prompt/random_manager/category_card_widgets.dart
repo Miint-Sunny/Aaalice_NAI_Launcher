@@ -102,7 +102,8 @@ class _ScopeTripleSwitchState extends State<ScopeTripleSwitch> {
           color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: colorScheme.outline.withOpacity(widget.enabled ? 0.1 : 0.05),
+            color: colorScheme.outline
+                .withValues(alpha: widget.enabled ? 0.1 : 0.05),
             width: 1,
           ),
         ),
@@ -125,15 +126,15 @@ class _ScopeTripleSwitchState extends State<ScopeTripleSwitch> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
-                          currentColor.withOpacity(0.9),
-                          currentColor.withOpacity(0.7),
+                          currentColor.withValues(alpha: 0.9),
+                          currentColor.withValues(alpha: 0.7),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(6),
                       boxShadow: widget.enabled
                           ? [
                               BoxShadow(
-                                color: currentColor.withOpacity(0.4),
+                                color: currentColor.withValues(alpha: 0.4),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -245,7 +246,7 @@ class ColorfulProbabilitySlider extends StatelessWidget {
                 enabledThumbRadius: 7,
                 elevation: 2,
               ),
-              overlayColor: primaryColor.withOpacity(0.12),
+              overlayColor: primaryColor.withValues(alpha: 0.12),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
             ),
             child: Stack(
@@ -274,19 +275,19 @@ class ColorfulProbabilitySlider extends StatelessWidget {
                         gradient: LinearGradient(
                           colors: enabled
                               ? [
-                                  primaryColor.withOpacity(0.9),
-                                  secondaryColor.withOpacity(0.7),
+                                  primaryColor.withValues(alpha: 0.9),
+                                  secondaryColor.withValues(alpha: 0.7),
                                 ]
                               : [
-                                  primaryColor.withOpacity(0.4),
-                                  secondaryColor.withOpacity(0.3),
+                                  primaryColor.withValues(alpha: 0.4),
+                                  secondaryColor.withValues(alpha: 0.3),
                                 ],
                         ),
                         borderRadius: BorderRadius.circular(3),
                         boxShadow: enabled
                             ? [
                                 BoxShadow(
-                                  color: primaryColor.withOpacity(0.3),
+                                  color: primaryColor.withValues(alpha: 0.3),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),
@@ -313,7 +314,7 @@ class ColorfulProbabilitySlider extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: primaryColor.withOpacity(0.1),
+            color: primaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
@@ -321,7 +322,7 @@ class ColorfulProbabilitySlider extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: primaryColor.withOpacity(enabled ? 1.0 : 0.6),
+              color: primaryColor.withValues(alpha: enabled ? 1.0 : 0.6),
             ),
           ),
         ),
@@ -357,6 +358,7 @@ class _AddTagGroupCardState extends State<AddTagGroupCard> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isEnabled = widget.enabled;
+    final l10n = AppLocalizations.of(context)!;
 
     return MouseRegion(
       cursor:
@@ -380,7 +382,7 @@ class _AddTagGroupCardState extends State<AddTagGroupCard> {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: (_isHovered && isEnabled)
-                          ? colorScheme.primary.withOpacity(0.15)
+                          ? colorScheme.primary.withValues(alpha: 0.15)
                           : colorScheme.surfaceContainerHighest,
                       shape: BoxShape.circle,
                     ),
@@ -395,7 +397,9 @@ class _AddTagGroupCardState extends State<AddTagGroupCard> {
                   const SizedBox(height: 8),
                   // 文字
                   Text(
-                    isEnabled ? '添加词组' : '已锁定',
+                    isEnabled
+                        ? l10n.randomManager_addTagGroup
+                        : l10n.randomManager_locked,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: (_isHovered && isEnabled)
                           ? colorScheme.primary
@@ -431,6 +435,7 @@ class _AddCategoryButtonState extends State<AddCategoryButton> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -445,8 +450,8 @@ class _AddCategoryButtonState extends State<AddCategoryButton> {
             gradient: _isHovered
                 ? LinearGradient(
                     colors: [
-                      colorScheme.primary.withOpacity(0.15),
-                      colorScheme.secondary.withOpacity(0.1),
+                      colorScheme.primary.withValues(alpha: 0.15),
+                      colorScheme.secondary.withValues(alpha: 0.1),
                     ],
                   )
                 : null,
@@ -455,7 +460,7 @@ class _AddCategoryButtonState extends State<AddCategoryButton> {
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
-                      color: colorScheme.primary.withOpacity(0.2),
+                      color: colorScheme.primary.withValues(alpha: 0.2),
                       blurRadius: 8,
                       spreadRadius: -2,
                     ),
@@ -474,7 +479,7 @@ class _AddCategoryButtonState extends State<AddCategoryButton> {
               ),
               const SizedBox(width: 6),
               Text(
-                '新增类别',
+                l10n.randomManager_addCategory,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -499,6 +504,7 @@ class EmptyCategoryPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Center(
       child: Padding(
@@ -508,18 +514,19 @@ class EmptyCategoryPlaceholder extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                color:
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.inbox_outlined,
                 size: 48,
-                color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              '暂无类别',
+              l10n.randomManager_noCategories,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
@@ -527,9 +534,9 @@ class EmptyCategoryPlaceholder extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '点击"新增类别"开始配置',
+              l10n.randomManager_noCategoriesHint,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -556,27 +563,28 @@ class CategoryStats extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _StatBadge(
           icon: Icons.category_outlined,
-          label: '类别',
+          label: l10n.randomManager_categories,
           value: '$categoryCount',
           color: colorScheme.primary,
         ),
         const SizedBox(width: 12),
         _StatBadge(
           icon: Icons.layers_outlined,
-          label: '词组',
+          label: l10n.randomManager_tagGroups,
           value: '$groupCount',
           color: colorScheme.secondary,
         ),
         const SizedBox(width: 12),
         _StatBadge(
           icon: Icons.label_outlined,
-          label: '标签',
+          label: l10n.randomManager_tags,
           value: '$tagCount',
           color: colorScheme.tertiary,
         ),

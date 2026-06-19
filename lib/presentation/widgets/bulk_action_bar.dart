@@ -12,11 +12,17 @@ class BulkActionBar extends StatelessWidget {
   /// 是否已全选
   final bool isAllSelected;
 
+  /// 是否已选中全部可用项目（例如全部搜索结果）
+  final bool isAllAvailableSelected;
+
   /// 退出多选模式回调
   final VoidCallback? onExit;
 
   /// 全选/取消全选回调
   final VoidCallback? onSelectAll;
+
+  /// 选择/取消全部可用项目回调
+  final VoidCallback? onSelectAllAvailable;
 
   /// 操作按钮列表
   final List<BulkActionItem> actions;
@@ -27,15 +33,29 @@ class BulkActionBar extends StatelessWidget {
   /// 项目单位名称（如"项"、"Vibe"、"图片"）
   final String itemName;
 
+  /// 当前范围选择标签
+  final String selectAllLabel;
+  final String deselectAllLabel;
+
+  /// 全部可用项目选择标签
+  final String selectAllAvailableLabel;
+  final String deselectAllAvailableLabel;
+
   const BulkActionBar({
     super.key,
     required this.selectedCount,
     required this.isAllSelected,
+    this.isAllAvailableSelected = false,
     this.onExit,
     this.onSelectAll,
+    this.onSelectAllAvailable,
     this.actions = const [],
     this.isVibeLibrary = false,
-    this.itemName = '项',
+    this.itemName = 'items',
+    this.selectAllLabel = 'Select all',
+    this.deselectAllLabel = 'Deselect all',
+    this.selectAllAvailableLabel = 'Select all',
+    this.deselectAllAvailableLabel = 'Deselect all',
   });
 
   @override
@@ -51,79 +71,107 @@ class BulkActionBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             color: isDark
-                ? theme.colorScheme.surface.withOpacity(0.9)
-                : theme.colorScheme.surface.withOpacity(0.95),
+                ? theme.colorScheme.surface.withValues(alpha: 0.9)
+                : theme.colorScheme.surface.withValues(alpha: 0.95),
             border: Border(
               bottom: BorderSide(
-                color: theme.dividerColor.withOpacity(isDark ? 0.15 : 0.2),
+                color:
+                    theme.dividerColor.withValues(alpha: isDark ? 0.15 : 0.2),
               ),
             ),
           ),
-          child: Row(
-            children: [
-              // 退出按钮
-              _ActionButton(
-                icon: Icons.close,
-                label: '退出',
-                onPressed: onExit,
-                compact: true,
-              ),
-              const SizedBox(width: 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compactActions = constraints.maxWidth < 900;
 
-              // 选中数量徽章
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '已选择 $selectedCount $itemName',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // 全选/取消全选按钮
-              _ActionButton(
-                icon: isAllSelected ? Icons.deselect : Icons.select_all,
-                label: isAllSelected ? '取消全选' : '全选',
-                onPressed: onSelectAll,
-                compact: true,
-              ),
-
-              const Spacer(),
-
-              // 操作按钮组
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              return Row(
                 children: [
-                  for (int i = 0; i < actions.length; i++) ...[
-                    if (i > 0 && actions[i].showDividerBefore) ...[
-                      const SizedBox(width: 16),
-                      Container(
-                        width: 1,
-                        height: 28,
-                        color: theme.dividerColor.withOpacity(0.3),
+                  // 退出按钮
+                  _ActionButton(
+                    icon: Icons.close,
+                    label: 'Exit',
+                    onPressed: onExit,
+                    compact: true,
+                  ),
+                  const SizedBox(width: 12),
+
+                  // 选中数量徽章
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      const SizedBox(width: 16),
-                    ] else if (i > 0)
-                      const SizedBox(width: 8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer
+                            .withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Selected $selectedCount $itemName',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // 全选/取消全选按钮
+                  _ActionButton(
+                    icon: isAllSelected ? Icons.deselect : Icons.select_all,
+                    label: isAllSelected ? deselectAllLabel : selectAllLabel,
+                    onPressed: onSelectAll,
+                    compact: true,
+                  ),
+                  if (onSelectAllAvailable != null) ...[
+                    const SizedBox(width: 8),
                     _ActionButton(
-                      icon: actions[i].icon,
-                      label: actions[i].label,
-                      onPressed: hasSelection ? actions[i].onPressed : null,
-                      color: actions[i].color,
-                      isDanger: actions[i].isDanger,
+                      icon: isAllAvailableSelected
+                          ? Icons.deselect
+                          : Icons.library_add_check_outlined,
+                      label: isAllAvailableSelected
+                          ? deselectAllAvailableLabel
+                          : selectAllAvailableLabel,
+                      onPressed: onSelectAllAvailable,
+                      compact: true,
                     ),
                   ],
+
+                  const Spacer(),
+
+                  // 操作按钮组
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < actions.length; i++) ...[
+                        if (i > 0 && actions[i].showDividerBefore) ...[
+                          const SizedBox(width: 16),
+                          Container(
+                            width: 1,
+                            height: 28,
+                            color: theme.dividerColor.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(width: 16),
+                        ] else if (i > 0)
+                          const SizedBox(width: 8),
+                        _ActionButton(
+                          icon: actions[i].icon,
+                          label: actions[i].label,
+                          onPressed: hasSelection ? actions[i].onPressed : null,
+                          color: actions[i].color,
+                          isDanger: actions[i].isDanger,
+                          compact: compactActions,
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),
@@ -163,7 +211,7 @@ class VibeBulkActions {
   }) {
     return BulkActionItem(
       icon: Icons.send,
-      label: '发送到生成',
+      label: 'Send to Generation',
       onPressed: onPressed,
       color: color,
     );
@@ -176,7 +224,7 @@ class VibeBulkActions {
   }) {
     return BulkActionItem(
       icon: Icons.drive_file_move_outline,
-      label: '移动',
+      label: 'Move',
       onPressed: onPressed,
       color: color,
     );
@@ -189,7 +237,7 @@ class VibeBulkActions {
   }) {
     return BulkActionItem(
       icon: Icons.edit_note,
-      label: '编辑标签',
+      label: 'Edit Tags',
       onPressed: onPressed,
       color: color,
     );
@@ -202,7 +250,7 @@ class VibeBulkActions {
   }) {
     return BulkActionItem(
       icon: Icons.inventory_2_outlined,
-      label: '导出Bundle',
+      label: 'Export Bundle',
       onPressed: onPressed,
       color: color,
     );
@@ -215,7 +263,7 @@ class VibeBulkActions {
   }) {
     return BulkActionItem(
       icon: Icons.favorite_border,
-      label: '收藏',
+      label: 'Favorite',
       onPressed: onPressed,
       color: color,
     );
@@ -229,7 +277,7 @@ class VibeBulkActions {
   }) {
     return BulkActionItem(
       icon: Icons.delete_outline,
-      label: '删除',
+      label: 'Delete',
       onPressed: onPressed,
       color: color,
       isDanger: true,
@@ -271,7 +319,7 @@ class _ActionButtonState extends State<_ActionButton> {
     final isEnabled = widget.onPressed != null;
     final effectiveColor = widget.color ?? theme.colorScheme.onSurface;
     final displayColor =
-        isEnabled ? effectiveColor : effectiveColor.withOpacity(0.4);
+        isEnabled ? effectiveColor : effectiveColor.withValues(alpha: 0.4);
 
     return MouseRegion(
       onEnter: isEnabled ? (_) => setState(() => _isHovered = true) : null,
@@ -291,13 +339,13 @@ class _ActionButtonState extends State<_ActionButton> {
             decoration: BoxDecoration(
               color: _isHovered
                   ? (widget.isDanger
-                      ? effectiveColor.withOpacity(isDark ? 0.2 : 0.12)
-                      : effectiveColor.withOpacity(isDark ? 0.15 : 0.08))
+                      ? effectiveColor.withValues(alpha: isDark ? 0.2 : 0.12)
+                      : effectiveColor.withValues(alpha: isDark ? 0.15 : 0.08))
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               border: _isHovered
                   ? Border.all(
-                      color: effectiveColor.withOpacity(0.3),
+                      color: effectiveColor.withValues(alpha: 0.3),
                       width: 1,
                     )
                   : Border.all(

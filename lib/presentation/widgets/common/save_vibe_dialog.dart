@@ -82,7 +82,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
     final tag = _tagController.text.trim();
     if (tag.isEmpty) return;
     if (_tags.contains(tag)) {
-      AppToast.warning(context, '标签已存在');
+      AppToast.warning(context, context.l10n.toast_tagAlreadyExists);
       return;
     }
     setState(() {
@@ -98,9 +98,10 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
   }
 
   Future<void> _save() async {
+    final l10n = context.l10n;
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      AppToast.warning(context, '请输入名称');
+      AppToast.warning(context, l10n.toast_nameRequired);
       return;
     }
 
@@ -120,7 +121,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
           tags: _tags,
         );
         if (result == null) {
-          throw Exception('保存组合失败');
+          throw Exception(l10n.toast_saveBundleFailed);
         }
       } else {
         // 保存单个条目
@@ -133,17 +134,17 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
         );
         final result = await notifier.saveEntry(entry);
         if (result == null) {
-          throw Exception('保存条目失败');
+          throw Exception(l10n.toast_saveEntryFailed);
         }
       }
 
       if (mounted) {
-        AppToast.success(context, '已保存到 Vibe 库');
+        AppToast.success(context, l10n.toast_savedToVibeLibrary);
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        AppToast.error(context, '保存失败: $e');
+        AppToast.error(context, l10n.image_saveFailed(e.toString()));
       }
     } finally {
       if (mounted) {
@@ -173,7 +174,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
             color: colorScheme.primary,
           ),
           const SizedBox(width: 8),
-          const Text('保存到 Vibe 库'),
+          Text(l10n.vibe_saveToLibrary_title),
         ],
       ),
       content: SizedBox(
@@ -186,10 +187,10 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
               // 名称输入
               TextField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: '名称',
-                  hintText: '输入 Vibe 名称',
-                  prefixIcon: Icon(Icons.label_outline),
+                decoration: InputDecoration(
+                  labelText: l10n.vibe_saveToLibrary_nameLabel,
+                  hintText: l10n.vibe_saveToLibrary_nameHint,
+                  prefixIcon: const Icon(Icons.label_outline),
                 ),
                 enabled: !_isSaving,
               ),
@@ -198,15 +199,15 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
               // 分类选择
               if (categories.isNotEmpty)
                 DropdownButtonFormField<String?>(
-                  value: _selectedCategoryId,
-                  decoration: const InputDecoration(
-                    labelText: '分类',
-                    prefixIcon: Icon(Icons.folder_outlined),
+                  initialValue: _selectedCategoryId,
+                  decoration: InputDecoration(
+                    labelText: l10n.common_category,
+                    prefixIcon: const Icon(Icons.folder_outlined),
                   ),
                   items: [
-                    const DropdownMenuItem<String?>(
+                    DropdownMenuItem<String?>(
                       value: null,
-                      child: Text('未分类'),
+                      child: Text(l10n.vibeLibrary_uncategorized),
                     ),
                     ...categories.map((category) {
                       return DropdownMenuItem<String?>(
@@ -228,8 +229,9 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
               // 保存为组合选项（仅当有多个 vibes 时显示）
               if (hasMultipleVibes)
                 CheckboxListTile(
-                  title: const Text('保存为组合'),
-                  subtitle: Text('将 ${widget.vibes!.length} 个 Vibe 保存为一个组合'),
+                  title: const Text('Save as bundle'),
+                  subtitle:
+                      Text('Save ${widget.vibes!.length} Vibes as one bundle'),
                   value: _saveAsBundle,
                   onChanged: _isSaving
                       ? null
@@ -249,10 +251,10 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
                   Expanded(
                     child: TextField(
                       controller: _tagController,
-                      decoration: const InputDecoration(
-                        labelText: '标签',
-                        hintText: '输入标签后按添加',
-                        prefixIcon: Icon(Icons.tag),
+                      decoration: InputDecoration(
+                        labelText: l10n.tagLibrary_tags,
+                        hintText: 'Enter a tag, then press Add',
+                        prefixIcon: const Icon(Icons.tag),
                       ),
                       enabled: !_isSaving,
                       onSubmitted: (_) => _addTag(),
@@ -262,7 +264,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
                   IconButton(
                     onPressed: _isSaving ? null : _addTag,
                     icon: const Icon(Icons.add),
-                    tooltip: '添加标签',
+                    tooltip: l10n.tag_addTag,
                   ),
                 ],
               ),
@@ -288,17 +290,18 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  color: colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: colorScheme.outline.withOpacity(0.2),
+                    color: colorScheme.outline.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Vibe 信息',
+                      l10n.vibe_info,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.primary,
                         fontWeight: FontWeight.w600,
@@ -307,7 +310,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
                     const SizedBox(height: 8),
                     _buildInfoRow(
                       context,
-                      label: '名称',
+                      label: l10n.vibe_name,
                       value: widget.vibe.displayName,
                     ),
                     _buildInfoRow(
@@ -324,7 +327,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
                     ),
                     _buildInfoRow(
                       context,
-                      label: '来源',
+                      label: l10n.vibe_sourceType,
                       value: widget.vibe.sourceType.displayLabel,
                     ),
                   ],
@@ -350,7 +353,7 @@ class _SaveVibeDialogState extends ConsumerState<SaveVibeDialog> {
                     color: colorScheme.onPrimary,
                   ),
                 )
-              : const Text('保存'),
+              : Text(l10n.common_save),
         ),
       ],
     );

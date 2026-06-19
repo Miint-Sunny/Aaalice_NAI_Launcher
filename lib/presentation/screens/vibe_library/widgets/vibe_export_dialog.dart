@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/file_name_sanitizer.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../core/utils/vibe_export_utils.dart';
 import '../../../../data/models/vibe/vibe_library_category.dart';
@@ -20,15 +22,21 @@ enum VibeExportFormat {
 
   /// 打包为 .naiv4vibebundle 文件
   bundle,
+
+  /// 嵌入到 PNG 图片
+  embeddedPng,
 }
 
 extension VibeExportFormatExtension on VibeExportFormat {
-  String get displayName {
+  String displayName(BuildContext context) {
+    final l10n = context.l10n;
     switch (this) {
       case VibeExportFormat.single:
-        return '单独文件 (.naiv4vibe)';
+        return l10n.vibe_export_singleFile;
       case VibeExportFormat.bundle:
-        return '打包文件 (.naiv4vibebundle)';
+        return l10n.vibe_export_bundleFile;
+      case VibeExportFormat.embeddedPng:
+        return l10n.vibe_export_embedIntoPng;
     }
   }
 
@@ -38,15 +46,20 @@ extension VibeExportFormatExtension on VibeExportFormat {
         return 'naiv4vibe';
       case VibeExportFormat.bundle:
         return 'naiv4vibebundle';
+      case VibeExportFormat.embeddedPng:
+        return 'png';
     }
   }
 
-  String get description {
+  String description(BuildContext context) {
+    final l10n = context.l10n;
     switch (this) {
       case VibeExportFormat.single:
-        return '每个 Vibe 导出为独立文件，适合分享单个 Vibe';
+        return l10n.vibe_export_singleFileDescription;
       case VibeExportFormat.bundle:
-        return '多个 Vibe 打包为一个文件，适合批量备份';
+        return l10n.vibe_export_bundleFileDescription;
+      case VibeExportFormat.embeddedPng:
+        return l10n.vibe_export_embedIntoPngDescription;
     }
   }
 }
@@ -72,6 +85,10 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
   bool _isExporting = false;
   double _progress = 0;
   String _progressMessage = '';
+  String? _selectedCarrierImageId;
+  Uint8List? _selectedExternalCarrierImageBytes;
+  String? _selectedExternalCarrierImagePath;
+  String? _carrierImageErrorMessage;
 
   // 选中的条目和分类
   final Set<String> _selectedEntryIds = {};
@@ -100,6 +117,45 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
     );
     if (hasUncategorized) {
       _expandedCategories.add('__uncategorized__');
+    }
+    _ensureDefaultCarrierSelection();
+  }
+
+  bool get _supportsEmbeddedPng => widget.entries.length == 1;
+
+  VibeLibraryEntry? get _singleExportEntry =>
+      _supportsEmbeddedPng ? widget.entries.first : null;
+
+  List<VibeExportImageCandidate> get _carrierImageOptions {
+    final entry = _singleExportEntry;
+    if (entry == null) {
+      return const <VibeExportImageCandidate>[];
+    }
+    return VibeExportUtils.collectImageCandidates(
+      entry,
+    )
+        .where((candidate) => _isPngBytes(candidate.bytes))
+        .toList(growable: false);
+  }
+
+  List<VibeExportFormat> get _availableFormats {
+    return VibeExportFormat.values
+        .where(
+          (format) =>
+              format != VibeExportFormat.embeddedPng || _supportsEmbeddedPng,
+        )
+        .toList(growable: false);
+  }
+
+  void _ensureDefaultCarrierSelection() {
+    final options = _carrierImageOptions;
+    if (options.isEmpty) {
+      _selectedCarrierImageId = null;
+      return;
+    }
+    if (_selectedCarrierImageId == null ||
+        !options.any((option) => option.id == _selectedCarrierImageId)) {
+      _selectedCarrierImageId = options.first.id;
     }
   }
 
@@ -133,7 +189,7 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    '导出 Vibe',
+                    context.l10n.vibe_export_title,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -181,20 +237,21 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
                 const Divider(height: 24),
 
                 // 选项
-                CheckboxListTile(
-                  title: Text(context.l10n.vibe_export_include_thumbnails),
-                  subtitle: Text(
-                    context.l10n.vibe_export_include_thumbnails_subtitle,
+                if (_exportFormat != VibeExportFormat.embeddedPng) ...[
+                  CheckboxListTile(
+                    title: Text(context.l10n.vibe_export_include_thumbnails),
+                    subtitle: Text(
+                      context.l10n.vibe_export_include_thumbnails_subtitle,
+                    ),
+                    value: _includeThumbnails,
+                    onChanged: (value) {
+                      setState(() => _includeThumbnails = value ?? true);
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
                   ),
-                  value: _includeThumbnails,
-                  onChanged: (value) {
-                    setState(() => _includeThumbnails = value ?? true);
-                  },
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                ),
-
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
+                ],
 
                 // 操作按钮
                 Row(
@@ -209,7 +266,9 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
                       onPressed: _selectedEntryIds.isEmpty ? null : _export,
                       icon: const Icon(Icons.file_download),
                       label: Text(
-                        '导出 (${_selectedEntryIds.length} 个)',
+                        context.l10n.vibe_export_exportSelected(
+                          _selectedEntryIds.length,
+                        ),
                       ),
                     ),
                   ],
@@ -237,7 +296,7 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
       child: Row(
         children: [
           _StatItem(
-            label: '可导出',
+            label: context.l10n.vibe_export_exportable,
             value: '${_selectedEntryIds.length}/$exportableCount',
             icon: Icons.check_circle_outline,
             color: theme.colorScheme.primary,
@@ -245,14 +304,14 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
           const SizedBox(width: 24),
           if (unexportableCount > 0)
             _StatItem(
-              label: '不可导出',
+              label: context.l10n.vibe_export_notExportable,
               value: '$unexportableCount',
               icon: Icons.error_outline,
               color: theme.colorScheme.error,
             ),
           const Spacer(),
           _StatItem(
-            label: '分类',
+            label: context.l10n.common_category,
             value: '${_selectedCategoryIds.length}/${widget.categories.length}',
             icon: Icons.folder_outlined,
             color: theme.colorScheme.outline,
@@ -264,65 +323,293 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
 
   /// 构建格式选择区域
   Widget _buildFormatSelection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('导出格式', style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        ...VibeExportFormat.values.map((format) {
-          final isSelected = _exportFormat == format;
-          return InkWell(
-            onTap: () => setState(() => _exportFormat = format),
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.outlineVariant,
-                ),
-                borderRadius: BorderRadius.circular(8),
-                color: isSelected
-                    ? theme.colorScheme.primaryContainer.withOpacity(0.3)
-                    : null,
-              ),
-              child: Row(
-                children: [
-                  Radio<VibeExportFormat>(
-                    value: format,
-                    groupValue: _exportFormat,
-                    onChanged: (value) {
-                      setState(() => _exportFormat = value!);
-                    },
+    final formats = _availableFormats;
+
+    return RadioGroup<VibeExportFormat>(
+      groupValue: _exportFormat,
+      onChanged: (value) {
+        if (value != null) {
+          _setExportFormat(value);
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.vibe_export_format,
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          ...formats.map((format) {
+            final isSelected = _exportFormat == format;
+            return InkWell(
+              onTap: () => _setExportFormat(format),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.outlineVariant,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  borderRadius: BorderRadius.circular(8),
+                  color: isSelected
+                      ? theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.3,
+                        )
+                      : null,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Text(
-                          format.displayName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          format.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline,
+                        Radio<VibeExportFormat>(value: format),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                format.displayName(context),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                format.description(context),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
+                    if (isSelected &&
+                        format == VibeExportFormat.embeddedPng) ...[
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      _buildEmbeddedPngOptions(theme),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmbeddedPngOptions(ThemeData theme) {
+    final options = _carrierImageOptions;
+    final selectedId =
+        options.any((option) => option.id == _selectedCarrierImageId)
+            ? _selectedCarrierImageId
+            : (options.isNotEmpty ? options.first.id : null);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (options.isNotEmpty) ...[
+          Text(
+            context.l10n.vibe_export_pngCarrierImage,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: selectedId,
+            items: options
+                .map(
+                  (option) => DropdownMenuItem<String>(
+                    value: option.id,
+                    child: Text(
+                      option.label,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ],
+                )
+                .toList(growable: false),
+            onChanged: (value) {
+              setState(() {
+                _selectedCarrierImageId = value;
+                _selectedExternalCarrierImageBytes = null;
+                _selectedExternalCarrierImagePath = null;
+                _carrierImageErrorMessage = null;
+              });
+            },
+            decoration: const InputDecoration(
+              isDense: true,
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
+          Text(
+            context.l10n.vibe_export_noUsablePngCarrier,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.outline,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: _pickCarrierImage,
+              icon: const Icon(Icons.image_search_outlined),
+              label: Text(
+                _selectedExternalCarrierImagePath == null
+                    ? context.l10n.vibe_export_selectExternalPngImage
+                    : context.l10n.vibe_export_changeExternalPngImage,
               ),
             ),
-          );
-        }),
+            if (_selectedExternalCarrierImagePath != null &&
+                options.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedExternalCarrierImageBytes = null;
+                    _selectedExternalCarrierImagePath = null;
+                    _carrierImageErrorMessage = null;
+                  });
+                },
+                child: Text(context.l10n.vibe_export_useVibeImageInstead),
+              ),
+            ],
+          ],
+        ),
+        if (_selectedExternalCarrierImagePath != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            context.l10n.vibe_export_usingExternalPng(
+              _fileNameFromPath(_selectedExternalCarrierImagePath!),
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.primary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+        if (_carrierImageErrorMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _carrierImageErrorMessage!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.error,
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  void _setExportFormat(VibeExportFormat format) {
+    setState(() {
+      _exportFormat = format;
+      if (format == VibeExportFormat.embeddedPng) {
+        _ensureDefaultCarrierSelection();
+      }
+    });
+  }
+
+  Future<void> _pickCarrierImage() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['png'],
+        dialogTitle: context.l10n.vibe_export_selectPngImage,
+        withData: true,
+      );
+
+      if (!mounted || result == null || result.files.isEmpty) {
+        return;
+      }
+
+      final file = result.files.single;
+      final bytes = file.bytes ??
+          (file.path != null ? await File(file.path!).readAsBytes() : null);
+
+      if (bytes == null || !_isPngBytes(bytes)) {
+        setState(() {
+          _selectedExternalCarrierImageBytes = null;
+          _selectedExternalCarrierImagePath = null;
+          _carrierImageErrorMessage = context.l10n.vibe_export_invalidPngImage;
+        });
+        return;
+      }
+
+      setState(() {
+        _selectedExternalCarrierImageBytes = bytes;
+        _selectedExternalCarrierImagePath = file.path ?? file.name;
+        _carrierImageErrorMessage = null;
+      });
+    } catch (e, stack) {
+      AppLogger.e('选择 PNG 载体图失败', e, stack, 'VibeExportDialog');
+      if (mounted) {
+        setState(
+          () => _carrierImageErrorMessage =
+              context.l10n.vibe_export_selectPngImageFailed(e.toString()),
+        );
+      }
+    }
+  }
+
+  Uint8List? _currentCarrierImageBytes(VibeLibraryEntry entry) {
+    if (_selectedExternalCarrierImageBytes != null) {
+      return _selectedExternalCarrierImageBytes;
+    }
+
+    final options = VibeExportUtils.collectImageCandidates(entry);
+    if (options.isEmpty) {
+      return null;
+    }
+
+    final selectedId = _selectedCarrierImageId;
+    if (selectedId != null) {
+      for (final option in options) {
+        if (option.id == selectedId) {
+          return option.bytes;
+        }
+      }
+    }
+
+    return options.first.bytes;
+  }
+
+  bool _isPngBytes(Uint8List bytes) {
+    const pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
+    if (bytes.length < pngSignature.length) {
+      return false;
+    }
+    for (var i = 0; i < pngSignature.length; i++) {
+      if (bytes[i] != pngSignature[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  String _fileNameFromPath(String path) {
+    final segments = path.split(RegExp(r'[\\/]'));
+    return segments.isEmpty ? path : segments.last;
+  }
+
+  String _embeddedPngFileName(VibeLibraryEntry entry) {
+    final baseName =
+        entry.displayName.trim().isEmpty ? 'vibe' : entry.displayName.trim();
+    final safeBaseName = FileNameSanitizer.sanitize(baseName, fallback: 'vibe');
+    return '${safeBaseName}_vibe.png';
   }
 
   /// 构建选择操作按钮
@@ -335,14 +622,31 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
         _selectedCategoryIds.length == widget.categories.length;
     final allSelected = allEntriesSelected && allCategoriesSelected;
 
-    return Row(
-      children: [
-        Text('选择要导出的 Vibe', style: theme.textTheme.titleSmall),
-        const Spacer(),
+    List<Widget> buildButtons({required bool compact}) {
+      if (compact) {
+        return [
+          IconButton(
+            tooltip: context.l10n.common_selectAll,
+            onPressed: allSelected ? null : _selectAll,
+            icon: const Icon(Icons.select_all, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+          IconButton(
+            tooltip: context.l10n.common_deselectAll,
+            onPressed: _selectedEntryIds.isEmpty && _selectedCategoryIds.isEmpty
+                ? null
+                : _selectNone,
+            icon: const Icon(Icons.deselect, size: 18),
+            visualDensity: VisualDensity.compact,
+          ),
+        ];
+      }
+
+      return [
         TextButton.icon(
           onPressed: allSelected ? null : _selectAll,
           icon: const Icon(Icons.select_all, size: 18),
-          label: const Text('全选'),
+          label: Text(context.l10n.common_selectAll),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
@@ -352,12 +656,36 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
               ? null
               : _selectNone,
           icon: const Icon(Icons.deselect, size: 18),
-          label: const Text('全不选'),
+          label: Text(context.l10n.common_deselectAll),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
         ),
-      ],
+      ];
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 640;
+        final title = Text(
+          context.l10n.vibe_export_selectVibesToExport,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleSmall,
+        );
+
+        return Row(
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 8),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              children: buildButtons(compact: compact),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -472,7 +800,7 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '未分类',
+                  context.l10n.vibeLibrary_uncategorized,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: theme.colorScheme.outline,
@@ -756,7 +1084,9 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
                       _SourceTypeBadge(sourceType: entry.sourceType),
                       const SizedBox(width: 8),
                       Text(
-                        '强度: ${(entry.strength * 100).toInt()}%',
+                        context.l10n.vibe_export_strengthPercent(
+                          (entry.strength * 100).toInt(),
+                        ),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.outline,
                         ),
@@ -794,48 +1124,79 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
         widget.entries.where((e) => _selectedEntryIds.contains(e.id)).toList();
 
     if (selectedEntries.isEmpty) {
-      AppToast.warning(context, '请先选择要导出的 Vibe');
+      AppToast.warning(context, context.l10n.toast_selectVibeToExport);
       return;
     }
 
     setState(() {
       _isExporting = true;
       _progress = 0;
-      _progressMessage = '准备导出...';
+      _progressMessage = context.l10n.vibe_export_preparingExport;
     });
 
     try {
+      final bool exported;
       if (_exportFormat == VibeExportFormat.bundle) {
-        // 导出为 bundle 格式
-        await _exportAsBundle(selectedEntries);
+        exported = await _exportAsBundle(selectedEntries);
+      } else if (_exportFormat == VibeExportFormat.embeddedPng) {
+        exported = await _exportAsEmbeddedPng(selectedEntries);
       } else {
-        // 导出为单独文件
-        await _exportAsSingleFiles(selectedEntries);
+        exported = await _exportAsSingleFiles(selectedEntries);
       }
+
+      if (!exported) return;
 
       if (mounted) {
         Navigator.of(context).pop();
-        AppToast.success(context, '导出成功');
+        AppToast.success(context, context.l10n.toast_exportSuccess);
       }
     } catch (e, stack) {
       AppLogger.e('导出 Vibe 失败', e, stack, 'VibeExportDialog');
       if (mounted) {
         setState(() => _isExporting = false);
-        AppToast.error(context, '导出失败: $e');
+        AppToast.error(context, context.l10n.toast_exportFailed(e.toString()));
       }
     }
   }
 
   /// 导出为单独文件
-  Future<void> _exportAsSingleFiles(List<VibeLibraryEntry> entries) async {
+  Future<bool> _exportAsSingleFiles(List<VibeLibraryEntry> entries) async {
+    if (entries.length == 1) {
+      final entry = entries.first;
+      setState(() {
+        _progress = 0.5;
+        _progressMessage = context.l10n.vibe_export_exportingName(
+          entry.displayName,
+        );
+      });
+
+      final exportedPath = await VibeExportUtils.exportToNaiv4Vibe(
+        entry.toVibeReference(),
+        name: entry.displayName,
+      );
+
+      if (exportedPath == null) {
+        setState(() => _isExporting = false);
+        return false;
+      }
+
+      setState(() {
+        _progress = 1.0;
+        _progressMessage = context.l10n.vibe_export_exportCompletePath(
+          exportedPath,
+        );
+      });
+      return true;
+    }
+
     // 选择保存目录
     final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: '选择保存目录',
+      dialogTitle: context.l10n.vibe_export_selectExportFolder,
     );
 
     if (result == null) {
       setState(() => _isExporting = false);
-      return;
+      return false;
     }
 
     final total = entries.length;
@@ -846,7 +1207,9 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
       final entry = entries[i];
       setState(() {
         _progress = i / total;
-        _progressMessage = '正在导出: ${entry.displayName}';
+        _progressMessage = context.l10n.vibe_export_exportingName(
+          entry.displayName,
+        );
       });
 
       final vibeRef = entry.toVibeReference();
@@ -855,6 +1218,7 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
       final exportedPath = await VibeExportUtils.exportToNaiv4Vibe(
         vibeRef,
         name: entry.displayName,
+        outputDirectory: result,
       );
 
       if (exportedPath != null) {
@@ -867,15 +1231,68 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
 
     setState(() {
       _progress = 1.0;
-      _progressMessage = '导出完成: $successCount 成功, $failCount 失败';
+      _progressMessage = context.l10n.vibe_export_exportCompleteCounts(
+        successCount,
+        failCount,
+      );
     });
+    return successCount > 0;
+  }
+
+  /// 导出为嵌入 Vibe 元数据的 PNG
+  Future<bool> _exportAsEmbeddedPng(List<VibeLibraryEntry> entries) async {
+    if (entries.length != 1) {
+      setState(() => _isExporting = false);
+      if (mounted) {
+        AppToast.warning(context, context.l10n.toast_embedPngSingleVibeOnly);
+      }
+      return false;
+    }
+
+    final entry = entries.first;
+    final carrierImageBytes = _currentCarrierImageBytes(entry);
+    if (carrierImageBytes == null) {
+      setState(() => _isExporting = false);
+      if (mounted) {
+        AppToast.warning(context, context.l10n.toast_selectPngCarrier);
+      }
+      return false;
+    }
+
+    setState(() {
+      _progress = 0.5;
+      _progressMessage = context.l10n.vibe_export_embeddingPng(
+        entry.displayName,
+      );
+    });
+
+    final exportedPath = await VibeExportUtils.exportToEmbeddedPng(
+      [entry.toVibeReference()],
+      carrierImageBytes: carrierImageBytes,
+      fileName: _embeddedPngFileName(entry),
+    );
+
+    if (exportedPath == null) {
+      setState(() => _isExporting = false);
+      return false;
+    }
+
+    setState(() {
+      _progress = 1.0;
+      _progressMessage = context.l10n.vibe_export_exportCompletePath(
+        exportedPath,
+      );
+    });
+    return true;
   }
 
   /// 导出为 bundle 文件
-  Future<void> _exportAsBundle(List<VibeLibraryEntry> entries) async {
+  Future<bool> _exportAsBundle(List<VibeLibraryEntry> entries) async {
     setState(() {
       _progress = 0.3;
-      _progressMessage = '正在打包 ${entries.length} 个 Vibe...';
+      _progressMessage = context.l10n.vibe_export_packingVibes(
+        entries.length,
+      );
     });
 
     // 转换为 VibeReference 列表
@@ -883,7 +1300,7 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
 
     setState(() {
       _progress = 0.6;
-      _progressMessage = '正在生成 bundle 文件...';
+      _progressMessage = context.l10n.vibe_export_generatingBundleFile;
     });
 
     // 导出 bundle
@@ -894,13 +1311,17 @@ class _VibeExportDialogState extends ConsumerState<VibeExportDialog> {
     );
 
     if (exportedPath == null) {
-      throw Exception('导出 bundle 失败');
+      setState(() => _isExporting = false);
+      return false;
     }
 
     setState(() {
       _progress = 1.0;
-      _progressMessage = '导出完成: $exportedPath';
+      _progressMessage = context.l10n.vibe_export_exportCompletePath(
+        exportedPath,
+      );
     });
+    return true;
   }
 }
 
@@ -963,21 +1384,21 @@ class _SourceTypeBadge extends StatelessWidget {
 
     switch (sourceType) {
       case VibeSourceType.png:
-        backgroundColor = Colors.green.withOpacity(0.15);
+        backgroundColor = Colors.green.withValues(alpha: 0.15);
         textColor = Colors.green;
-        label = 'PNG';
+        label = context.l10n.vibe_sourceType_png;
       case VibeSourceType.naiv4vibe:
-        backgroundColor = Colors.blue.withOpacity(0.15);
+        backgroundColor = Colors.blue.withValues(alpha: 0.15);
         textColor = Colors.blue;
-        label = 'V4';
+        label = context.l10n.vibe_sourceType_v4vibe;
       case VibeSourceType.naiv4vibebundle:
-        backgroundColor = Colors.purple.withOpacity(0.15);
+        backgroundColor = Colors.purple.withValues(alpha: 0.15);
         textColor = Colors.purple;
-        label = 'Bundle';
+        label = context.l10n.vibe_sourceType_bundle;
       case VibeSourceType.rawImage:
-        backgroundColor = Colors.orange.withOpacity(0.15);
+        backgroundColor = Colors.orange.withValues(alpha: 0.15);
         textColor = Colors.orange;
-        label = 'Image';
+        label = context.l10n.vibe_sourceType_image;
     }
 
     return Container(

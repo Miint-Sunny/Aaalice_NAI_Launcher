@@ -7,6 +7,7 @@ import 'package:nai_launcher/core/database/datasources/gallery_data_source.dart'
 import 'package:nai_launcher/core/database/connection_pool_holder.dart';
 import 'package:nai_launcher/core/utils/app_logger.dart';
 import 'package:nai_launcher/data/models/gallery/nai_image_metadata.dart';
+import 'package:nai_launcher/data/services/gallery/gallery_filter_service.dart';
 
 /// GalleryDataSource 批量查询方法单元测试
 ///
@@ -208,10 +209,14 @@ void main() {
         final result = await dataSource.getImagesByIds([id1, id2]);
 
         expect(result.length, equals(2));
-        expect(result.any((img) => img.id == id1 && img.fileName == 'img1.png'),
-            isTrue,);
-        expect(result.any((img) => img.id == id2 && img.fileName == 'img2.png'),
-            isTrue,);
+        expect(
+          result.any((img) => img.id == id1 && img.fileName == 'img1.png'),
+          isTrue,
+        );
+        expect(
+          result.any((img) => img.id == id2 && img.fileName == 'img2.png'),
+          isTrue,
+        );
       });
 
       test('should return only existing images and skip deleted', () async {
@@ -411,6 +416,396 @@ void main() {
         // 第二次查询应该使用缓存
         final result2 = await dataSource.getMetadataByImageIds([id]);
         expect(result2[id]!.prompt, equals('cached prompt'));
+      });
+    });
+
+    // ============================================================
+    // 搜索测试
+    // ============================================================
+
+    group('search', () {
+      test('should find prompt substrings inside tag-like tokens', () async {
+        final now = DateTime.now();
+        final imageId = await dataSource.upsertImage(
+          filePath: '/test/prompt_substring.png',
+          fileName: 'prompt_substring.png',
+          fileSize: 1000,
+          createdAt: now,
+          modifiedAt: now,
+        );
+
+        await dataSource.upsertMetadata(
+          imageId,
+          const NaiImageMetadata(
+            prompt: 'artist:shycocoa, 1girl, blue_eyes',
+            negativePrompt: '',
+            seed: 1,
+          ),
+        );
+
+        final cocoaResults = await dataSource.advancedSearch(
+          textQuery: 'cocoa',
+          limit: 10,
+        );
+        final eyesResults = await dataSource.advancedSearch(
+          textQuery: 'eyes',
+          limit: 10,
+        );
+
+        expect(cocoaResults, contains(imageId));
+        expect(eyesResults, contains(imageId));
+      });
+
+      test('should find model and sampler metadata fields', () async {
+        final now = DateTime.now();
+        final imageId = await dataSource.upsertImage(
+          filePath: '/test/model_sampler.png',
+          fileName: 'model_sampler.png',
+          fileSize: 1000,
+          createdAt: now,
+          modifiedAt: now,
+        );
+
+        await dataSource.upsertMetadata(
+          imageId,
+          const NaiImageMetadata(
+            prompt: 'unrelated prompt',
+            negativePrompt: '',
+            seed: 1,
+            model: 'nai-diffusion-v45-full',
+            sampler: 'k_euler_ancestral',
+          ),
+        );
+
+        final modelResults = await dataSource.advancedSearch(
+          textQuery: 'v45',
+          limit: 10,
+        );
+        final samplerResults = await dataSource.advancedSearch(
+          textQuery: 'euler',
+          limit: 10,
+        );
+
+        expect(modelResults, contains(imageId));
+        expect(samplerResults, contains(imageId));
+      });
+
+      test('should filter selected prompt tags by intersection', () async {
+        final now = DateTime.now();
+        final matchingFile = File('/test/tag_intersection_match.png');
+        final blueOnlyFile = File('/test/tag_intersection_blue_only.png');
+        final blondeOnlyFile = File('/test/tag_intersection_blonde_only.png');
+
+        final matchingId = await dataSource.upsertImage(
+          filePath: matchingFile.path,
+          fileName: 'tag_intersection_match.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final blueOnlyId = await dataSource.upsertImage(
+          filePath: blueOnlyFile.path,
+          fileName: 'tag_intersection_blue_only.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final blondeOnlyId = await dataSource.upsertImage(
+          filePath: blondeOnlyFile.path,
+          fileName: 'tag_intersection_blonde_only.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+
+        await dataSource.batchUpsertMetadata([
+          MapEntry(
+            matchingId,
+            const NaiImageMetadata(
+              prompt: '1girl, blue eyes, blonde hair',
+              negativePrompt: '',
+              seed: 1,
+            ),
+          ),
+          MapEntry(
+            blueOnlyId,
+            const NaiImageMetadata(
+              prompt: '1girl, blue eyes, black hair',
+              negativePrompt: '',
+              seed: 2,
+            ),
+          ),
+          MapEntry(
+            blondeOnlyId,
+            const NaiImageMetadata(
+              prompt: '1girl, green eyes, blonde hair',
+              negativePrompt: '',
+              seed: 3,
+            ),
+          ),
+        ]);
+
+        final filterService = GalleryFilterService(dataSource);
+        final result = await filterService.applyFilters(
+          [matchingFile, blueOnlyFile, blondeOnlyFile],
+          const FilterCriteria(
+            selectedTags: ['blue_eyes', 'blonde_hair'],
+          ),
+        );
+
+        expect(result.files.map((file) => file.path), [matchingFile.path]);
+      });
+
+      test('should intersect text search results with selected tags', () async {
+        final now = DateTime.now();
+        final matchingFile = File('/test/text_and_tags_match.png');
+        final missingTagFile = File('/test/text_and_tags_missing_tag.png');
+        final missingTextFile = File('/test/text_and_tags_missing_text.png');
+
+        final matchingId = await dataSource.upsertImage(
+          filePath: matchingFile.path,
+          fileName: 'text_and_tags_match.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final missingTagId = await dataSource.upsertImage(
+          filePath: missingTagFile.path,
+          fileName: 'text_and_tags_missing_tag.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final missingTextId = await dataSource.upsertImage(
+          filePath: missingTextFile.path,
+          fileName: 'text_and_tags_missing_text.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+
+        await dataSource.batchUpsertMetadata([
+          MapEntry(
+            matchingId,
+            const NaiImageMetadata(
+              prompt: 'shared_scene, blue eyes, blonde hair',
+              negativePrompt: '',
+              seed: 1,
+            ),
+          ),
+          MapEntry(
+            missingTagId,
+            const NaiImageMetadata(
+              prompt: 'shared_scene, blue eyes, black hair',
+              negativePrompt: '',
+              seed: 2,
+            ),
+          ),
+          MapEntry(
+            missingTextId,
+            const NaiImageMetadata(
+              prompt: 'private_scene, blue eyes, blonde hair',
+              negativePrompt: '',
+              seed: 3,
+            ),
+          ),
+        ]);
+
+        final filterService = GalleryFilterService(dataSource);
+        final result = await filterService.applyFilters(
+          [matchingFile, missingTagFile, missingTextFile],
+          const FilterCriteria(
+            searchQuery: 'shared_scene',
+            selectedTags: ['blue_eyes', 'blonde_hair'],
+          ),
+        );
+
+        expect(result.files.map((file) => file.path), [matchingFile.path]);
+      });
+
+      test('should split comma search query and match segments by containment',
+          () async {
+        final now = DateTime.now();
+        final matchingFile = File('/test/comma_search_match.png');
+        final sweetoneOnlyFile = File('/test/comma_search_sweetone_only.png');
+        final shycocoaOnlyFile = File('/test/comma_search_shycocoa_only.png');
+
+        final matchingId = await dataSource.upsertImage(
+          filePath: matchingFile.path,
+          fileName: 'comma_search_match.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final sweetoneOnlyId = await dataSource.upsertImage(
+          filePath: sweetoneOnlyFile.path,
+          fileName: 'comma_search_sweetone_only.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final shycocoaOnlyId = await dataSource.upsertImage(
+          filePath: shycocoaOnlyFile.path,
+          fileName: 'comma_search_shycocoa_only.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+
+        await dataSource.batchUpsertMetadata([
+          MapEntry(
+            matchingId,
+            const NaiImageMetadata(
+              prompt: 'artist:shycocoa, sweetonedollar, 1girl',
+              negativePrompt: '',
+              seed: 1,
+            ),
+          ),
+          MapEntry(
+            sweetoneOnlyId,
+            const NaiImageMetadata(
+              prompt: 'sweetonedollar, solo, blue eyes',
+              negativePrompt: '',
+              seed: 2,
+            ),
+          ),
+          MapEntry(
+            shycocoaOnlyId,
+            const NaiImageMetadata(
+              prompt: 'artist:shycocoa, solo, blonde hair',
+              negativePrompt: '',
+              seed: 3,
+            ),
+          ),
+        ]);
+
+        final filterService = GalleryFilterService(dataSource);
+        final result = await filterService.applyFilters(
+          [matchingFile, sweetoneOnlyFile, shycocoaOnlyFile],
+          const FilterCriteria(
+            searchQuery: 'sweetone,shycocoa',
+          ),
+        );
+
+        expect(result.files.map((file) => file.path), [matchingFile.path]);
+
+        final partialResult = await filterService.applyFilters(
+          [matchingFile, sweetoneOnlyFile, shycocoaOnlyFile],
+          const FilterCriteria(
+            searchQuery: 'sweetone,',
+          ),
+        );
+
+        expect(partialResult.files.map((file) => file.path), [
+          matchingFile.path,
+          sweetoneOnlyFile.path,
+        ]);
+      });
+
+      test('should apply comma search inside database prefiltered results',
+          () async {
+        final now = DateTime.now();
+        final favoriteMatch = File('/test/comma_prefilter_favorite.png');
+        final decoyA = File('/test/comma_prefilter_decoy_a.png');
+        final decoyB = File('/test/comma_prefilter_decoy_b.png');
+
+        final favoriteId = await dataSource.upsertImage(
+          filePath: favoriteMatch.path,
+          fileName: 'comma_prefilter_favorite.png',
+          fileSize: 1024,
+          createdAt: now.subtract(const Duration(days: 3)),
+          modifiedAt: now.subtract(const Duration(days: 3)),
+        );
+        final decoyAId = await dataSource.upsertImage(
+          filePath: decoyA.path,
+          fileName: 'comma_prefilter_decoy_a.png',
+          fileSize: 1024,
+          createdAt: now,
+          modifiedAt: now,
+        );
+        final decoyBId = await dataSource.upsertImage(
+          filePath: decoyB.path,
+          fileName: 'comma_prefilter_decoy_b.png',
+          fileSize: 1024,
+          createdAt: now.subtract(const Duration(hours: 1)),
+          modifiedAt: now.subtract(const Duration(hours: 1)),
+        );
+
+        await dataSource.batchUpsertMetadata([
+          MapEntry(
+            favoriteId,
+            const NaiImageMetadata(
+              prompt: 'artist:shycocoa, sweetonedollar, selected favorite',
+              negativePrompt: '',
+              seed: 10,
+            ),
+          ),
+          MapEntry(
+            decoyAId,
+            const NaiImageMetadata(
+              prompt: 'artist:shycocoa, sweetonedollar, newer decoy',
+              negativePrompt: '',
+              seed: 11,
+            ),
+          ),
+          MapEntry(
+            decoyBId,
+            const NaiImageMetadata(
+              prompt: 'artist:shycocoa, sweetonedollar, second newer decoy',
+              negativePrompt: '',
+              seed: 12,
+            ),
+          ),
+        ]);
+
+        await dataSource.toggleFavorite(favoriteId);
+
+        final filterService = GalleryFilterService(dataSource);
+        final result = await filterService.applyFilters(
+          [favoriteMatch, decoyA, decoyB],
+          const FilterCriteria(
+            searchQuery: 'sweetone,shycocoa',
+            showFavoritesOnly: true,
+          ),
+        );
+
+        expect(result.files.map((file) => file.path), [favoriteMatch.path]);
+      });
+    });
+
+    group('GalleryFilterService date filtering', () {
+      test('should filter date range across more than one legacy batch',
+          () async {
+        final tempDir = Directory.systemTemp.createTempSync(
+          'gallery_filter_date_',
+        );
+        addTearDown(() async {
+          if (await tempDir.exists()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+
+        final files = <File>[];
+        final outsideDate = DateTime(2026, 1, 9, 12);
+        final insideDate = DateTime(2026, 1, 10, 12);
+
+        for (var i = 0; i < 51; i++) {
+          final file = File('${tempDir.path}/image_$i.png');
+          await file.writeAsBytes([i]);
+          await file.setLastModified(i == 50 ? insideDate : outsideDate);
+          files.add(file);
+        }
+
+        final filterService = GalleryFilterService(dataSource);
+        final result = await filterService.applyFilters(
+          files,
+          FilterCriteria(
+            dateStart: DateTime(2026, 1, 10),
+            dateEnd: DateTime(2026, 1, 10),
+          ),
+        );
+
+        expect(result.files.map((file) => file.path), [files.last.path]);
       });
     });
 
@@ -774,8 +1169,10 @@ void main() {
 
         final metaResult = await dataSource.getMetadataByImageIds([id]);
         expect(metaResult[id], isNotNull);
-        expect(metaResult[id]!.prompt,
-            equals('beautiful landscape with mountains'),);
+        expect(
+          metaResult[id]!.prompt,
+          equals('beautiful landscape with mountains'),
+        );
 
         final favsResult = await dataSource.getFavoritesByImageIds([id]);
         expect(favsResult[id], isTrue);

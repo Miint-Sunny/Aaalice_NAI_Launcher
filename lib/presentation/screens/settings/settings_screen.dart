@@ -11,6 +11,8 @@ import 'sections/data_source_settings_section.dart';
 import 'sections/queue_settings_section.dart';
 import 'sections/notification_settings_section.dart';
 import 'sections/about_settings_section.dart';
+import 'sections/comfyui_settings_section.dart';
+import 'sections/krita_bridge_settings_section.dart';
 import 'sections/prompt_assistant_settings_section.dart';
 
 /// 设置页面 Section 数据模型
@@ -41,77 +43,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _contentScrollController = ScrollController();
   bool _isContentScrolled = false;
 
-  // 10 个设置 Section 定义
-  late final List<_SettingsSection> _sections;
-
   @override
   void initState() {
     super.initState();
     _contentScrollController.addListener(_onContentScroll);
-    _initializeSections();
   }
 
-  void _initializeSections() {
-    _sections = const [
+  List<_SettingsSection> _buildSections(BuildContext context) {
+    return [
       _SettingsSection(
         icon: Icons.person_outline,
         selectedIcon: Icons.person,
-        label: '账户',
-        widget: AccountSettingsSection(),
+        label: context.l10n.settings_account,
+        widget: const AccountSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.palette_outlined,
         selectedIcon: Icons.palette,
-        label: '外观',
-        widget: AppearanceSettingsSection(),
+        label: context.l10n.settings_appearance,
+        widget: const AppearanceSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.keyboard_outlined,
         selectedIcon: Icons.keyboard,
-        label: '快捷键',
-        widget: ShortcutSettingsSection(),
+        label: context.l10n.settings_shortcuts,
+        widget: const ShortcutSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.storage_outlined,
         selectedIcon: Icons.storage,
-        label: '存储',
-        widget: StorageSettingsSection(),
+        label: context.l10n.settings_storage,
+        widget: const StorageSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.network_check_outlined,
         selectedIcon: Icons.network_check,
-        label: '网络',
-        widget: NetworkSettingsSection(),
+        label: context.l10n.settings_network,
+        widget: const NetworkSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.cloud_sync_outlined,
         selectedIcon: Icons.cloud_sync,
-        label: '数据源',
-        widget: DataSourceSettingsSection(),
+        label: context.l10n.settings_dataSource,
+        widget: const DataSourceSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.queue_outlined,
         selectedIcon: Icons.queue,
-        label: '队列',
-        widget: QueueSettingsSection(),
+        label: context.l10n.settings_queue,
+        widget: const QueueSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.notifications_outlined,
         selectedIcon: Icons.notifications,
-        label: '通知',
-        widget: NotificationSettingsSection(),
+        label: context.l10n.settings_notifications,
+        widget: const NotificationSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.auto_awesome_outlined,
         selectedIcon: Icons.auto_awesome,
-        label: '助手',
-        widget: PromptAssistantSettingsSection(),
+        label: context.l10n.settings_promptAssistant,
+        widget: const PromptAssistantSettingsSection(),
+      ),
+      const _SettingsSection(
+        icon: Icons.auto_fix_high_outlined,
+        selectedIcon: Icons.auto_fix_high,
+        label: 'ComfyUI',
+        widget: ComfyUISettingsSection(),
+      ),
+      const _SettingsSection(
+        icon: Icons.brush_outlined,
+        selectedIcon: Icons.brush,
+        label: 'Krita',
+        widget: KritaBridgeSettingsSection(),
       ),
       _SettingsSection(
         icon: Icons.info_outlined,
         selectedIcon: Icons.info,
-        label: '关于',
-        widget: AboutSettingsSection(),
+        label: context.l10n.settings_about,
+        widget: const AboutSettingsSection(),
       ),
     ];
   }
@@ -143,6 +153,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
+    final sections = _buildSections(context);
+    if (_selectedIndex >= sections.length) {
+      _selectedIndex = sections.length - 1;
+    }
 
     // 响应式断点
     // >800px: 扩展模式（显示标签）
@@ -172,11 +186,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             : null,
       ),
       // 移动端使用 Drawer
-      drawer: isMobile ? _buildDrawer(context) : null,
+      drawer: isMobile ? _buildDrawer(context, sections) : null,
       body: Row(
         children: [
           // 桌面/平板端显示 NavigationRail
-          if (!isMobile) _buildNavigationRail(context, isExtended),
+          if (!isMobile) _buildNavigationRail(context, isExtended, sections),
           if (!isMobile) const VerticalDivider(thickness: 1, width: 1),
           // 内容区 - 置顶排列，限制最大宽度
           Expanded(
@@ -192,7 +206,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     child: Align(
                       alignment: Alignment.topCenter,
-                      child: _sections[_selectedIndex].widget,
+                      child: sections[_selectedIndex].widget,
                     ),
                   ),
                 );
@@ -205,7 +219,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   /// 构建 NavigationRail 侧边栏
-  Widget _buildNavigationRail(BuildContext context, bool isExtended) {
+  Widget _buildNavigationRail(
+    BuildContext context,
+    bool isExtended,
+    List<_SettingsSection> sections,
+  ) {
     final theme = Theme.of(context);
 
     return NavigationRail(
@@ -220,12 +238,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         fontWeight: FontWeight.w600,
       ),
       unselectedIconTheme: IconThemeData(
-        color: theme.colorScheme.onSurface.withOpacity(0.6),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
       ),
       unselectedLabelTextStyle: TextStyle(
-        color: theme.colorScheme.onSurface.withOpacity(0.6),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
       ),
-      destinations: _sections.map((section) {
+      destinations: sections.map((section) {
         return NavigationRailDestination(
           icon: Icon(section.icon),
           selectedIcon: Icon(section.selectedIcon),
@@ -236,7 +254,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   /// 构建移动端 Drawer
-  Widget _buildDrawer(BuildContext context) {
+  Widget _buildDrawer(BuildContext context, List<_SettingsSection> sections) {
     final theme = Theme.of(context);
 
     return Drawer(
@@ -245,7 +263,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             DrawerHeader(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                color:
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               ),
               child: Center(
                 child: Column(
@@ -269,9 +288,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: _sections.length,
+                itemCount: sections.length,
                 itemBuilder: (context, index) {
-                  final section = _sections[index];
+                  final section = sections[index];
                   final isSelected = _selectedIndex == index;
 
                   return ListTile(
@@ -279,7 +298,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isSelected ? section.selectedIcon : section.icon,
                       color: isSelected
                           ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withOpacity(0.6),
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                     title: Text(
                       section.label,
@@ -292,8 +311,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                     selected: isSelected,
-                    selectedTileColor:
-                        theme.colorScheme.primaryContainer.withOpacity(0.3),
+                    selectedTileColor: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.3),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),

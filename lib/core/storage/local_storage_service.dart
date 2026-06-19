@@ -92,6 +92,22 @@ class LocalStorageService {
     await setSetting(StorageKeys.locale, code);
   }
 
+  // ==================== Diagnostics ====================
+
+  /// 获取是否记录文件日志 (默认关闭)
+  bool getFileLoggingEnabled() {
+    return getSetting<bool>(
+          StorageKeys.fileLoggingEnabled,
+          defaultValue: false,
+        ) ??
+        false;
+  }
+
+  /// 保存是否记录文件日志
+  Future<void> setFileLoggingEnabled(bool value) async {
+    await setSetting(StorageKeys.fileLoggingEnabled, value);
+  }
+
   // ==================== Default Generation Params ====================
 
   /// 获取默认模型
@@ -308,6 +324,20 @@ class LocalStorageService {
     await setSetting(StorageKeys.randomPromptMode, value);
   }
 
+  /// 获取随机生成算法模式
+  String getRandomGenerationMode() {
+    return getSetting<String>(
+          StorageKeys.randomGenerationMode,
+          defaultValue: 'nai_official',
+        ) ??
+        'nai_official';
+  }
+
+  /// 保存随机生成算法模式
+  Future<void> setRandomGenerationMode(String value) async {
+    await setSetting(StorageKeys.randomGenerationMode, value);
+  }
+
   /// 获取每次请求生成的图片数量 (默认1，最大4)
   int getImagesPerRequest() {
     return getSetting<int>(StorageKeys.imagesPerRequest, defaultValue: 1) ?? 1;
@@ -465,6 +495,17 @@ class LocalStorageService {
     await setSetting(StorageKeys.lastNoiseSchedule, noiseSchedule);
   }
 
+  /// 获取上次的 Variety+ 设置
+  bool getLastVarietyPlus() {
+    return getSetting<bool>(StorageKeys.lastVarietyPlus, defaultValue: false) ??
+        false;
+  }
+
+  /// 保存 Variety+ 设置
+  Future<void> setLastVarietyPlus(bool value) async {
+    await setSetting(StorageKeys.lastVarietyPlus, value);
+  }
+
   // ==================== Seed Lock ====================
 
   /// 获取种子是否锁定 (默认关闭)
@@ -578,6 +619,63 @@ class LocalStorageService {
     await setSetting(StorageKeys.promptMaximized, maximized);
   }
 
+  /// 获取固定词侧边栏展开状态 (默认收起)
+  bool getFixedTagsSidebarExpanded() {
+    return getSetting<bool>(
+          StorageKeys.fixedTagsSidebarExpanded,
+          defaultValue: false,
+        ) ??
+        false;
+  }
+
+  /// 保存固定词侧边栏展开状态
+  Future<void> setFixedTagsSidebarExpanded(bool expanded) async {
+    await setSetting(StorageKeys.fixedTagsSidebarExpanded, expanded);
+  }
+
+  /// 获取固定词侧边栏宽度 (默认280)
+  double getFixedTagsSidebarWidth() {
+    final value = getSetting(StorageKeys.fixedTagsSidebarWidth);
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    return 280.0;
+  }
+
+  /// 保存固定词侧边栏宽度
+  Future<void> setFixedTagsSidebarWidth(double width) async {
+    await setSetting(StorageKeys.fixedTagsSidebarWidth, width);
+  }
+
+  /// 获取固定词侧边栏视图模式
+  String getFixedTagsSidebarViewMode() {
+    final mode = getSetting<String>(
+      StorageKeys.fixedTagsSidebarViewMode,
+      defaultValue: 'list',
+    );
+    return mode == 'grid' ? 'grid' : 'list';
+  }
+
+  /// 保存固定词侧边栏视图模式
+  Future<void> setFixedTagsSidebarViewMode(String mode) async {
+    await setSetting(
+      StorageKeys.fixedTagsSidebarViewMode,
+      mode == 'grid' ? 'grid' : 'list',
+    );
+  }
+
+  /// 获取负向固定词区域高度 (默认180)
+  double getFixedTagsNegativeHeight() {
+    final value = getSetting(StorageKeys.fixedTagsNegativeHeight);
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    return 180.0;
+  }
+
+  /// 保存负向固定词区域高度
+  Future<void> setFixedTagsNegativeHeight(double height) async {
+    await setSetting(StorageKeys.fixedTagsNegativeHeight, height);
+  }
+
   // ==================== Character Panel Dock ====================
 
   /// 获取角色面板停靠状态 (默认未停靠)
@@ -612,6 +710,30 @@ class LocalStorageService {
   /// 保存固定词列表 JSON
   Future<void> setFixedTagsJson(String json) async {
     await setSetting(StorageKeys.fixedTagsData, json);
+  }
+
+  /// 获取固定词联动关系 JSON
+  String? getFixedTagLinksJson() {
+    return getSetting<String>(StorageKeys.fixedTagLinksData);
+  }
+
+  /// 保存固定词联动关系 JSON
+  Future<void> setFixedTagLinksJson(String json) async {
+    await setSetting(StorageKeys.fixedTagLinksData, json);
+  }
+
+  /// 获取负向固定词面板展开状态
+  bool getFixedTagsNegativePanelExpanded() {
+    return getSetting<bool>(
+          StorageKeys.fixedTagsNegativePanelExpanded,
+          defaultValue: true,
+        ) ??
+        true;
+  }
+
+  /// 保存负向固定词面板展开状态
+  Future<void> setFixedTagsNegativePanelExpanded(bool expanded) async {
+    await setSetting(StorageKeys.fixedTagsNegativePanelExpanded, expanded);
   }
 
   /// 获取固定词分类列表 JSON

@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 
 import '../../core/utils/app_logger.dart';
 import '../../core/utils/vibe_file_parser.dart';
-import '../../core/utils/vibe_image_embedder.dart';
 import '../models/vibe/vibe_library_entry.dart';
 import '../models/vibe/vibe_reference.dart';
 
@@ -31,19 +30,37 @@ class BundleImportOption {
   const BundleImportOption._({
     required this.keepAsBundle,
     this.selectedIndices,
+    this.configuredReferences,
   });
 
-  const BundleImportOption.keepAsBundle()
-    : this._(keepAsBundle: true, selectedIndices: null);
+  const BundleImportOption.keepAsBundle({
+    List<VibeReference>? configuredReferences,
+  }) : this._(
+          keepAsBundle: true,
+          selectedIndices: null,
+          configuredReferences: configuredReferences,
+        );
 
-  const BundleImportOption.split()
-    : this._(keepAsBundle: false, selectedIndices: null);
+  const BundleImportOption.split({
+    List<VibeReference>? configuredReferences,
+  }) : this._(
+          keepAsBundle: false,
+          selectedIndices: null,
+          configuredReferences: configuredReferences,
+        );
 
-  const BundleImportOption.select(List<int> indices)
-    : this._(keepAsBundle: false, selectedIndices: indices);
+  const BundleImportOption.select(
+    List<int> indices, {
+    List<VibeReference>? configuredReferences,
+  }) : this._(
+          keepAsBundle: false,
+          selectedIndices: indices,
+          configuredReferences: configuredReferences,
+        );
 
   final bool keepAsBundle;
   final List<int>? selectedIndices;
+  final List<VibeReference>? configuredReferences;
 }
 
 enum ConflictResolution {
@@ -100,7 +117,17 @@ class VibeImportResult {
 abstract class VibeLibraryImportRepository {
   Future<List<VibeLibraryEntry>> getAllEntries();
 
+  Future<VibeLibraryEntry?> findEntryByName(String name);
+
   Future<VibeLibraryEntry> saveEntry(VibeLibraryEntry entry);
+
+  Future<VibeLibraryEntry> saveBundleEntry(
+    List<VibeReference> vibes, {
+    required String name,
+    String? categoryId,
+    List<String>? tags,
+    VibeLibraryEntry? replaceEntry,
+  });
 }
 
 class VibeImportService {
@@ -135,8 +162,15 @@ class VibeImportService {
         );
         sourceItems.addAll(prepared);
       } catch (e, stackTrace) {
-        AppLogger.e('Failed to parse vibe import file: ${file.name}', e, stackTrace, 'VibeImportService');
-        errors.add(ImportError(source: file.name, error: '文件解析失败', details: e));
+        AppLogger.e(
+          'Failed to parse vibe import file: ${file.name}',
+          e,
+          stackTrace,
+          'VibeImportService',
+        );
+        errors.add(
+          ImportError(source: file.name, error: '文件解析失败', details: e),
+        );
       }
     }
 
@@ -153,7 +187,10 @@ class VibeImportService {
     return _mergeImportResult(result, errors);
   }
 
-  VibeImportResult _mergeImportResult(VibeImportResult result, List<ImportError> parseErrors) {
+  VibeImportResult _mergeImportResult(
+    VibeImportResult result,
+    List<ImportError> parseErrors,
+  ) {
     if (parseErrors.isEmpty) return result;
 
     return VibeImportResult(
@@ -181,18 +218,29 @@ class VibeImportService {
 
     for (final image in images) {
       try {
-        final result = await VibeImageEmbedder.extractVibeFromImage(image.bytes);
-        // Add all vibes from the image (handles both single and bundle)
-        for (final vibe in result.vibes) {
+        final references =
+            await VibeFileParser.parseFile(image.source, image.bytes);
+        for (final vibe in references) {
           AppLogger.d(
-            'Extracted vibe: ${vibe.displayName}, thumbnail: ${vibe.thumbnail != null ? '${vibe.thumbnail!.length} bytes' : 'null'}',
+            'Prepared vibe import: ${vibe.displayName}, sourceType=${vibe.sourceType.name}, thumbnail: ${vibe.thumbnail != null ? '${vibe.thumbnail!.length} bytes' : 'null'}',
             'VibeImportService',
           );
           sourceItems.add(_ParsedSource(source: image.source, reference: vibe));
         }
       } catch (e, stackTrace) {
-        AppLogger.e('Failed to extract vibe from image: ${image.source}', e, stackTrace, 'VibeImportService');
-        errors.add(ImportError(source: image.source, error: '图片不包含有效 Vibe 数据', details: e));
+        AppLogger.e(
+          'Failed to extract vibe from image: ${image.source}',
+          e,
+          stackTrace,
+          'VibeImportService',
+        );
+        errors.add(
+          ImportError(
+            source: image.source,
+            error: '图片不包含有效 Vibe 数据',
+            details: e,
+          ),
+        );
       }
     }
 
@@ -225,11 +273,19 @@ class VibeImportService {
       try {
         final references = await _parseEncodingItem(item);
         for (final reference in references) {
-          sourceItems.add(_ParsedSource(source: item.source, reference: reference));
+          sourceItems
+              .add(_ParsedSource(source: item.source, reference: reference));
         }
       } catch (e, stackTrace) {
-        AppLogger.e('Failed to parse vibe encoding: ${item.source}', e, stackTrace, 'VibeImportService');
-        errors.add(ImportError(source: item.source, error: '编码解析失败', details: e));
+        AppLogger.e(
+          'Failed to parse vibe encoding: ${item.source}',
+          e,
+          stackTrace,
+          'VibeImportService',
+        );
+        errors.add(
+          ImportError(source: item.source, error: '编码解析失败', details: e),
+        );
       }
     }
 
@@ -257,10 +313,7 @@ class VibeImportService {
   }) async {
     if (sources.isEmpty) return VibeImportResult.empty();
 
-    final existingEntries = await _repository.getAllEntries();
-    final nameMap = <String, VibeLibraryEntry>{
-      for (final entry in existingEntries) _normalizeName(entry.name): entry,
-    };
+    final nameMap = <String, VibeLibraryEntry>{};
 
     final importedEntries = <VibeLibraryEntry>[];
     final errors = <ImportError>[];
@@ -276,7 +329,8 @@ class VibeImportService {
       final defaultName = source.preferredName?.trim().isNotEmpty == true
           ? source.preferredName!.trim()
           : source.reference.displayName;
-      final baseName = defaultName.trim().isEmpty ? 'vibe-$current' : defaultName.trim();
+      final baseName =
+          defaultName.trim().isEmpty ? 'vibe-$current' : defaultName.trim();
 
       final isBatch = sources.length > 1;
       var candidateName = baseName;
@@ -290,16 +344,20 @@ class VibeImportService {
 
         if (customName == null || customName.trim().isEmpty) {
           skipCount++;
-          errors.add(ImportError(
-            source: source.source,
-            error: customName == null ? '用户取消命名，已跳过: $baseName' : '名称为空，已跳过: $baseName',
-          ),);
+          errors.add(
+            ImportError(
+              source: source.source,
+              error: customName == null
+                  ? '用户取消命名，已跳过: $baseName'
+                  : '名称为空，已跳过: $baseName',
+            ),
+          );
           continue;
         }
 
         candidateName = customName.trim();
         if (isBatch) {
-          candidateName = _resolveBatchNaming(
+          candidateName = await _resolveBatchNaming(
             baseName: candidateName,
             usageMap: batchNamingIndexMap,
             existingNameMap: nameMap,
@@ -307,13 +365,18 @@ class VibeImportService {
         }
       }
 
-      onProgress?.call(current, sources.length, '$progressPrefix($current/${sources.length}): $baseName');
+      onProgress?.call(
+        current,
+        sources.length,
+        '$progressPrefix($current/${sources.length}): $baseName',
+      );
 
       try {
-        final conflictEntry = nameMap[_normalizeName(candidateName)];
+        final conflictEntry =
+            await _findEntryByNameCached(candidateName, nameMap);
         if (conflictEntry != null) hasConflicts = true;
 
-        final resolvedName = _resolveName(
+        final resolvedName = await _resolveName(
           preferredName: candidateName,
           existingNameMap: nameMap,
           strategy: conflictResolution,
@@ -322,34 +385,58 @@ class VibeImportService {
 
         if (resolvedName == null) {
           skipCount++;
-          errors.add(ImportError(source: source.source, error: '名称冲突，已跳过: $baseName'));
+          errors.add(
+            ImportError(source: source.source, error: '名称冲突，已跳过: $baseName'),
+          );
           continue;
         }
 
-        final entry = _buildEntry(
-          source.reference,
-          name: resolvedName,
-          categoryId: categoryId,
-          tags: tags,
-          conflictEntry: conflictEntry,
-          strategy: conflictResolution,
-          bundledReferences: source.bundledReferences,
-          bundleFileName: source.bundleFileName,
-        );
+        final bundledReferences = source.bundledReferences;
+        final VibeLibraryEntry saved;
+        if (bundledReferences != null && bundledReferences.isNotEmpty) {
+          saved = await _repository.saveBundleEntry(
+            bundledReferences,
+            name: resolvedName,
+            categoryId: categoryId,
+            tags: tags,
+            replaceEntry: conflictEntry != null &&
+                    conflictResolution == ConflictResolution.replace
+                ? conflictEntry
+                : null,
+          );
+        } else {
+          final entry = _buildEntry(
+            source.reference,
+            name: resolvedName,
+            categoryId: categoryId,
+            tags: tags,
+            conflictEntry: conflictEntry,
+            strategy: conflictResolution,
+            bundleFileName: source.bundleFileName,
+          );
 
-        AppLogger.d(
-          'Built entry: ${entry.name}, thumbnail: ${entry.thumbnail != null ? '${entry.thumbnail!.length} bytes' : 'null'}, '
-          'vibeThumbnail: ${entry.vibeThumbnail != null ? '${entry.vibeThumbnail!.length} bytes' : 'null'}',
-          'VibeImportService',
-        );
+          AppLogger.d(
+            'Built entry: ${entry.name}, thumbnail: ${entry.thumbnail != null ? '${entry.thumbnail!.length} bytes' : 'null'}, '
+                'vibeThumbnail: ${entry.vibeThumbnail != null ? '${entry.vibeThumbnail!.length} bytes' : 'null'}',
+            'VibeImportService',
+          );
 
-        final saved = await _repository.saveEntry(entry);
+          saved = await _repository.saveEntry(entry);
+        }
+
         importedEntries.add(saved);
         successCount++;
         nameMap[_normalizeName(saved.name)] = saved;
       } catch (e, stackTrace) {
-        AppLogger.e('Failed to import vibe: ${source.source}', e, stackTrace, 'VibeImportService');
-        errors.add(ImportError(source: source.source, error: '保存失败', details: e));
+        AppLogger.e(
+          'Failed to import vibe: ${source.source}',
+          e,
+          stackTrace,
+          'VibeImportService',
+        );
+        errors.add(
+          ImportError(source: source.source, error: '保存失败', details: e),
+        );
         failCount++;
       }
     }
@@ -387,8 +474,7 @@ class VibeImportService {
     }
 
     if (normalized.startsWith('{')) {
-      final jsonObject =
-          jsonDecode(normalized) as Map<String, dynamic>;
+      final jsonObject = jsonDecode(normalized) as Map<String, dynamic>;
 
       if (jsonObject.containsKey('vibes')) {
         final bundleBytes = Uint8List.fromList(utf8.encode(normalized));
@@ -423,17 +509,34 @@ class VibeImportService {
     return name.trim().toLowerCase();
   }
 
-  String _resolveBatchNaming({
+  Future<VibeLibraryEntry?> _findEntryByNameCached(
+    String name,
+    Map<String, VibeLibraryEntry> nameMap,
+  ) async {
+    final normalized = _normalizeName(name);
+    final cached = nameMap[normalized];
+    if (cached != null) {
+      return cached;
+    }
+
+    final existing = await _repository.findEntryByName(name);
+    if (existing != null) {
+      nameMap[_normalizeName(existing.name)] = existing;
+    }
+    return existing;
+  }
+
+  Future<String> _resolveBatchNaming({
     required String baseName,
     required Map<String, int> usageMap,
     required Map<String, VibeLibraryEntry> existingNameMap,
-  }) {
+  }) async {
     final normalizedBase = _normalizeName(baseName);
     var index = usageMap[normalizedBase] ?? 0;
 
     while (true) {
       final candidate = index == 0 ? baseName : '$baseName-$index';
-      if (!existingNameMap.containsKey(_normalizeName(candidate))) {
+      if (await _findEntryByNameCached(candidate, existingNameMap) == null) {
         usageMap[normalizedBase] = index + 1;
         return candidate;
       }
@@ -462,16 +565,31 @@ class VibeImportService {
       return const <_ParsedSource>[];
     }
 
+    final configuredReferences = _normalizeConfiguredReferences(
+      references,
+      option.configuredReferences,
+    );
+
     if (option.keepAsBundle) {
-      return _createBundleSource(fileName, references);
+      return _createBundleSource(fileName, configuredReferences);
     }
 
     final filteredReferences = _filterReferencesByIndices(
-      references,
+      configuredReferences,
       option.selectedIndices,
     );
 
     return _mapToParsedSources(fileName, filteredReferences);
+  }
+
+  List<VibeReference> _normalizeConfiguredReferences(
+    List<VibeReference> original,
+    List<VibeReference>? configured,
+  ) {
+    if (configured == null || configured.length != original.length) {
+      return original;
+    }
+    return configured;
   }
 
   List<_ParsedSource> _createBundleSource(
@@ -510,7 +628,12 @@ class VibeImportService {
     List<VibeReference> references,
   ) {
     return references
-        .map((reference) => _ParsedSource(source: fileName, reference: reference))
+        .map(
+          (reference) => _ParsedSource(
+            source: fileName,
+            reference: reference,
+          ),
+        )
         .toList();
   }
 
@@ -533,28 +656,32 @@ class VibeImportService {
     return fileName;
   }
 
-  String? _resolveName({
+  Future<String?> _resolveName({
     required String preferredName,
     required Map<String, VibeLibraryEntry> existingNameMap,
     required ConflictResolution strategy,
     required VibeLibraryEntry? conflictEntry,
-  }) {
+  }) async {
     if (conflictEntry == null) return preferredName;
 
-    return switch (strategy) {
-      ConflictResolution.skip || ConflictResolution.ask => null,
-      ConflictResolution.replace => preferredName,
-      ConflictResolution.rename => _generateUniqueName(preferredName, existingNameMap),
-    };
+    switch (strategy) {
+      case ConflictResolution.skip:
+      case ConflictResolution.ask:
+        return null;
+      case ConflictResolution.replace:
+        return preferredName;
+      case ConflictResolution.rename:
+        return await _generateUniqueName(preferredName, existingNameMap);
+    }
   }
 
-  String _generateUniqueName(
+  Future<String> _generateUniqueName(
     String baseName,
     Map<String, VibeLibraryEntry> existingNameMap,
-  ) {
+  ) async {
     var index = 2;
     var candidate = '$baseName ($index)';
-    while (existingNameMap.containsKey(_normalizeName(candidate))) {
+    while (await _findEntryByNameCached(candidate, existingNameMap) != null) {
       index++;
       candidate = '$baseName ($index)';
     }
@@ -590,6 +717,8 @@ class VibeImportService {
         bundledVibeNames: bundleData.names,
         bundledVibePreviews: bundleData.previews,
         bundledVibeEncodings: bundleData.encodings,
+        bundledVibeStrengths: bundleData.strengths,
+        bundledVibeInfoExtracted: bundleData.infoExtracted,
         filePath: bundleFileName,
       );
     }
@@ -605,14 +734,28 @@ class VibeImportService {
       bundledVibeNames: bundleData.names,
       bundledVibePreviews: bundleData.previews,
       bundledVibeEncodings: bundleData.encodings,
+      bundledVibeStrengths: bundleData.strengths,
+      bundledVibeInfoExtracted: bundleData.infoExtracted,
     );
   }
 
-  ({List<String>? names, List<Uint8List>? previews, List<String>? encodings}) _extractBundleData(
+  ({
+    List<String>? names,
+    List<Uint8List>? previews,
+    List<String>? encodings,
+    List<double>? strengths,
+    List<double>? infoExtracted,
+  }) _extractBundleData(
     List<VibeReference>? bundledReferences,
   ) {
     if (bundledReferences == null || bundledReferences.isEmpty) {
-      return (names: null, previews: null, encodings: null);
+      return (
+        names: null,
+        previews: null,
+        encodings: null,
+        strengths: null,
+        infoExtracted: null,
+      );
     }
 
     final names = bundledReferences
@@ -630,11 +773,18 @@ class VibeImportService {
         .map((item) => item.vibeEncoding)
         .where((item) => item.trim().isNotEmpty)
         .toList();
+    final strengths =
+        bundledReferences.map((item) => item.strength).toList(growable: false);
+    final infoExtracted = bundledReferences
+        .map((item) => item.infoExtracted)
+        .toList(growable: false);
 
     return (
       names: names.isNotEmpty ? names : null,
       previews: previews.isNotEmpty ? previews : null,
       encodings: encodings.isNotEmpty ? encodings : null,
+      strengths: strengths,
+      infoExtracted: infoExtracted,
     );
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/localization_extension.dart';
-import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/comfyui_prompt_parser/pipe_parser.dart';
 import '../../../../core/utils/nai_prompt_formatter.dart';
 import '../../../../core/utils/sd_to_nai_converter.dart';
@@ -15,6 +14,7 @@ import '../../../providers/character_prompt_provider.dart';
 import '../../../providers/fixed_tags_provider.dart';
 import '../../../providers/image_generation_provider.dart';
 import '../../../providers/prompt_maximize_provider.dart';
+import '../../../providers/prompt_token_counter_provider.dart';
 import '../../../providers/quality_preset_provider.dart';
 import '../../../providers/queue_execution_provider.dart';
 import '../../../providers/uc_preset_provider.dart';
@@ -23,6 +23,7 @@ import '../../../widgets/common/app_toast.dart';
 import '../../../widgets/prompt/unified/unified_prompt_input.dart';
 import '../../../widgets/prompt/unified/unified_prompt_config.dart';
 import '../../../widgets/prompt/nai_syntax_controller.dart';
+import '../../../widgets/prompt/prompt_token_count_bar.dart';
 import '../../../widgets/prompt/quality_tags_selector.dart';
 import '../../../widgets/prompt/random_mode_selector.dart';
 import '../../../widgets/prompt/toolbar/toolbar.dart';
@@ -31,6 +32,10 @@ import '../../../widgets/character/character_prompt_button.dart';
 import '../../../widgets/prompt/fixed_tags_button.dart';
 import '../../../providers/pending_prompt_provider.dart';
 import '../../../prompt_assistant/providers/prompt_assistant_config_provider.dart';
+import '../../../prompt_assistant/providers/prompt_assistant_history_provider.dart';
+
+bool usesRichPromptTypeTooltip(TargetPlatform platform) =>
+    platform != TargetPlatform.windows;
 
 /// Prompt 输入组件 (带自动补全)
 class PromptInputWidget extends ConsumerStatefulWidget {
@@ -183,8 +188,10 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
     // 显示提示
     if (mounted) {
       final message = clearExisting
-          ? '已替换角色提示词'
-          : '已追加角色提示词 (${ref.read(characterPromptNotifierProvider).characters.length}个角色)';
+          ? context.l10n.prompt_characterPromptReplaced
+          : context.l10n.prompt_characterPromptAppended(
+              ref.read(characterPromptNotifierProvider).characters.length,
+            );
       AppToast.success(context, message);
     }
   }
@@ -231,7 +238,9 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
     // 显示提示
     if (mounted) {
       final charCount = result.characters.length;
-      final message = charCount > 0 ? '已分解：主提示词 + $charCount个角色' : '已应用到主提示词';
+      final message = charCount > 0
+          ? context.l10n.prompt_smartDecomposedWithCharacters(charCount)
+          : context.l10n.prompt_appliedToMainPrompt;
       AppToast.success(context, message);
     }
   }
@@ -330,19 +339,14 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SwitchListTile(
-                    title: const Text('启用提示词助手'),
+                    title: Text(context.l10n.promptAssistant_enableAssistant),
                     value: config.enabled,
                     onChanged: notifier.setEnabled,
                   ),
                   SwitchListTile(
-                    title: const Text('桌面右下角浮层'),
+                    title: Text(context.l10n.promptAssistant_desktopOverlay),
                     value: config.desktopOverlayEnabled,
                     onChanged: notifier.setDesktopOverlayEnabled,
-                  ),
-                  SwitchListTile(
-                    title: const Text('流式输出'),
-                    value: config.streamOutput,
-                    onChanged: notifier.setStreamOutput,
                   ),
                 ],
               ),
@@ -359,7 +363,13 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
 
     // 监听 Provider 变化，自动同步到本地状态
     // 注意：队列运行时不同步，避免替换用户正在编辑的提示词
-    ref.listen(generationParamsNotifierProvider, (previous, next) {
+    ref.listen(
+        generationParamsNotifierProvider.select(
+          (params) => (
+            prompt: params.prompt,
+            negativePrompt: params.negativePrompt,
+          ),
+        ), (previous, next) {
       // 检查队列执行状态，队列运行/就绪时跳过同步
       bool isQueueActive = false;
       try {
@@ -415,6 +425,12 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
               ? _buildTextNegativeInput(theme)
               : _buildTextPromptInput(theme),
         ),
+        _PromptTokenCountFooter(
+          target: _isNegativeMode
+              ? PromptTokenCountTarget.negative
+              : PromptTokenCountTarget.positive,
+          topPadding: 6,
+        ),
       ],
     );
   }
@@ -430,7 +446,9 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
         .length;
 
     // 获取模型
-    final model = ref.watch(generationParamsNotifierProvider).model;
+    final model = ref.watch(
+      generationParamsNotifierProvider.select((params) => params.model),
+    );
 
     return Wrap(
       spacing: 8, // 水平间距
@@ -544,18 +562,24 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
     final fixedTagsState = ref.watch(fixedTagsNotifierProvider);
     final enabledPrefixes = fixedTagsState.enabledPrefixes;
     final enabledSuffixes = fixedTagsState.enabledSuffixes;
+    final negativeEnabledPrefixes = fixedTagsState.negativeEnabledPrefixes;
+    final negativeEnabledSuffixes = fixedTagsState.negativeEnabledSuffixes;
 
     // 获取质量词数据
     final qualityState = ref.watch(qualityPresetNotifierProvider);
-    final params = ref.watch(generationParamsNotifierProvider);
+    final model = ref.watch(
+      generationParamsNotifierProvider.select((params) => params.model),
+    );
     final qualityContent = ref
         .watch(qualityPresetNotifierProvider.notifier)
-        .getEffectiveContent(params.model);
+        .getEffectiveContent(model);
 
     // 获取负面词预设数据
-    final ucState = ref.watch(ucPresetNotifierProvider);
-    final ucPresetContent =
-        UcPresets.getPresetContent(params.model, ucState.presetType);
+    ref.watch(ucPresetNotifierProvider);
+    final ucPresetContent = ref
+            .watch(ucPresetNotifierProvider.notifier)
+            .getEffectiveContent(model) ??
+        '';
 
     // 获取多角色数据
     final characterConfig = ref.watch(characterPromptNotifierProvider);
@@ -599,9 +623,9 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
           tooltipBuilder: (theme) => _NegativePromptTooltip(
             theme: theme,
             userNegativePrompt: _negativeController.text,
-            ucPresetType: ucState.presetType,
+            prefixes: negativeEnabledPrefixes,
+            suffixes: negativeEnabledSuffixes,
             ucPresetContent: ucPresetContent,
-            isCustom: ucState.isCustom,
             l10n: context.l10n,
             aliasResolver: aliasResolver,
           ),
@@ -624,9 +648,10 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
     final enableSdSyntaxAutoConvert =
         ref.watch(sdSyntaxAutoConvertSettingsProvider);
     return UnifiedPromptInput(
+      key: const ValueKey('generation_prompt_positive_input'),
       controller: _promptController,
       focusNode: _promptFocusNode,
-      sessionId: 'generation_prompt_main',
+      sessionId: PromptHistorySessionIds.generationPrompt,
       onOpenAssistantSettings: _openAssistantQuickSettings,
       config: UnifiedPromptConfig(
         enableSyntaxHighlight: enableHighlight,
@@ -661,7 +686,10 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
             .read(generationParamsNotifierProvider.notifier)
             .updatePrompt(globalPrompt);
         // 显示成功提示
-        AppToast.success(context, '已导入 ${characters.length} 个角色');
+        AppToast.success(
+          context,
+          context.l10n.prompt_importedCharacters(characters.length),
+        );
       },
       onChanged: (value) {
         ref.read(generationParamsNotifierProvider.notifier).updatePrompt(value);
@@ -727,9 +755,10 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
     final enableSdSyntaxAutoConvert =
         ref.watch(sdSyntaxAutoConvertSettingsProvider);
     return UnifiedPromptInput(
+      key: const ValueKey('generation_prompt_negative_input'),
       controller: _negativeController,
       focusNode: _negativeFocusNode,
-      sessionId: 'generation_prompt_negative',
+      sessionId: PromptHistorySessionIds.generationNegative,
       onOpenAssistantSettings: _openAssistantQuickSettings,
       config: UnifiedPromptConfig(
         enableSyntaxHighlight: enableHighlight,
@@ -761,59 +790,99 @@ class _PromptInputWidgetState extends ConsumerState<PromptInputWidget> {
   Widget _buildCompactLayout(ThemeData theme) {
     final enableHighlight = ref.watch(highlightEmphasisSettingsProvider);
     final enableAutocomplete = ref.watch(autocompleteSettingsProvider);
-    return UnifiedPromptInput(
-      controller: _promptController,
-      focusNode: _promptFocusNode,
-      sessionId: 'generation_prompt_compact',
-      onOpenAssistantSettings: _openAssistantQuickSettings,
-      config: UnifiedPromptConfig(
-        enableSyntaxHighlight: enableHighlight,
-        enableAutocomplete: enableAutocomplete,
-        enableComfyuiImport: true,
-        autocompleteConfig: const AutocompleteConfig(
-          maxSuggestions: 15,
-          showTranslation: true,
-          autoInsertComma: true,
-        ),
-        hintText: context.l10n.prompt_inputPrompt,
-      ),
-      decoration: InputDecoration(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.fullscreen),
-              tooltip: context.l10n.tooltip_fullscreenEdit,
-              onPressed: widget.onToggleMaximize ??
-                  () => ref
-                      .read(promptMaximizeNotifierProvider.notifier)
-                      .toggle(),
-            ),
-            if (_promptController.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.clear, size: 20),
-                onPressed: _clearPrompt,
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 72,
+          child: UnifiedPromptInput(
+            controller: _promptController,
+            focusNode: _promptFocusNode,
+            sessionId: PromptHistorySessionIds.generationPrompt,
+            onOpenAssistantSettings: _openAssistantQuickSettings,
+            config: UnifiedPromptConfig(
+              enableSyntaxHighlight: enableHighlight,
+              enableAutocomplete: enableAutocomplete,
+              enableComfyuiImport: true,
+              autocompleteConfig: const AutocompleteConfig(
+                maxSuggestions: 15,
+                showTranslation: true,
+                autoInsertComma: true,
               ),
-          ],
+              hintText: context.l10n.prompt_inputPrompt,
+            ),
+            decoration: InputDecoration(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.fullscreen),
+                    tooltip: context.l10n.tooltip_fullscreenEdit,
+                    onPressed: widget.onToggleMaximize ??
+                        () => ref
+                            .read(promptMaximizeNotifierProvider.notifier)
+                            .toggle(),
+                  ),
+                  if (_promptController.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear, size: 20),
+                      onPressed: _clearPrompt,
+                    ),
+                ],
+              ),
+            ),
+            maxLines: 2,
+            minLines: 1,
+            onComfyuiImport: (globalPrompt, characters) {
+              ref.read(characterPromptNotifierProvider.notifier).clearAll();
+              ref
+                  .read(characterPromptNotifierProvider.notifier)
+                  .replaceAll(characters);
+              ref
+                  .read(generationParamsNotifierProvider.notifier)
+                  .updatePrompt(globalPrompt);
+              AppToast.success(
+                context,
+                context.l10n.prompt_importedCharacters(characters.length),
+              );
+            },
+            onChanged: (value) {
+              ref
+                  .read(generationParamsNotifierProvider.notifier)
+                  .updatePrompt(value);
+            },
+          ),
         ),
+        const _PromptTokenCountFooter(
+          target: PromptTokenCountTarget.positive,
+          topPadding: 4,
+        ),
+      ],
+    );
+  }
+}
+
+class _PromptTokenCountFooter extends ConsumerWidget {
+  const _PromptTokenCountFooter({
+    required this.target,
+    required this.topPadding,
+  });
+
+  final PromptTokenCountTarget target;
+  final double topPadding;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokenUsage = ref.watch(promptTokenUsageProvider(target));
+    return Padding(
+      padding: EdgeInsets.only(top: topPadding),
+      child: RepaintBoundary(
+        child: PromptTokenCountAsyncBar(usage: tokenUsage),
       ),
-      maxLines: 2,
-      minLines: 1,
-      onComfyuiImport: (globalPrompt, characters) {
-        ref.read(characterPromptNotifierProvider.notifier).clearAll();
-        ref
-            .read(characterPromptNotifierProvider.notifier)
-            .replaceAll(characters);
-        ref
-            .read(generationParamsNotifierProvider.notifier)
-            .updatePrompt(globalPrompt);
-        AppToast.success(context, '已导入 ${characters.length} 个角色');
-      },
-      onChanged: (value) {
-        ref.read(generationParamsNotifierProvider.notifier).updatePrompt(value);
-      },
     );
   }
 }
@@ -935,7 +1004,7 @@ class _PositivePromptTooltip extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 Colors.transparent,
-                theme.colorScheme.outlineVariant.withOpacity(0.4),
+                theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
                 Colors.transparent,
               ],
             ),
@@ -954,13 +1023,13 @@ class _PositivePromptTooltip extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            theme.colorScheme.primary.withOpacity(isDark ? 0.2 : 0.1),
-            theme.colorScheme.primary.withOpacity(isDark ? 0.1 : 0.05),
+            theme.colorScheme.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+            theme.colorScheme.primary.withValues(alpha: isDark ? 0.1 : 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -996,8 +1065,8 @@ class _PositivePromptTooltip extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: isDark
-            ? theme.colorScheme.surfaceContainerHigh.withOpacity(0.4)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1013,7 +1082,7 @@ class _PositivePromptTooltip extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [color, color.withOpacity(0.4)],
+                    colors: [color, color.withValues(alpha: 0.4)],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -1044,7 +1113,7 @@ class _PositivePromptTooltip extends StatelessWidget {
                   content,
                   style: TextStyle(
                     fontSize: 11,
-                    color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
                 ),
               ),
@@ -1064,14 +1133,15 @@ class _PositivePromptTooltip extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primaryContainer.withOpacity(isDark ? 0.3 : 0.4),
+            theme.colorScheme.primaryContainer
+                .withValues(alpha: isDark ? 0.3 : 0.4),
             theme.colorScheme.secondaryContainer
-                .withOpacity(isDark ? 0.2 : 0.3),
+                .withValues(alpha: isDark ? 0.2 : 0.3),
           ],
         ),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
+          color: theme.colorScheme.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -1173,8 +1243,8 @@ class _PositivePromptTooltip extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: isDark
-            ? theme.colorScheme.surfaceContainerHigh.withOpacity(0.4)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1190,7 +1260,7 @@ class _PositivePromptTooltip extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [color, color.withOpacity(0.4)],
+                    colors: [color, color.withValues(alpha: 0.4)],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -1210,7 +1280,7 @@ class _PositivePromptTooltip extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -1243,7 +1313,8 @@ class _PositivePromptTooltip extends StatelessWidget {
                                   ? Icons.male
                                   : Icons.person,
                           size: 11,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -1251,8 +1322,8 @@ class _PositivePromptTooltip extends StatelessWidget {
                             '${character.name}: ${character.toNaiPrompt(useAiPosition: globalAiChoice)}',
                             style: TextStyle(
                               fontSize: 10,
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.8),
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.8),
                             ),
                           ),
                         ),
@@ -1273,18 +1344,18 @@ class _PositivePromptTooltip extends StatelessWidget {
 class _NegativePromptTooltip extends StatelessWidget {
   final ThemeData theme;
   final String userNegativePrompt;
-  final UcPresetType ucPresetType;
+  final List<FixedTagEntry> prefixes;
+  final List<FixedTagEntry> suffixes;
   final String ucPresetContent;
-  final bool isCustom;
   final dynamic l10n;
   final AliasResolverService aliasResolver;
 
   const _NegativePromptTooltip({
     required this.theme,
     required this.userNegativePrompt,
-    required this.ucPresetType,
+    required this.prefixes,
+    required this.suffixes,
     required this.ucPresetContent,
-    required this.isCustom,
     required this.l10n,
     required this.aliasResolver,
   });
@@ -1293,6 +1364,8 @@ class _NegativePromptTooltip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = theme.brightness == Brightness.dark;
     final hasUserInput = userNegativePrompt.trim().isNotEmpty;
+    final hasPrefixes = prefixes.isNotEmpty;
+    final hasSuffixes = suffixes.isNotEmpty;
     final hasPreset = ucPresetContent.isNotEmpty;
 
     // 构建最终生效的完整负面提示词
@@ -1319,6 +1392,20 @@ class _NegativePromptTooltip extends StatelessWidget {
           const SizedBox(height: 8),
         ],
 
+        // 负向固定词（前缀）- 解析别名
+        if (hasPrefixes) ...[
+          _buildSection(
+            icon: Icons.arrow_forward_rounded,
+            label: l10n.prompt_negativeFixedTagPrefix,
+            color: theme.colorScheme.error,
+            content: prefixes
+                .map((entry) => aliasResolver.resolveAliases(entry.content))
+                .join(', '),
+            isDark: isDark,
+          ),
+          const SizedBox(height: 8),
+        ],
+
         // 用户输入 - 解析别名
         if (hasUserInput) ...[
           _buildSection(
@@ -1326,6 +1413,20 @@ class _NegativePromptTooltip extends StatelessWidget {
             label: l10n.prompt_mainNegative,
             color: theme.colorScheme.tertiary,
             content: aliasResolver.resolveAliases(userNegativePrompt.trim()),
+            isDark: isDark,
+          ),
+          const SizedBox(height: 8),
+        ],
+
+        // 负向固定词（后缀）- 解析别名
+        if (hasSuffixes) ...[
+          _buildSection(
+            icon: Icons.arrow_back_rounded,
+            label: l10n.prompt_negativeFixedTagSuffix,
+            color: theme.colorScheme.tertiary,
+            content: suffixes
+                .map((entry) => aliasResolver.resolveAliases(entry.content))
+                .join(', '),
             isDark: isDark,
           ),
           const SizedBox(height: 8),
@@ -1339,7 +1440,7 @@ class _NegativePromptTooltip extends StatelessWidget {
             gradient: LinearGradient(
               colors: [
                 Colors.transparent,
-                theme.colorScheme.outlineVariant.withOpacity(0.4),
+                theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
                 Colors.transparent,
               ],
             ),
@@ -1358,13 +1459,13 @@ class _NegativePromptTooltip extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            theme.colorScheme.error.withOpacity(isDark ? 0.2 : 0.1),
-            theme.colorScheme.error.withOpacity(isDark ? 0.1 : 0.05),
+            theme.colorScheme.error.withValues(alpha: isDark ? 0.2 : 0.1),
+            theme.colorScheme.error.withValues(alpha: isDark ? 0.1 : 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.colorScheme.error.withOpacity(0.2),
+          color: theme.colorScheme.error.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -1400,8 +1501,8 @@ class _NegativePromptTooltip extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: isDark
-            ? theme.colorScheme.surfaceContainerHigh.withOpacity(0.4)
-            : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.4)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1417,7 +1518,7 @@ class _NegativePromptTooltip extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [color, color.withOpacity(0.4)],
+                    colors: [color, color.withValues(alpha: 0.4)],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
@@ -1448,7 +1549,7 @@ class _NegativePromptTooltip extends StatelessWidget {
                   content,
                   style: TextStyle(
                     fontSize: 11,
-                    color: theme.colorScheme.onSurface.withOpacity(0.8),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
                 ),
               ),
@@ -1468,14 +1569,15 @@ class _NegativePromptTooltip extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.errorContainer.withOpacity(isDark ? 0.3 : 0.4),
+            theme.colorScheme.errorContainer
+                .withValues(alpha: isDark ? 0.3 : 0.4),
             theme.colorScheme.surfaceContainerHighest
-                .withOpacity(isDark ? 0.2 : 0.3),
+                .withValues(alpha: isDark ? 0.2 : 0.3),
           ],
         ),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: theme.colorScheme.error.withOpacity(0.2),
+          color: theme.colorScheme.error.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -1541,8 +1643,20 @@ class _NegativePromptTooltip extends StatelessWidget {
     }
 
     // 用户输入（解析别名）
+    for (final prefix in prefixes) {
+      if (prefix.content.trim().isNotEmpty) {
+        parts.add(aliasResolver.resolveAliases(prefix.content.trim()));
+      }
+    }
+
     if (userNegativePrompt.trim().isNotEmpty) {
       parts.add(aliasResolver.resolveAliases(userNegativePrompt.trim()));
+    }
+
+    for (final suffix in suffixes) {
+      if (suffix.content.trim().isNotEmpty) {
+        parts.add(aliasResolver.resolveAliases(suffix.content.trim()));
+      }
     }
 
     return parts.join(', ');
@@ -1600,6 +1714,7 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final useRichTooltip = usesRichPromptTypeTooltip(theme.platform);
 
     final button = MouseRegion(
       onEnter: (_) => setState(() => _isHovering = true),
@@ -1629,8 +1744,8 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        widget.color.withOpacity(0.2),
-                        widget.color.withOpacity(0.1),
+                        widget.color.withValues(alpha: 0.2),
+                        widget.color.withValues(alpha: 0.1),
                       ],
                     )
                   : null,
@@ -1642,16 +1757,16 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: widget.isSelected
-                    ? widget.color.withOpacity(0.5)
+                    ? widget.color.withValues(alpha: 0.5)
                     : (_isHovering
-                        ? theme.colorScheme.outline.withOpacity(0.3)
+                        ? theme.colorScheme.outline.withValues(alpha: 0.3)
                         : Colors.transparent),
                 width: widget.isSelected ? 1.5 : 1,
               ),
               boxShadow: widget.isSelected
                   ? [
                       BoxShadow(
-                        color: widget.color.withOpacity(0.2),
+                        color: widget.color.withValues(alpha: 0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -1667,7 +1782,7 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: widget.isSelected
-                        ? widget.color.withOpacity(0.15)
+                        ? widget.color.withValues(alpha: 0.15)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -1676,7 +1791,7 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
                     size: 16,
                     color: widget.isSelected
                         ? widget.color
-                        : theme.colorScheme.onSurface.withOpacity(0.5),
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1689,7 +1804,7 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
                         widget.isSelected ? FontWeight.w600 : FontWeight.w500,
                     color: widget.isSelected
                         ? widget.color
-                        : theme.colorScheme.onSurface.withOpacity(0.7),
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     letterSpacing: 0.3,
                   ),
                 ),
@@ -1701,7 +1816,7 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: widget.isSelected
-                          ? widget.color.withOpacity(0.2)
+                          ? widget.color.withValues(alpha: 0.2)
                           : theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -1712,7 +1827,8 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
                         fontWeight: FontWeight.w600,
                         color: widget.isSelected
                             ? widget.color
-                            : theme.colorScheme.onSurface.withOpacity(0.6),
+                            : theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
                       ),
                     ),
                   ),
@@ -1727,12 +1843,15 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
     // 如果有 tooltipBuilder，包裹 Tooltip
     if (widget.tooltipBuilder != null) {
       return Tooltip(
-        richMessage: WidgetSpan(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: widget.tooltipBuilder!(theme),
-          ),
-        ),
+        message: useRichTooltip ? null : widget.label,
+        richMessage: useRichTooltip
+            ? WidgetSpan(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: widget.tooltipBuilder!(theme),
+                ),
+              )
+            : null,
         preferBelow: true,
         verticalOffset: 20,
         waitDuration: const Duration(milliseconds: 300),
@@ -1741,7 +1860,7 @@ class _PromptTypeButtonState extends State<_PromptTypeButton>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1793,14 +1912,16 @@ class _CopyIconButtonState extends State<_CopyIconButton> {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: _isHovering
-                ? widget.color.withOpacity(0.15)
+                ? widget.color.withValues(alpha: 0.15)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
           child: Icon(
             Icons.copy_rounded,
             size: 14,
-            color: _isHovering ? widget.color : widget.color.withOpacity(0.6),
+            color: _isHovering
+                ? widget.color
+                : widget.color.withValues(alpha: 0.6),
           ),
         ),
       ),

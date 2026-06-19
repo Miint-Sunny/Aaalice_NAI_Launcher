@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/cache/gallery_cache_manager.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/gallery_performance_monitor.dart';
+import '../../../core/utils/localization_extension.dart';
 
 /// 缓存监控状态
 class CacheMonitorState {
@@ -150,7 +151,8 @@ class CacheMonitorController extends StateNotifier<CacheMonitorState> {
 }
 
 /// 缓存监控 Provider
-final cacheMonitorProvider = StateNotifierProvider<CacheMonitorController, CacheMonitorState>(
+final cacheMonitorProvider =
+    StateNotifierProvider<CacheMonitorController, CacheMonitorState>(
   (ref) => CacheMonitorController(),
 );
 
@@ -268,7 +270,7 @@ class CacheMonitorWidget extends ConsumerWidget {
                 Icon(Icons.analytics_outlined, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  '缓存监控',
+                  context.l10n.localGallery_cacheMonitor,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -287,13 +289,13 @@ class CacheMonitorWidget extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     onPressed: controller.refresh,
-                    tooltip: '刷新',
+                    tooltip: context.l10n.common_refresh,
                   ),
                 if (onClose != null)
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: onClose,
-                    tooltip: '关闭',
+                    tooltip: context.l10n.common_close,
                   ),
               ],
             ),
@@ -309,7 +311,11 @@ class CacheMonitorWidget extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: colorScheme.error, size: 16),
+                    Icon(
+                      Icons.error_outline,
+                      color: colorScheme.error,
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -372,6 +378,7 @@ class _CacheStatisticsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,7 +386,7 @@ class _CacheStatisticsPanel extends StatelessWidget {
         Row(
           children: [
             Text(
-              '三层缓存统计',
+              l10n.localGallery_threeLayerCacheStats,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -387,7 +394,9 @@ class _CacheStatisticsPanel extends StatelessWidget {
             const Spacer(),
             if (lastRefreshTime != null)
               Text(
-                '更新: ${_formatTime(lastRefreshTime!)}',
+                l10n.localGallery_updatedAt(
+                  _formatTime(context, lastRefreshTime!),
+                ),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: colorScheme.outline,
                 ),
@@ -398,7 +407,7 @@ class _CacheStatisticsPanel extends StatelessWidget {
         // L1 内存缓存
         _CacheLevelCard(
           level: 'L1',
-          name: '内存缓存',
+          name: l10n.localGallery_memoryCache,
           size: statistics.l1MemorySize,
           hitRate: statistics.l1HitRate,
           color: Colors.blue,
@@ -408,7 +417,7 @@ class _CacheStatisticsPanel extends StatelessWidget {
         // L2 Hive 缓存
         _CacheLevelCard(
           level: 'L2',
-          name: 'Hive 缓存',
+          name: l10n.localGallery_hiveCache,
           size: statistics.l2HiveSize,
           hitRate: statistics.l2HitRate,
           color: Colors.green,
@@ -427,7 +436,7 @@ class _CacheStatisticsPanel extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
+                  color: Colors.orange.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
@@ -439,15 +448,22 @@ class _CacheStatisticsPanel extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(Icons.storage, color: Colors.orange.withOpacity(0.7), size: 20),
+              Icon(
+                Icons.storage,
+                color: Colors.orange.withValues(alpha: 0.7),
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('SQLite 数据库', style: TextStyle(fontWeight: FontWeight.w500)),
                     Text(
-                      '${statistics.l3DatabaseImageCount} 图片 | ${statistics.l3DatabaseMetadataCount} 元数据',
+                      l10n.localGallery_sqliteDatabase,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    Text(
+                      '${statistics.l3DatabaseImageCount} ${l10n.localGallery_imageUnit} | ${statistics.l3DatabaseMetadataCount} ${l10n.localGallery_metadataUnit}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -462,16 +478,17 @@ class _CacheStatisticsPanel extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime time) {
+  String _formatTime(BuildContext context, DateTime time) {
+    final l10n = context.l10n;
     final now = DateTime.now();
     final diff = now.difference(time);
 
     if (diff.inSeconds < 10) {
-      return '刚刚';
+      return l10n.common_justNow;
     } else if (diff.inSeconds < 60) {
-      return '${diff.inSeconds}秒前';
+      return l10n.common_minutesAgo(1);
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}分前';
+      return l10n.common_minutesAgo(diff.inMinutes);
     } else {
       return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
     }
@@ -500,6 +517,7 @@ class _CacheLevelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = context.l10n;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -512,7 +530,7 @@ class _CacheLevelCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -524,7 +542,7 @@ class _CacheLevelCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Icon(icon, color: color.withOpacity(0.7), size: 20),
+          Icon(icon, color: color.withValues(alpha: 0.7), size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -532,7 +550,7 @@ class _CacheLevelCard extends StatelessWidget {
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
                 Text(
-                  '$size 条目',
+                  '$size ${l10n.localGallery_entriesUnit}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -551,7 +569,7 @@ class _CacheLevelCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '命中率',
+                l10n.localGallery_hitRate,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -579,12 +597,13 @@ class _PerformanceStatsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '性能监控统计',
+          l10n.localGallery_performanceStats,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -605,10 +624,18 @@ class _PerformanceStatsPanel extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: _buildStatChip('命中', stat.hitCount, Colors.green),
+                  child: _buildStatChip(
+                    l10n.localGallery_cacheHit,
+                    stat.hitCount,
+                    Colors.green,
+                  ),
                 ),
                 Expanded(
-                  child: _buildStatChip('未命中', stat.missCount, Colors.orange),
+                  child: _buildStatChip(
+                    l10n.localGallery_cacheMiss,
+                    stat.missCount,
+                    Colors.orange,
+                  ),
                 ),
                 Expanded(
                   child: Text(
@@ -661,34 +688,35 @@ class _ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         _buildActionButton(
           context,
-          label: '清除 L1',
+          label: l10n.localGallery_clearL1,
           icon: Icons.memory,
           color: Colors.blue,
           onPressed: controller.clearL1MemoryCache,
         ),
         _buildActionButton(
           context,
-          label: '清除 L2',
+          label: l10n.localGallery_clearL2,
           icon: Icons.storage,
           color: Colors.green,
           onPressed: controller.clearL2HiveCache,
         ),
         _buildActionButton(
           context,
-          label: '清除全部',
+          label: l10n.localGallery_clearAll,
           icon: Icons.delete_forever,
           color: Colors.red,
           onPressed: () => _showClearAllConfirm(context),
         ),
         _buildActionButton(
           context,
-          label: '重置统计',
+          label: l10n.localGallery_resetStats,
           icon: Icons.restart_alt,
           color: Colors.orange,
           onPressed: controller.resetStatistics,
@@ -710,7 +738,7 @@ class _ActionButtons extends StatelessWidget {
       label: Text(label),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(0.5)),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
@@ -720,12 +748,12 @@ class _ActionButtons extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认清除'),
-        content: const Text('确定要清除所有缓存吗？这将重新扫描所有图片。'),
+        title: Text(context.l10n.localGallery_confirmClearCache),
+        content: Text(context.l10n.localGallery_confirmClearCacheContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
+            child: Text(context.l10n.common_cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -735,7 +763,7 @@ class _ActionButtons extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red,
             ),
-            child: const Text('清除'),
+            child: Text(context.l10n.common_clear),
           ),
         ],
       ),
@@ -767,7 +795,7 @@ class FloatingCacheMonitorButton extends StatelessWidget {
           ),
         );
       },
-      tooltip: '缓存监控',
+      tooltip: context.l10n.localGallery_cacheMonitor,
       child: const Icon(Icons.analytics_outlined),
     );
   }

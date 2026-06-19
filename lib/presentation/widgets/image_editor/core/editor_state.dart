@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import '../layers/layer.dart';
@@ -45,6 +48,9 @@ class EditorState extends ChangeNotifier {
   /// LayerPainter 监听此通知器，而非整个 EditorState
   final ChangeNotifier renderNotifier = ChangeNotifier();
 
+  /// 当前笔画预览通知器（仅用于实时笔画预览覆盖层重绘）
+  final ChangeNotifier strokePreviewNotifier = ChangeNotifier();
+
   /// 工具切换通知器（仅工具栏和设置面板监听）
   /// 避免工具切换触发整个 EditorState 的监听者重建
   final ValueNotifier<EditorTool?> toolChangeNotifier = ValueNotifier(null);
@@ -67,6 +73,18 @@ class EditorState extends ChangeNotifier {
 
   /// 防止通知重入的标志
   bool _isNotifying = false;
+
+  bool _isDisposed = false;
+  bool _strokePreviewFrameScheduled = false;
+  bool _pendingStrokePreviewChange = false;
+  int _batchDepth = 0;
+  bool _pendingBatchedRenderChange = false;
+  bool _pendingBatchedStateNotification = false;
+  bool _pendingBatchedCanvasSizeNotification = false;
+  bool _pendingBatchedToolChangeNotification = false;
+  EditorTool? _pendingBatchedToolChange;
+
+  bool get _isBatching => _batchDepth > 0;
 
   // ===== Alt 键状态（用于临时拾色器模式）=====
 
@@ -135,7 +153,7 @@ class EditorState extends ChangeNotifier {
     toolManager.setTool(tool);
 
     // 3. 仅通知工具相关 UI（工具栏、设置面板）
-    toolChangeNotifier.value = tool;
+    _setToolChangeNotifier(tool);
 
     // 4. 延迟激活新工具（下一帧执行，不阻塞切换）
     _scheduleToolActivation(tool);
@@ -155,7 +173,7 @@ class EditorState extends ChangeNotifier {
     toolManager.switchToPreviousTool();
     final tool = currentTool;
     if (tool != null) {
-      toolChangeNotifier.value = tool;
+      _setToolChangeNotifier(tool);
       _scheduleToolActivation(tool);
     }
   }
@@ -165,7 +183,7 @@ class EditorState extends ChangeNotifier {
   void _scheduleToolActivation(EditorTool tool) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 确保工具仍然是当前工具（防止快速连续切换）
-      if (toolManager.currentTool == tool) {
+      if (!_isDisposed && toolManager.currentTool == tool) {
         tool.onActivateDeferred(this);
       }
     });
@@ -203,6 +221,7 @@ class EditorState extends ChangeNotifier {
   void invertSelection() => selectionManager.invertSelection(_canvasSize);
   void setPreviewPath(Path? path) => selectionManager.setPreviewPath(path);
   void clearPreview() => selectionManager.clearPreview();
+  bool get isTransforming => selectionManager.isTransforming;
 
   // ===== 代理方法：笔画 =====
 
@@ -217,35 +236,42 @@ class EditorState extends ChangeNotifier {
   void startStroke(Offset point) {
     // 将点裁剪到画布范围内，防止画布外涂抹
     strokeManager.startStroke(_clampToCanvas(point));
-    _notifyRenderChange();
+    _notifyStrokePreviewChange();
   }
 
   void updateStroke(Offset point) {
     // 将点裁剪到画布范围内，防止画布外涂抹
     strokeManager.updateStroke(_clampToCanvas(point));
-    _notifyRenderChange();
+    _notifyStrokePreviewChangeCoalesced();
   }
 
   void endStroke() {
+    _flushPendingStrokePreviewChange();
     strokeManager.endStroke();
-    _notifyRenderChange();
+    _notifyStrokePreviewChange();
     _updateActiveLayerCacheIfNeeded();
     // 笔画完成后异步预热快照，供拾色器使用
     _scheduleSnapshotUpdate();
   }
 
   void cancelStroke() {
+    _pendingStrokePreviewChange = false;
     strokeManager.cancelStroke();
     selectionManager.clearPreview();
-    _notifyRenderChange();
+    _notifyStrokePreviewChange();
   }
 
   // ===== 画布方法 =====
 
   void setCanvasSize(Size size) {
     _canvasSize = size;
-    canvasSizeNotifier.value = size;
-    notifyListeners();
+    if (_isBatching) {
+      _pendingBatchedCanvasSizeNotification = true;
+    } else {
+      canvasSizeNotifier.value = size;
+    }
+    _notifyRenderChange();
+    _safeNotifyListeners();
   }
 
   /// 更新画布快照（供拾色器使用）
@@ -300,6 +326,17 @@ class EditorState extends ChangeNotifier {
     setBrushOpacity((brushOpacity - step).clamp(0.0, 1.0));
   }
 
+  void setBrushHardness(double hardness) {
+    final tool = toolManager.currentTool;
+    if (tool is BrushTool) {
+      tool.setHardness(hardness);
+      notifyListeners();
+    } else if (tool is EraserTool) {
+      tool.setHardness(hardness);
+      notifyListeners();
+    }
+  }
+
   // ===== 撤销/重做 =====
 
   bool undo() {
@@ -351,7 +388,7 @@ class EditorState extends ChangeNotifier {
   /// 清空当前图层（支持撤销）
   void clearActiveLayerWithHistory() {
     final layer = layerManager.activeLayer;
-    if (layer == null || layer.locked || layer.strokes.isEmpty) return;
+    if (layer == null || layer.locked || !layer.hasContent) return;
 
     historyManager.execute(
       ClearLayerAction(layerId: layer.id),
@@ -371,6 +408,110 @@ class EditorState extends ChangeNotifier {
       ),
       this,
     );
+  }
+
+  // ===== 选区操作 =====
+
+  /// 将选区内容剪切到新图层
+  Future<bool> cutSelectionToNewLayer() async {
+    final selection = selectionManager.selectionPath;
+    final activeLayer = layerManager.activeLayer;
+    if (selection == null || activeLayer == null || activeLayer.locked) {
+      return false;
+    }
+
+    final w = _canvasSize.width.toInt();
+    final h = _canvasSize.height.toInt();
+    if (w <= 0 || h <= 0) return false;
+
+    final layerImg = await _renderLayerToImage(activeLayer, _canvasSize, w, h);
+
+    final cutImg = await _extractSelection(layerImg, selection, w, h);
+    final remainImg = await _eraseSelection(layerImg, selection, w, h);
+    layerImg.dispose();
+
+    final cutPng = await cutImg.toByteData(format: ui.ImageByteFormat.png);
+    final remainPng =
+        await remainImg.toByteData(format: ui.ImageByteFormat.png);
+    if (cutPng == null || remainPng == null) {
+      cutImg.dispose();
+      remainImg.dispose();
+      return false;
+    }
+
+    historyManager.execute(
+      ReplaceLayerImageAction(
+        layerId: activeLayer.id,
+        newImageBytes: remainPng.buffer.asUint8List(),
+        newImage: remainImg,
+        actionDescription: 'Cut Selection',
+      ),
+      this,
+    );
+
+    final cutLayer = layerManager.addLayer(
+      name: '${activeLayer.name} (Selection)',
+    );
+    await cutLayer.setBaseImage(cutPng.buffer.asUint8List());
+    cutImg.dispose();
+
+    selectionManager.clearSelection();
+    _notifyRenderChange();
+    notifyListeners();
+    return true;
+  }
+
+  Future<ui.Image> _renderLayerToImage(
+    dynamic layer,
+    Size canvasSize,
+    int w,
+    int h,
+  ) async {
+    final rec = ui.PictureRecorder();
+    final c = Canvas(rec);
+    (layer as dynamic).render(c, canvasSize);
+    final pic = rec.endRecording();
+    final img = await pic.toImage(w, h);
+    pic.dispose();
+    return img;
+  }
+
+  Future<ui.Image> _extractSelection(
+    ui.Image source,
+    Path selection,
+    int w,
+    int h,
+  ) async {
+    final rec = ui.PictureRecorder();
+    final c = Canvas(rec);
+    c.clipPath(selection);
+    c.drawImage(source, Offset.zero, Paint());
+    final pic = rec.endRecording();
+    final img = await pic.toImage(w, h);
+    pic.dispose();
+    return img;
+  }
+
+  Future<ui.Image> _eraseSelection(
+    ui.Image source,
+    Path selection,
+    int w,
+    int h,
+  ) async {
+    final rec = ui.PictureRecorder();
+    final c = Canvas(rec);
+    c.drawImage(source, Offset.zero, Paint());
+    c.save();
+    c.clipPath(selection);
+    c.drawRect(
+      Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+      Paint()..blendMode = BlendMode.clear,
+    );
+    c.restore();
+    final pic = rec.endRecording();
+    final img = await pic.toImage(w, h);
+    pic.dispose();
+    return img;
   }
 
   // ===== 内部方法 =====
@@ -397,12 +538,55 @@ class EditorState extends ChangeNotifier {
     // strokeManager 的变化已在代理方法中处理
   }
 
-  void _notifyRenderChange() {
+  /// 通知画布需要重绘（供工具调用）
+  void notifyRenderChange() {
+    if (_isDisposed) return;
+    if (_isBatching) {
+      _pendingBatchedRenderChange = true;
+      return;
+    }
+
     // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
     renderNotifier.notifyListeners();
   }
 
+  void _notifyRenderChange() => notifyRenderChange();
+
+  void _notifyStrokePreviewChange() {
+    if (_isDisposed) return;
+    _pendingStrokePreviewChange = false;
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    strokePreviewNotifier.notifyListeners();
+  }
+
+  void _notifyStrokePreviewChangeCoalesced() {
+    if (_isDisposed) return;
+
+    _pendingStrokePreviewChange = true;
+    if (_strokePreviewFrameScheduled) return;
+
+    _strokePreviewFrameScheduled = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      _strokePreviewFrameScheduled = false;
+      if (_isDisposed || !_pendingStrokePreviewChange) return;
+
+      _pendingStrokePreviewChange = false;
+      // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+      strokePreviewNotifier.notifyListeners();
+    });
+  }
+
+  void _flushPendingStrokePreviewChange() {
+    if (!_pendingStrokePreviewChange) return;
+    _notifyStrokePreviewChange();
+  }
+
   void _safeNotifyListeners() {
+    if (_isBatching) {
+      _pendingBatchedStateNotification = true;
+      return;
+    }
+
     if (_isNotifying) return;
     _isNotifying = true;
     try {
@@ -415,6 +599,74 @@ class EditorState extends ChangeNotifier {
   /// 请求 UI 更新（供外部调用，如工具设置面板）
   void requestUiUpdate() {
     _safeNotifyListeners();
+  }
+
+  void _setToolChangeNotifier(EditorTool tool) {
+    if (_isBatching) {
+      _pendingBatchedToolChange = tool;
+      _pendingBatchedToolChangeNotification = true;
+      return;
+    }
+
+    toolChangeNotifier.value = tool;
+  }
+
+  T runBatch<T>(T Function() body) {
+    _batchDepth++;
+    toolManager.beginBatch();
+    try {
+      return body();
+    } finally {
+      toolManager.endBatch();
+      _endBatch();
+    }
+  }
+
+  Future<T> runBatchAsync<T>(Future<T> Function() body) async {
+    _batchDepth++;
+    toolManager.beginBatch();
+    try {
+      return await body();
+    } finally {
+      toolManager.endBatch();
+      _endBatch();
+    }
+  }
+
+  void _endBatch() {
+    if (_batchDepth == 0) {
+      return;
+    }
+
+    _batchDepth--;
+    if (_batchDepth > 0 || _isDisposed) {
+      return;
+    }
+
+    final notifyCanvasSize = _pendingBatchedCanvasSizeNotification;
+    final notifyToolChange = _pendingBatchedToolChangeNotification;
+    final pendingToolChange = _pendingBatchedToolChange;
+    final notifyRender = _pendingBatchedRenderChange;
+    final notifyState = _pendingBatchedStateNotification;
+
+    _pendingBatchedCanvasSizeNotification = false;
+    _pendingBatchedToolChangeNotification = false;
+    _pendingBatchedToolChange = null;
+    _pendingBatchedRenderChange = false;
+    _pendingBatchedStateNotification = false;
+
+    if (notifyCanvasSize) {
+      canvasSizeNotifier.value = _canvasSize;
+    }
+    if (notifyToolChange && pendingToolChange != null) {
+      toolChangeNotifier.value = pendingToolChange;
+    }
+    if (notifyRender) {
+      notifyRenderChange();
+    }
+    if (notifyState) {
+      _safeNotifyListeners();
+    }
   }
 
   Future<void> _updateActiveLayerCacheIfNeeded() async {
@@ -430,6 +682,7 @@ class EditorState extends ChangeNotifier {
   /// 用于笔画完成后预热拾色器快照
   void _scheduleSnapshotUpdate() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (_isDisposed) return;
       await layerManager.updateSnapshotAsync(_canvasSize);
     });
   }
@@ -446,11 +699,11 @@ class EditorState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void initNewCanvas(Size size) {
+  void initNewCanvas(Size size, {String? initialLayerName}) {
     reset();
     _canvasSize = size;
     canvasSizeNotifier.value = size;
-    layerManager.addLayer(name: '图层 1');
+    layerManager.addLayer(name: initialLayerName ?? 'Layer 1');
     // 同步初始工具到通知器
     toolChangeNotifier.value = toolManager.currentTool;
     notifyListeners();
@@ -458,6 +711,9 @@ class EditorState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _pendingStrokePreviewChange = false;
+
     // 移除监听器
     layerManager.removeListener(_onLayerChanged);
     canvasController.removeListener(_onCanvasChanged);
@@ -476,6 +732,7 @@ class EditorState extends ChangeNotifier {
 
     // 释放通知器
     renderNotifier.dispose();
+    strokePreviewNotifier.dispose();
     toolChangeNotifier.dispose();
     canvasSizeNotifier.dispose();
 

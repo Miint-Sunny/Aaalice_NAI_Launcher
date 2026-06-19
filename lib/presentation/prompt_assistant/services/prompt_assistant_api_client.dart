@@ -1,14 +1,23 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../../../core/utils/app_logger.dart';
 import '../models/prompt_assistant_models.dart';
+import 'provider_adapters/anthropic_messages_adapter.dart';
+import 'provider_adapters/gemini_generate_content_adapter.dart';
+import 'provider_adapters/openai_chat_completions_adapter.dart';
+import 'provider_adapters/openai_responses_adapter.dart';
+import 'provider_adapters/prompt_assistant_adapter.dart';
 
 class PromptAssistantApiClient {
-  PromptAssistantApiClient({required Dio dio}) : _dio = dio;
+  PromptAssistantApiClient({
+    required Dio dio,
+    this.imageUploadMaxBytes = promptAssistantImageUploadMaxBytes,
+  }) : _dio = dio;
 
   final Dio _dio;
+  final int imageUploadMaxBytes;
   final Map<String, CancelToken> _cancelTokens = {};
 
   void cancelCurrentRequest({String? sessionId}) {
@@ -27,266 +36,228 @@ class PromptAssistantApiClient {
   Future<List<String>> fetchModels({
     required ProviderConfig provider,
     required String? apiKey,
-  }) async {
-    if (provider.type == ProviderType.pollinations) {
-      return const ['openai-large'];
-    }
-
-    final headers = <String, dynamic>{};
-    if (apiKey != null && apiKey.trim().isNotEmpty) {
-      headers['Authorization'] = 'Bearer ${apiKey.trim()}';
-    }
-
-    final endpoints = <String>[
-      _resolveModelsEndpoint(provider),
-      if (provider.type == ProviderType.ollama)
-        _resolveOllamaTagsEndpoint(provider),
-    ];
-
-    DioException? lastError;
-    for (final endpoint in endpoints.toSet()) {
-      try {
-        final response = await _dio.get<dynamic>(
-          endpoint,
-          options: Options(
-            headers: headers,
-            sendTimeout: const Duration(seconds: 20),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-        );
-        final names = _extractModelNames(response.data);
-        if (names.isNotEmpty) {
-          return names;
-        }
-      } on DioException catch (e) {
-        lastError = e;
-      }
-    }
-
-    if (lastError != null) {
-      throw lastError;
-    }
-    return const [];
+  }) {
+    final defaults = provider.preset?.defaultModelNames ?? const [];
+    return _adapterFor(provider)
+        .fetchModels(dio: _dio, provider: provider, apiKey: apiKey)
+        .then((models) => models.isEmpty ? defaults : models);
   }
 
+  Stream<StreamingChunk> complete({
+    required PromptAssistantRequest request,
+  }) async* {
+    _cancelTokens.remove(request.sessionId)?.cancel('replaced by new request');
+    final cancelToken = CancelToken();
+    _cancelTokens[request.sessionId] = cancelToken;
+
+    try {
+      AppLogger.d(
+        'request start provider=${request.provider.id} '
+            'protocol=${request.provider.protocol.name} model=${request.model}',
+        'PromptAssistant',
+      );
+
+      final uploadRequest = await optimizePromptAssistantRequestImagesForUpload(
+        request,
+        maxBytes: imageUploadMaxBytes,
+      );
+      final content = await _adapterFor(uploadRequest.provider).complete(
+        dio: _dio,
+        request: uploadRequest,
+        cancelToken: cancelToken,
+      );
+      final trimmed = content.trim();
+      if (trimmed.isEmpty) {
+        throw StateError(
+          'LLM service returned empty content: provider=${request.provider.name}, model=${request.model}',
+        );
+      }
+
+      AppLogger.d(
+        'response done provider=${request.provider.id} '
+            'model=${request.model} outputLen=${trimmed.length} '
+            'output=${_previewBody(trimmed)}',
+        'PromptAssistant',
+      );
+      yield StreamingChunk(delta: trimmed);
+      yield const StreamingChunk(delta: '', done: true);
+    } on DioException catch (e) {
+      throw StateError(_formatDioException(e, request));
+    } finally {
+      if (identical(_cancelTokens[request.sessionId], cancelToken)) {
+        _cancelTokens.remove(request.sessionId);
+      }
+    }
+  }
+
+  // Legacy wrapper kept so older tests/callers that already build OpenAI-style
+  // messages continue to work while the service layer migrates to typed parts.
   Stream<StreamingChunk> streamChat({
     required String sessionId,
     required ProviderConfig provider,
     required String model,
-    required List<Map<String, String>> messages,
-    required double temperature,
-    required double topP,
-    required int maxTokens,
-    required bool advancedParams,
+    required List<Map<String, dynamic>> messages,
     required String? apiKey,
-  }) async* {
-    _cancelTokens.remove(sessionId)?.cancel('replaced by new request');
-    final cancelToken = CancelToken();
-    _cancelTokens[sessionId] = cancelToken;
+  }) {
+    return complete(
+      request: PromptAssistantRequest(
+        sessionId: sessionId,
+        provider: provider,
+        model: model,
+        systemPrompt: _extractSystemPrompt(messages),
+        userParts: _extractUserParts(messages),
+        apiKey: apiKey,
+      ),
+    );
+  }
 
-    final endpoint = _resolveEndpoint(provider);
-    final payload = <String, dynamic>{
-      'model': model,
-      'stream': true,
-      'messages': messages,
-    };
-
-    if (advancedParams) {
-      payload['temperature'] = temperature;
-      payload['top_p'] = topP;
-      payload['max_tokens'] = maxTokens;
-    }
-
-    final headers = <String, dynamic>{
-      'Content-Type': 'application/json',
-    };
-    if (apiKey != null && apiKey.trim().isNotEmpty) {
-      headers['Authorization'] = 'Bearer ${apiKey.trim()}';
-    }
-
-    try {
-      Response<ResponseBody> response;
-      try {
-        response = await _dio.post<ResponseBody>(
-          endpoint,
-          data: payload,
-          options: Options(
-            responseType: ResponseType.stream,
-            headers: headers,
-            sendTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(minutes: 2),
-          ),
-          cancelToken: cancelToken,
-        );
-      } on DioException catch (e) {
-        // retry once with degraded payload
-        if (e.response?.statusCode == 400) {
-          final degradedPayload = {
-            'model': model,
-            'stream': true,
-            'messages': messages,
-          };
-          response = await _dio.post<ResponseBody>(
-            endpoint,
-            data: degradedPayload,
-            options: Options(
-              responseType: ResponseType.stream,
-              headers: headers,
-              sendTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(minutes: 2),
-            ),
-            cancelToken: cancelToken,
-          );
-        } else {
-          rethrow;
-        }
-      }
-
-      final stream = response.data?.stream;
-      if (stream == null) {
-        yield const StreamingChunk(delta: '', done: true);
-        return;
-      }
-
-      final buffer = StringBuffer();
-
-      await for (final bytes in stream) {
-        final text = utf8.decode(bytes, allowMalformed: true);
-        buffer.write(text);
-        var content = buffer.toString();
-        var breakIndex = content.indexOf('\n');
-        while (breakIndex >= 0) {
-          final line = content.substring(0, breakIndex).trim();
-          content = content.substring(breakIndex + 1);
-          if (line.startsWith('data:')) {
-            final data = line.substring(5).trim();
-            if (data == '[DONE]') {
-              yield const StreamingChunk(delta: '', done: true);
-              return;
-            }
-            if (data.isNotEmpty) {
-              final delta = _extractDelta(data);
-              if (delta.isNotEmpty) {
-                yield StreamingChunk(delta: delta);
-              }
-            }
-          }
-          breakIndex = content.indexOf('\n');
-        }
-        buffer
-          ..clear()
-          ..write(content);
-      }
-
-      yield const StreamingChunk(delta: '', done: true);
-    } finally {
-      if (identical(_cancelTokens[sessionId], cancelToken)) {
-        _cancelTokens.remove(sessionId);
-      }
+  PromptAssistantProviderAdapter _adapterFor(ProviderConfig provider) {
+    switch (provider.protocol) {
+      case ProviderProtocol.openaiChatCompletions:
+        return const OpenAiChatCompletionsAdapter();
+      case ProviderProtocol.openaiResponses:
+        return const OpenAiResponsesAdapter();
+      case ProviderProtocol.anthropicMessages:
+        return const AnthropicMessagesAdapter();
+      case ProviderProtocol.geminiGenerateContent:
+        return const GeminiGenerateContentAdapter();
+      case ProviderProtocol.ollamaChatCompletions:
+        return const OpenAiChatCompletionsAdapter(ollamaTagsFallback: true);
     }
   }
 
-  String _resolveEndpoint(ProviderConfig provider) {
-    if (provider.type == ProviderType.pollinations) {
-      return 'https://gen.pollinations.ai/v1/chat/completions';
-    }
-
-    final base = _normalizedBase(provider);
-    if (base.endsWith('/chat/completions')) {
-      return base;
-    }
-    if (base.endsWith('/v1')) {
-      return '$base/chat/completions';
-    }
-    return '$base/v1/chat/completions';
-  }
-
-  String _extractDelta(String jsonLine) {
-    try {
-      final obj = jsonDecode(jsonLine) as Map<String, dynamic>;
-      final choices = obj['choices'];
-      if (choices is List && choices.isNotEmpty) {
-        final first = choices.first;
-        if (first is Map<String, dynamic>) {
-          final delta = first['delta'];
-          if (delta is Map<String, dynamic>) {
-            return (delta['content'] as String?) ?? '';
-          }
-          final message = first['message'];
-          if (message is Map<String, dynamic>) {
-            return (message['content'] as String?) ?? '';
-          }
-        }
+  static String _extractSystemPrompt(List<Map<String, dynamic>> messages) {
+    for (final message in messages) {
+      if (message['role'] == 'system') {
+        return contentToText(message['content']);
       }
-      final text = obj['text'];
-      if (text is String) return text;
-    } catch (_) {
-      // ignore parse errors in incomplete frames
     }
     return '';
   }
 
-  String _normalizedBase(ProviderConfig provider) {
-    return provider.baseUrl.trim().replaceAll(RegExp(r"/+$"), "");
+  static List<PromptAssistantContentPart> _extractUserParts(
+    List<Map<String, dynamic>> messages,
+  ) {
+    final parts = <PromptAssistantContentPart>[];
+    for (final message in messages) {
+      if (message['role'] != 'user') continue;
+      _appendContentParts(parts, message['content']);
+    }
+    return parts.isEmpty ? const [PromptAssistantTextPart('')] : parts;
   }
 
-  String _resolveModelsEndpoint(ProviderConfig provider) {
-    final base = _normalizedBase(provider);
-    if (base.endsWith('/v1')) {
-      return '$base/models';
+  static void _appendContentParts(
+    List<PromptAssistantContentPart> parts,
+    dynamic content,
+  ) {
+    if (content is String) {
+      parts.add(PromptAssistantTextPart(content));
+      return;
     }
-    return '$base/v1/models';
-  }
-
-  String _resolveOllamaTagsEndpoint(ProviderConfig provider) {
-    final base = _normalizedBase(provider);
-    if (base.endsWith('/v1')) {
-      return '${base.substring(0, base.length - 3)}/api/tags';
-    }
-    return '$base/api/tags';
-  }
-
-  List<String> _extractModelNames(dynamic raw) {
-    final names = <String>[];
-
-    void addName(dynamic value) {
-      if (value is String && value.trim().isNotEmpty) {
-        names.add(value.trim());
-      }
-    }
-
-    if (raw is Map<String, dynamic>) {
-      final data = raw['data'];
-      if (data is List) {
-        for (final item in data) {
-          if (item is Map<String, dynamic>) {
-            addName(item['id'] ?? item['name'] ?? item['model']);
-          } else {
-            addName(item);
-          }
-        }
-      }
-      final models = raw['models'];
-      if (models is List) {
-        for (final item in models) {
-          if (item is Map<String, dynamic>) {
-            addName(item['name'] ?? item['model'] ?? item['id']);
-          } else {
-            addName(item);
-          }
-        }
-      }
-    } else if (raw is List) {
-      for (final item in raw) {
+    if (content is List) {
+      for (final item in content) {
         if (item is Map<String, dynamic>) {
-          addName(item['id'] ?? item['name'] ?? item['model']);
+          final type = item['type'];
+          if (type == 'text') {
+            parts.add(PromptAssistantTextPart(contentToText(item['text'])));
+          } else if (type == 'image_url') {
+            final imageUrl = item['image_url'];
+            final url = imageUrl is Map ? imageUrl['url'] : null;
+            if (url is String) {
+              final parsed = parseDataUriImage(url);
+              if (parsed != null) {
+                parts.add(
+                  PromptAssistantImagePart(
+                    bytes: parsed.bytes,
+                    mimeType: parsed.mimeType,
+                  ),
+                );
+              }
+            }
+          }
         } else {
-          addName(item);
+          final text = contentToText(item);
+          if (text.isNotEmpty) {
+            parts.add(PromptAssistantTextPart(text));
+          }
         }
       }
+      return;
     }
+    final text = contentToText(content);
+    if (text.isNotEmpty) {
+      parts.add(PromptAssistantTextPart(text));
+    }
+  }
 
-    final dedup = <String>{};
-    return names.where((name) => dedup.add(name)).toList();
+  String _previewBody(String raw) {
+    final normalized = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= 300) {
+      return normalized;
+    }
+    return '${normalized.substring(0, 300)}...';
+  }
+
+  String _formatDioException(
+    DioException error,
+    PromptAssistantRequest request,
+  ) {
+    final response = error.response;
+    final status = response?.statusCode;
+    final target = _safeRequestTarget(response?.requestOptions);
+    final detail = _extractDioErrorDetail(response?.data) ??
+        error.message ??
+        error.error?.toString();
+
+    return [
+      'LLM request failed',
+      if (status != null) 'HTTP $status',
+      'provider=${request.provider.name}',
+      'model=${request.model}',
+      if (target != null) 'endpoint=$target',
+      if (detail != null && detail.trim().isNotEmpty) detail.trim(),
+    ].join(': ');
+  }
+
+  String? _extractDioErrorDetail(dynamic data) {
+    if (data == null) return null;
+    if (data is Map<String, dynamic>) {
+      final message = extractErrorMessage(data);
+      if (message != null) return message;
+      return _previewBody(_encodeErrorData(data));
+    }
+    if (data is Map) {
+      final normalized = data.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+      final message = extractErrorMessage(normalized);
+      if (message != null) return message;
+      return _previewBody(_encodeErrorData(normalized));
+    }
+    if (data is String) {
+      final trimmed = data.trim();
+      return trimmed.isEmpty ? null : _previewBody(trimmed);
+    }
+    return _previewBody(_encodeErrorData(data));
+  }
+
+  String _encodeErrorData(dynamic data) {
+    try {
+      return jsonEncode(data);
+    } catch (_) {
+      return data.toString();
+    }
+  }
+
+  String? _safeRequestTarget(RequestOptions? options) {
+    if (options == null) return null;
+    final uri = options.uri;
+    if (uri.hasScheme && uri.host.isNotEmpty) {
+      final port = uri.hasPort ? ':${uri.port}' : '';
+      final query = uri.hasQuery ? '?<redacted>' : '';
+      return '${uri.scheme}://${uri.host}$port${uri.path}$query';
+    }
+    final query = uri.hasQuery ? '?<redacted>' : '';
+    return '${uri.path}$query';
   }
 }

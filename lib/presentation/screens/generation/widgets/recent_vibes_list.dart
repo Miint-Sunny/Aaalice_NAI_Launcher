@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/vibe/vibe_library_entry.dart';
 import '../../../providers/image_generation_provider.dart';
 import '../../../widgets/common/app_toast.dart';
@@ -37,13 +38,13 @@ class RecentVibesList extends ConsumerWidget {
                 Icon(
                   Icons.history,
                   size: 14,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '最近使用',
+                  context.l10n.vibe_selector_recent,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -54,7 +55,7 @@ class RecentVibesList extends ConsumerWidget {
                   child: Icon(
                     Icons.chevron_left,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
               ],
@@ -102,9 +103,12 @@ class RecentVibesList extends ConsumerWidget {
 
     if (context.mounted) {
       if (success) {
-        AppToast.success(context, '已添加: ${entry.displayName}');
+        AppToast.success(
+          context,
+          context.l10n.vibe_addedNamed(entry.displayName),
+        );
       } else {
-        AppToast.warning(context, '已达到最大数量 (16张)');
+        AppToast.warning(context, context.l10n.vibe_maxReached);
       }
     }
   }

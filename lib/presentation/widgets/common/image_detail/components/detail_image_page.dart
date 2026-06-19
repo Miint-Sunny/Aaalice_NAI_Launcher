@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/utils/localization_extension.dart';
 import '../image_detail_data.dart';
 
 /// 单张图像页面组件
@@ -9,6 +10,7 @@ import '../image_detail_data.dart';
 class DetailImagePage extends StatefulWidget {
   final ImageDetailData data;
   final String? heroTag;
+
   /// 外部传入的 TransformationController，用于快捷键控制缩放
   final TransformationController? transformationController;
 
@@ -78,8 +80,13 @@ class _DetailImagePageState extends State<DetailImagePage>
       final x = -position.dx * (_doubleTapScale - 1);
       final y = -position.dy * (_doubleTapScale - 1);
       endMatrix = Matrix4.identity()
-        ..translate(x, y)
-        ..scale(_doubleTapScale);
+        ..translateByDouble(x, y, 0, 1)
+        ..scaleByDouble(
+          _doubleTapScale,
+          _doubleTapScale,
+          _doubleTapScale,
+          1,
+        );
     }
 
     _animation = Matrix4Tween(
@@ -96,7 +103,7 @@ class _DetailImagePageState extends State<DetailImagePage>
   }
 
   /// 构建加载指示器
-  Widget _buildLoadingIndicator() {
+  Widget _buildLoadingIndicator(BuildContext context) {
     return Container(
       color: Colors.black,
       child: Center(
@@ -109,15 +116,15 @@ class _DetailImagePageState extends State<DetailImagePage>
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  Colors.white.withOpacity(0.6),
+                  Colors.white.withValues(alpha: 0.6),
                 ),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              '加载中...',
+              context.l10n.detail_loadingImage,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
                 fontSize: 14,
               ),
             ),
@@ -166,15 +173,15 @@ class _DetailImagePageState extends State<DetailImagePage>
       errorBuilder: (context, error, stackTrace) {
         // 加载失败也要隐藏加载指示器
         _markLoadingComplete();
-        return const Center(
+        return Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.broken_image, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
+              const Icon(Icons.broken_image, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
               Text(
-                '无法加载图片',
-                style: TextStyle(color: Colors.grey),
+                context.l10n.detail_imageLoadFailed,
+                style: const TextStyle(color: Colors.grey),
               ),
             ],
           ),
@@ -206,7 +213,7 @@ class _DetailImagePageState extends State<DetailImagePage>
         // 加载指示器
         if (_isLoading)
           Positioned.fill(
-            child: _buildLoadingIndicator(),
+            child: _buildLoadingIndicator(context),
           ),
       ],
     );

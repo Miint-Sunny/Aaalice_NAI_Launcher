@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +11,7 @@ import 'package:path/path.dart' as path;
 
 import '../../../core/cache/danbooru_image_cache_manager.dart';
 import '../../../core/services/date_formatting_service.dart';
+import '../../../core/utils/file_picker_utils.dart';
 import '../../../data/datasources/remote/danbooru_api_service.dart';
 import '../../../data/models/online_gallery/danbooru_post.dart';
 import '../../../data/models/queue/replication_task.dart';
@@ -48,8 +48,10 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
   final TextEditingController _pageController = TextEditingController();
   final FocusNode _pageFocusNode = FocusNode();
   final _dateFormattingService = DateFormattingService();
+  final LayerLink _dateRangeLayerLink = LayerLink();
 
   Timer? _searchDebounceTimer;
+  OverlayEntry? _dateRangeOverlayEntry;
   bool _isEditingPage = false;
   GalleryViewMode? _lastViewMode;
 
@@ -118,6 +120,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
+    _hideDateRangePopup();
     _scrollController.removeListener(_onScroll);
     _pageFocusNode.removeListener(_onPageFocusChange);
     _searchController.dispose();
@@ -210,7 +213,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
-          top: BorderSide(color: theme.dividerColor.withOpacity(0.3)),
+          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
         ),
       ),
       child: Row(
@@ -260,7 +263,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(16),
         ),
         child: state.isLoading
@@ -286,7 +289,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
                   Icon(
                     Icons.edit,
                     size: 12,
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ],
               ),
@@ -349,19 +352,19 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         actions: [
           BulkActionItem(
             icon: Icons.playlist_add,
-            label: '加入队列',
+            label: context.l10n.onlineGallery_addToQueue,
             onPressed: _addSelectedToQueue,
             color: theme.colorScheme.primary,
           ),
           BulkActionItem(
             icon: Icons.favorite_border,
-            label: '批量收藏',
+            label: context.l10n.onlineGallery_bulkFavorite,
             onPressed: _favoriteSelected,
             color: theme.colorScheme.secondary,
           ),
           BulkActionItem(
             icon: Icons.download,
-            label: '批量下载',
+            label: context.l10n.onlineGallery_bulkDownload,
             onPressed: _downloadSelected,
             color: theme.colorScheme.tertiary,
           ),
@@ -374,33 +377,51 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(
-          bottom: BorderSide(color: theme.dividerColor.withOpacity(0.3)),
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3)),
         ),
       ),
-      child: Column(
-        children: [
-          // 第一行：模式切换 + 搜索框 + 用户
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 1440;
+
+          return Column(
             children: [
-              // 模式切换（紧凑设计）
-              _buildModeSelector(theme, state, authState),
-              const SizedBox(width: 16),
-              // 搜索框
-              if (state.viewMode == GalleryViewMode.search)
-                Expanded(child: _buildSearchField(theme))
-              else
-                const Spacer(),
-              const SizedBox(width: 12),
-              // 筛选和操作
-              _buildFilterAndActions(theme, state, authState),
+              // 第一行：模式切换 + 搜索框 + 用户
+              Row(
+                children: [
+                  // 模式切换（紧凑设计）
+                  _buildModeSelector(theme, state, authState),
+                  const SizedBox(width: 16),
+                  // 搜索框
+                  if (state.viewMode == GalleryViewMode.search)
+                    Expanded(child: _buildSearchField(theme))
+                  else
+                    const Spacer(),
+                  if (!compact) ...[
+                    const SizedBox(width: 12),
+                    // 筛选和操作
+                    _buildFilterAndActions(theme, state, authState),
+                  ],
+                ],
+              ),
+              if (compact) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: _buildFilterAndActions(theme, state, authState),
+                  ),
+                ),
+              ],
+              // 第二行：排行榜选项（仅排行榜模式）
+              if (state.viewMode == GalleryViewMode.popular) ...[
+                const SizedBox(height: 8),
+                _buildPopularOptions(theme, state),
+              ],
             ],
-          ),
-          // 第二行：排行榜选项（仅排行榜模式）
-          if (state.viewMode == GalleryViewMode.popular) ...[
-            const SizedBox(height: 8),
-            _buildPopularOptions(theme, state),
-          ],
-        ],
+          );
+        },
       ),
     );
   }
@@ -412,7 +433,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -476,7 +497,8 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         height: 36,
         constraints: const BoxConstraints(maxWidth: 400),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+          color:
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(18),
         ),
         child: TextField(
@@ -486,21 +508,21 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
           decoration: InputDecoration(
             hintText: context.l10n.onlineGallery_searchTags,
             hintStyle: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
               fontSize: 13,
             ),
             prefixIcon: Icon(
               Icons.search,
               size: 18,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             ),
             suffixIcon: _searchController.text.isNotEmpty
                 ? IconButton(
                     icon: Icon(
                       Icons.close,
                       size: 16,
-                      color:
-                          theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      color: theme.colorScheme.onSurfaceVariant
+                          .withValues(alpha: 0.6),
                     ),
                     onPressed: () {
                       _searchController.clear();
@@ -536,7 +558,12 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
             selected: state.source,
             onChanged: _galleryNotifier.setSource,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
+          _FuzzySearchToggle(
+            enabled: state.fuzzySearchEnabled,
+            onChanged: _galleryNotifier.setFuzzySearchEnabled,
+          ),
+          const SizedBox(width: 6),
         ],
         // 评级筛选
         _RatingDropdown(
@@ -551,7 +578,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         const SizedBox(width: 8),
         IconButton(
           icon: const Icon(Icons.block),
-          tooltip: '黑名单标签',
+          tooltip: context.l10n.onlineGallery_blacklistTags,
           onPressed: () => showOnlineGalleryBlacklistDialog(context, ref),
         ),
         const SizedBox(width: 8),
@@ -578,7 +605,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         // 多选模式切换
         IconButton(
           icon: const Icon(Icons.checklist),
-          tooltip: '多选模式',
+          tooltip: context.l10n.common_multiSelect,
           onPressed: _selectionNotifier.enter,
         ),
         const SizedBox(width: 8),
@@ -593,71 +620,101 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
     final hasDateRange =
         state.dateRangeStart != null || state.dateRangeEnd != null;
 
-    return OutlinedButton.icon(
-      onPressed: () => _selectDateRange(context, state),
-      icon: Icon(
-        Icons.date_range,
-        size: 16,
-        color: hasDateRange ? theme.colorScheme.primary : null,
-      ),
-      label: Text(
-        hasDateRange
-            ? _dateFormattingService.formatDateRange(
-                state.dateRangeStart,
-                state.dateRangeEnd,
-              )
-            : context.l10n.onlineGallery_dateRange,
-        style: TextStyle(
-          fontSize: 12,
+    return CompositedTransformTarget(
+      link: _dateRangeLayerLink,
+      child: OutlinedButton.icon(
+        onPressed: () => _toggleDateRangePopup(state),
+        icon: Icon(
+          Icons.date_range,
+          size: 16,
           color: hasDateRange ? theme.colorScheme.primary : null,
         ),
-      ),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        visualDensity: VisualDensity.compact,
-        side:
-            hasDateRange ? BorderSide(color: theme.colorScheme.primary) : null,
+        label: Text(
+          hasDateRange
+              ? _dateFormattingService.formatDateRange(
+                  state.dateRangeStart,
+                  state.dateRangeEnd,
+                )
+              : context.l10n.onlineGallery_dateRange,
+          style: TextStyle(
+            fontSize: 12,
+            color: hasDateRange ? theme.colorScheme.primary : null,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          visualDensity: VisualDensity.compact,
+          side: hasDateRange
+              ? BorderSide(color: theme.colorScheme.primary)
+              : null,
+        ),
       ),
     );
   }
 
-  /// 选择日期范围
-  Future<void> _selectDateRange(
-    BuildContext context,
-    OnlineGalleryState state,
-  ) async {
+  void _toggleDateRangePopup(OnlineGalleryState state) {
+    if (_dateRangeOverlayEntry != null) {
+      _hideDateRangePopup();
+      return;
+    }
+    _showDateRangePopup(state);
+  }
+
+  void _showDateRangePopup(OnlineGalleryState state) {
+    final overlay = Overlay.of(context);
+    final theme = Theme.of(context);
     final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2005),
-      lastDate: now,
-      initialDateRange:
-          state.dateRangeStart != null && state.dateRangeEnd != null
-              ? DateTimeRange(
-                  start: state.dateRangeStart!,
-                  end: state.dateRangeEnd!,
-                )
-              : DateTimeRange(
-                  start: now.subtract(const Duration(days: 30)),
-                  end: now,
-                ),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            dialogTheme: DialogTheme(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+
+    _dateRangeOverlayEntry = OverlayEntry(
+      builder: (overlayContext) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _hideDateRangePopup,
+                child: const SizedBox.expand(),
               ),
             ),
-          ),
-          child: child!,
+            CompositedTransformFollower(
+              link: _dateRangeLayerLink,
+              showWhenUnlinked: false,
+              targetAnchor: Alignment.bottomLeft,
+              followerAnchor: Alignment.topLeft,
+              offset: const Offset(0, 8),
+              child: Material(
+                elevation: 12,
+                borderRadius: BorderRadius.circular(16),
+                clipBehavior: Clip.antiAlias,
+                color: theme.colorScheme.surface,
+                child: _DateRangePopup(
+                  initialStart: state.dateRangeStart,
+                  initialEnd: state.dateRangeEnd,
+                  firstDate: DateTime(2005),
+                  lastDate: now,
+                  onApply: (start, end) {
+                    _hideDateRangePopup();
+                    _galleryNotifier.setDateRange(start, end);
+                  },
+                  onClear: () {
+                    _hideDateRangePopup();
+                    _galleryNotifier.clearDateRange();
+                  },
+                  onClose: _hideDateRangePopup,
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
 
-    if (picked != null) {
-      _galleryNotifier.setDateRange(picked.start, picked.end);
-    }
+    overlay.insert(_dateRangeOverlayEntry!);
+  }
+
+  void _hideDateRangePopup() {
+    _dateRangeOverlayEntry?.remove();
+    _dateRangeOverlayEntry = null;
   }
 
   Widget _buildUserButton(ThemeData theme, DanbooruAuthState authState) {
@@ -854,7 +911,9 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
   /// 构建空状态
   Widget _buildEmptyState(ThemeData theme, OnlineGalleryState state) {
     final isFavorites = state.viewMode == GalleryViewMode.favorites;
-    final icon = isFavorites ? Icons.favorite_border : Icons.image_not_supported_outlined;
+    final icon = isFavorites
+        ? Icons.favorite_border
+        : Icons.image_not_supported_outlined;
     final message = isFavorites
         ? context.l10n.onlineGallery_favoritesEmpty
         : context.l10n.onlineGallery_noResults;
@@ -866,7 +925,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
           Icon(
             icon,
             size: 48,
-            color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 12),
           Text(message, style: theme.textTheme.titleMedium),
@@ -942,7 +1001,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         child: TextButton(
           onPressed: _galleryNotifier.loadMore,
           child: Text(
-            '加载失败，点击重试',
+            context.l10n.onlineGallery_loadFailed,
             style: TextStyle(color: theme.colorScheme.error),
           ),
         ),
@@ -1014,7 +1073,12 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
     final success = await _galleryNotifier.toggleFavorite(post.id);
 
     if (context.mounted && success) {
-      AppToast.info(context, wasFavorited ? '已取消收藏' : '已收藏');
+      AppToast.info(
+        context,
+        wasFavorited
+            ? context.l10n.onlineGallery_unfavorited
+            : context.l10n.onlineGallery_favorited,
+      );
     }
   }
 
@@ -1041,7 +1105,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         .toList();
 
     if (tasks.isEmpty) {
-      AppToast.info(context, '选中的图片没有标签信息');
+      AppToast.info(context, context.l10n.onlineGallery_noTagInfo);
       return;
     }
 
@@ -1049,7 +1113,10 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
         await ref.read(replicationQueueNotifierProvider.notifier).addAll(tasks);
 
     if (mounted) {
-      AppToast.success(context, '已添加 $addedCount 个任务到队列');
+      AppToast.success(
+        context,
+        context.l10n.onlineGallery_addedTasksToQueue(addedCount),
+      );
       _selectionNotifier.exit();
     }
   }
@@ -1085,7 +1152,7 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
     }
 
     if (mounted) {
-      AppToast.info(context, '已收藏 $count 张图片');
+      AppToast.info(context, context.l10n.onlineGallery_favoritedImages(count));
       _selectionNotifier.exit();
     }
   }
@@ -1101,18 +1168,43 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
 
     if (selectedPosts.isEmpty) return;
 
-    final result = await FilePicker.platform.getDirectoryPath();
+    String? result;
+    try {
+      result = await FilePickerUtils.pickDirectoryModal(
+        dialogTitle: context.l10n.onlineGallery_chooseDownloadDirectory,
+      );
+    } catch (e) {
+      if (mounted) {
+        AppToast.error(
+          context,
+          context.l10n.onlineGallery_selectDownloadDirectoryFailed('$e'),
+        );
+      }
+      return;
+    }
     if (result == null) return;
 
     if (mounted) {
-      AppToast.info(context, '开始下载 ${selectedPosts.length} 张图片...');
+      AppToast.info(
+        context,
+        context.l10n.onlineGallery_downloadSelectedStarted(
+          selectedPosts.length,
+        ),
+      );
       _selectionNotifier.exit();
     }
 
-    final (successCount, failCount) = await _downloadPosts(selectedPosts, result);
+    final (successCount, failCount) =
+        await _downloadPosts(selectedPosts, result);
 
     if (mounted) {
-      AppToast.success(context, '下载完成: 成功 $successCount, 失败 $failCount');
+      AppToast.success(
+        context,
+        context.l10n.onlineGallery_downloadSelectedCompleted(
+          successCount,
+          failCount,
+        ),
+      );
     }
   }
 
@@ -1130,11 +1222,13 @@ class _OnlineGalleryScreenState extends ConsumerState<OnlineGalleryScreen>
       await Future.wait(
         batch.map((post) async {
           try {
-            final url = post.largeFileUrl ?? post.sampleUrl ?? post.previewUrl;
+            final url = post.bestQualityUrl;
             if (url.isEmpty) return;
 
-            final file = await DanbooruImageCacheManager.instance.getSingleFile(url);
-            final destination = path.join(destinationDir, path.basename(Uri.parse(url).path));
+            final file =
+                await DanbooruImageCacheManager.instance.getSingleFile(url);
+            final destination =
+                path.join(destinationDir, path.basename(Uri.parse(url).path));
             await file.copy(destination);
             successCount++;
           } catch (e) {
@@ -1283,7 +1377,8 @@ class _SourceDropdown extends StatelessWidget {
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+          color:
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
@@ -1303,6 +1398,205 @@ class _SourceDropdown extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 模糊匹配开关
+class _FuzzySearchToggle extends StatelessWidget {
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  const _FuzzySearchToggle({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return FilterChip(
+      selected: enabled,
+      showCheckmark: false,
+      label: Text(
+        context.l10n.onlineGallery_fuzzySearch,
+        style: const TextStyle(fontSize: 12),
+      ),
+      tooltip: context.l10n.onlineGallery_fuzzySearchTooltip,
+      onSelected: onChanged,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      selectedColor: theme.colorScheme.secondaryContainer,
+      backgroundColor:
+          theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      side: BorderSide(
+        color: enabled
+            ? theme.colorScheme.secondary.withValues(alpha: 0.7)
+            : Colors.transparent,
+      ),
+    );
+  }
+}
+
+class _DateRangePopup extends StatefulWidget {
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final void Function(DateTime start, DateTime end) onApply;
+  final VoidCallback onClear;
+  final VoidCallback onClose;
+
+  const _DateRangePopup({
+    required this.initialStart,
+    required this.initialEnd,
+    required this.firstDate,
+    required this.lastDate,
+    required this.onApply,
+    required this.onClear,
+    required this.onClose,
+  });
+
+  @override
+  State<_DateRangePopup> createState() => _DateRangePopupState();
+}
+
+class _DateRangePopupState extends State<_DateRangePopup> {
+  final _formKey = GlobalKey<FormState>();
+  late DateTime _start;
+  late DateTime _end;
+
+  @override
+  void initState() {
+    super.initState();
+    _start = _clampDate(
+      widget.initialStart ?? widget.lastDate.subtract(const Duration(days: 30)),
+    );
+    _end = _clampDate(widget.initialEnd ?? widget.lastDate);
+    _normalizeRange();
+  }
+
+  DateTime _clampDate(DateTime date) {
+    if (date.isBefore(widget.firstDate)) return widget.firstDate;
+    if (date.isAfter(widget.lastDate)) return widget.lastDate;
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  void _normalizeRange() {
+    if (_start.isAfter(_end)) {
+      final previousStart = _start;
+      _start = _end;
+      _end = previousStart;
+    }
+  }
+
+  void _setLast30Days() {
+    setState(() {
+      _start = _clampDate(widget.lastDate.subtract(const Duration(days: 30)));
+      _end = _clampDate(widget.lastDate);
+    });
+  }
+
+  void _apply() {
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) return;
+
+    form.save();
+    _normalizeRange();
+    widget.onApply(_start, _end);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 340,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.date_range_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.l10n.onlineGallery_dateRange,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close, size: 18),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: context.l10n.common_close,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              InputDatePickerFormField(
+                key: ValueKey('start_${_start.toIso8601String()}'),
+                initialDate: _start,
+                firstDate: widget.firstDate,
+                lastDate: widget.lastDate,
+                fieldLabelText: context.l10n.onlineGallery_startDate,
+                fieldHintText: 'yyyy-mm-dd',
+                errorFormatText: context.l10n.onlineGallery_invalidDateFormat,
+                errorInvalidText: context.l10n.onlineGallery_dateOutOfRange,
+                onDateSaved: (date) => _start = _clampDate(date),
+              ),
+              const SizedBox(height: 10),
+              InputDatePickerFormField(
+                key: ValueKey('end_${_end.toIso8601String()}'),
+                initialDate: _end,
+                firstDate: widget.firstDate,
+                lastDate: widget.lastDate,
+                fieldLabelText: context.l10n.onlineGallery_endDate,
+                fieldHintText: 'yyyy-mm-dd',
+                errorFormatText: context.l10n.onlineGallery_invalidDateFormat,
+                errorInvalidText: context.l10n.onlineGallery_dateOutOfRange,
+                onDateSaved: (date) => _end = _clampDate(date),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    TextButton(
+                      onPressed: _setLast30Days,
+                      child: Text(context.l10n.onlineGallery_last30Days),
+                    ),
+                    TextButton(
+                      onPressed: widget.onClear,
+                      child: Text(context.l10n.onlineGallery_clear),
+                    ),
+                    FilledButton(
+                      onPressed: _apply,
+                      child: Text(context.l10n.common_apply),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1371,7 +1665,7 @@ class _RatingDropdown extends StatelessWidget {
             '+${selectedCodes.length - visibleCount}',
             style: TextStyle(
               fontSize: 10,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1384,18 +1678,18 @@ class _RatingDropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ratings = _getRatings(context);
-    final isAllSelected =
-        selectedRatings.length == kAllRatings.length &&
+    final isAllSelected = selectedRatings.length == kAllRatings.length &&
         selectedRatings.containsAll(kAllRatings);
-    final selectedCodesInOrder = ['g', 's', 'q', 'e']
-        .where(selectedRatings.contains)
-        .toList();
+    final selectedCodesInOrder =
+        ['g', 's', 'q', 'e'].where(selectedRatings.contains).toList();
     final selectedSpecific = ratings
         .where((r) => r.$1 != 'all' && selectedRatings.contains(r.$1))
         .toList();
     final current = isAllSelected
         ? ratings.first
-        : (selectedSpecific.isNotEmpty ? selectedSpecific.first : ratings.first);
+        : (selectedSpecific.isNotEmpty
+            ? selectedSpecific.first
+            : ratings.first);
 
     String buttonText() {
       if (isAllSelected) return current.$2;
@@ -1411,9 +1705,8 @@ class _RatingDropdown extends StatelessWidget {
       offset: const Offset(0, 36),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       itemBuilder: (menuContext) => ratings.map((r) {
-        final isSelected = r.$1 == 'all'
-            ? isAllSelected
-            : selectedRatings.contains(r.$1);
+        final isSelected =
+            r.$1 == 'all' ? isAllSelected : selectedRatings.contains(r.$1);
         return PopupMenuItem<String>(
           value: r.$1,
           child: Row(
@@ -1444,7 +1737,8 @@ class _RatingDropdown extends StatelessWidget {
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+          color:
+              theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(

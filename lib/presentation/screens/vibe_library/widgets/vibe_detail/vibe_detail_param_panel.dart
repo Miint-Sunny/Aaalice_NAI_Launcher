@@ -7,6 +7,7 @@ import '../../../../../data/models/vibe/vibe_reference.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../themes/design_tokens.dart';
 import '../../../../widgets/common/animated_favorite_button.dart';
+import '../../../../widgets/common/editable_double_field.dart';
 
 /// Vibe 详情毛玻璃参数面板
 ///
@@ -24,9 +25,15 @@ class VibeDetailParamPanel extends StatelessWidget {
   final VoidCallback? onExport;
   final VoidCallback? onDelete;
   final VoidCallback? onRename;
+  final VoidCallback? onSaveParams;
   final VoidCallback? onToggleFavorite;
   final ValueChanged<List<String>>? onTagsChanged;
+  final bool canSaveParams;
+  final bool showInfoExtractedControl;
+  final bool parametersEditable;
+  final String? parameterHint;
   final bool isRenaming;
+  final bool isSavingParams;
 
   const VibeDetailParamPanel({
     super.key,
@@ -39,9 +46,15 @@ class VibeDetailParamPanel extends StatelessWidget {
     this.onExport,
     this.onDelete,
     this.onRename,
+    this.onSaveParams,
     this.onToggleFavorite,
     this.onTagsChanged,
+    this.canSaveParams = false,
+    this.showInfoExtractedControl = true,
+    this.parametersEditable = true,
+    this.parameterHint,
     this.isRenaming = false,
+    this.isSavingParams = false,
   });
 
   @override
@@ -60,7 +73,7 @@ class VibeDetailParamPanel extends StatelessWidget {
         ),
         child: Container(
           color: theme.colorScheme.surface
-              .withOpacity(DesignTokens.glassOpacity),
+              .withValues(alpha: DesignTokens.glassOpacity),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -79,16 +92,38 @@ class VibeDetailParamPanel extends StatelessWidget {
                         labelKey: 'strength',
                         value: strength,
                         onChanged: onStrengthChanged,
+                        enabled: parametersEditable,
                         description: '控制 Vibe 对生成结果的影响强度',
                       ),
-                      const SizedBox(height: DesignTokens.spacingLg),
-                      _buildSliderSection(
-                        context,
-                        labelKey: 'infoExtracted',
-                        value: infoExtracted,
-                        onChanged: onInfoExtractedChanged,
-                        description: '控制从原始图片提取的信息量（消耗 2 Anlas）',
-                      ),
+                      if (showInfoExtractedControl) ...[
+                        const SizedBox(height: DesignTokens.spacingLg),
+                        _buildSliderSection(
+                          context,
+                          labelKey: 'infoExtracted',
+                          value: infoExtracted,
+                          onChanged: onInfoExtractedChanged,
+                          enabled: parametersEditable,
+                          description: '控制从原始图片提取的信息量（消耗 2 Anlas）',
+                        ),
+                      ],
+                      if (parameterHint != null) ...[
+                        const SizedBox(height: DesignTokens.spacingMd),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(DesignTokens.spacingSm),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.2),
+                            borderRadius: DesignTokens.borderRadiusMd,
+                          ),
+                          child: Text(
+                            parameterHint!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: DesignTokens.spacingLg),
                       // 统计信息
                       _buildStatsSection(theme),
@@ -113,7 +148,7 @@ class VibeDetailParamPanel extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.2),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
         ),
       ),
@@ -153,9 +188,9 @@ class VibeDetailParamPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(DesignTokens.radiusSm),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -184,6 +219,7 @@ class VibeDetailParamPanel extends StatelessWidget {
     required String labelKey,
     required double value,
     required ValueChanged<double> onChanged,
+    required bool enabled,
     required String description,
   }) {
     final theme = Theme.of(context);
@@ -193,6 +229,13 @@ class VibeDetailParamPanel extends StatelessWidget {
       'infoExtracted' => l10n.vibe_infoExtracted,
       _ => labelKey,
     };
+
+    final isInfoExtracted = labelKey == 'infoExtracted';
+    final fieldMin = isInfoExtracted
+        ? VibeReference.minInfoExtracted
+        : VibeReference.minStrength;
+    final sliderMin = isInfoExtracted ? VibeReference.minInfoExtracted : 0.0;
+    final sliderValue = value.clamp(sliderMin, 1.0).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,18 +250,16 @@ class VibeDetailParamPanel extends StatelessWidget {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(DesignTokens.radiusSm),
-              ),
-              child: Text(
-                value.toStringAsFixed(2),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+            EditableDoubleField(
+              value: value,
+              min: fieldMin,
+              max: 1.0,
+              width: 72,
+              onChanged: onChanged,
+              enabled: enabled,
+              textStyle: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],
@@ -241,26 +282,12 @@ class VibeDetailParamPanel extends StatelessWidget {
             thumbColor: theme.colorScheme.primary,
           ),
           child: Slider(
-            value: value,
-            min: 0.0,
+            value: sliderValue,
+            min: sliderMin,
             max: 1.0,
-            divisions: 100,
-            onChanged: onChanged,
+            divisions: isInfoExtracted ? 200 : 100,
+            onChanged: enabled ? onChanged : null,
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: ['0.0', '0.5', '1.0']
-              .map(
-                (v) => Text(
-                  v,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 11,
-                  ),
-                ),
-              )
-              .toList(),
         ),
       ],
     );
@@ -271,7 +298,7 @@ class VibeDetailParamPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(DesignTokens.spacingSm),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: DesignTokens.borderRadiusLg,
       ),
       child: Column(
@@ -328,13 +355,28 @@ class VibeDetailParamPanel extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.2),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: canSaveParams && !isSavingParams ? onSaveParams : null,
+              icon: isSavingParams
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: const Text('保存参数'),
+            ),
+          ),
+          const SizedBox(height: DesignTokens.spacingSm),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(

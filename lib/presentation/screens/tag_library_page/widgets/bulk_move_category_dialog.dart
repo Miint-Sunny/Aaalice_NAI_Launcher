@@ -26,7 +26,7 @@ class BulkMoveCategoryDialog extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
           const SizedBox(width: 8),
-          const Text('移动到分类'),
+          Text(context.l10n.tagLibrary_moveToCategoryTitle),
         ],
       ),
       content: SizedBox(
@@ -36,7 +36,7 @@ class BulkMoveCategoryDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '选择目标分类：',
+              context.l10n.tagLibrary_selectTargetCategory,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -48,7 +48,8 @@ class BulkMoveCategoryDialog extends StatelessWidget {
                   color: theme.colorScheme.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+                    color:
+                        theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                   ),
                 ),
                 child: ListView(
@@ -142,7 +143,7 @@ class _CategoryTile extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(8 + depth * 20, 10, 12, 10),
           decoration: BoxDecoration(
             color: isSelected
-                ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : null,
             borderRadius: BorderRadius.circular(8),
           ),

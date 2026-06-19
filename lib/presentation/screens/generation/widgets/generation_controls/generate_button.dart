@@ -13,6 +13,7 @@ class GenerateButtonWithCost extends ConsumerWidget {
   final ImageGenerationState generationState;
   final VoidCallback onGenerate;
   final VoidCallback onCancel;
+  final VoidCallback onSkipCurrent;
 
   const GenerateButtonWithCost({
     super.key,
@@ -21,35 +22,70 @@ class GenerateButtonWithCost extends ConsumerWidget {
     required this.generationState,
     required this.onGenerate,
     required this.onCancel,
+    required this.onSkipCurrent,
   });
+
+  bool get _canSkipCurrentBatch =>
+      showCancel &&
+      generationState.currentImage > 0 &&
+      generationState.totalImages > generationState.currentImage;
+
+  String _progressText() =>
+      '${generationState.currentImage}/${generationState.totalImages}';
+
+  String _generateLabelText(BuildContext context) {
+    if (isGenerating) {
+      return generationState.totalImages > 1
+          ? _progressText()
+          : context.l10n.generation_generating;
+    }
+    return context.l10n.generation_generate;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (showCancel) {
+      return SizedBox(
+        height: 48,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_canSkipCurrentBatch) ...[
+              ThemedButton(
+                onPressed: onSkipCurrent,
+                icon: const Icon(Icons.skip_next),
+                label: Text(
+                  '${context.l10n.generation_skipCurrentBatch} ${_progressText()}',
+                ),
+                style: ThemedButtonStyle.outlined,
+              ),
+              const SizedBox(width: 8),
+            ],
+            ThemedButton(
+              onPressed: onCancel,
+              icon: const Icon(Icons.stop_circle_outlined),
+              label: Text(context.l10n.generation_stopAllGeneration),
+              style: ThemedButtonStyle.outlined,
+            ),
+          ],
+        ),
+      );
+    }
+
     return SizedBox(
       height: 48,
       child: ThemedButton(
-        onPressed: isGenerating ? onCancel : onGenerate,
-        icon: showCancel
-            ? const Icon(Icons.stop)
-            : (isGenerating ? null : const Icon(Icons.auto_awesome)),
-        isLoading: isGenerating && !showCancel,
+        onPressed: isGenerating ? null : onGenerate,
+        icon: isGenerating ? null : const Icon(Icons.auto_awesome),
+        isLoading: isGenerating,
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              showCancel
-                  ? context.l10n.generation_cancel
-                  : (isGenerating
-                      ? (generationState.totalImages > 1
-                          ? '${generationState.currentImage}/${generationState.totalImages}'
-                          : context.l10n.generation_generating)
-                      : context.l10n.generation_generate),
-            ),
+            Text(_generateLabelText(context)),
             AnlasCostBadge(isGenerating: isGenerating),
           ],
         ),
-        style:
-            showCancel ? ThemedButtonStyle.outlined : ThemedButtonStyle.filled,
+        style: ThemedButtonStyle.filled,
       ),
     );
   }

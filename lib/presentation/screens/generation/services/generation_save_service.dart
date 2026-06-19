@@ -3,7 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
+import '../../../../core/utils/localization_extension.dart';
 import '../../../../core/utils/image_save_utils.dart';
 import '../../../../data/models/gallery/nai_image_metadata.dart';
 import '../../../../data/repositories/gallery_folder_repository.dart';
@@ -48,6 +50,8 @@ class GenerationSaveService {
           filePath: img.filePath!,
           cachedBytes: img.bytes,
           id: img.id,
+          initialMetadata: img.metadata,
+          showCopyButton: img.canSave,
         );
       }
 
@@ -55,7 +59,10 @@ class GenerationSaveService {
       // 这种情况只应在 auto-save 关闭且用户未手动保存时发生
       return GeneratedImageDetailData(
         imageBytes: img.bytes,
+        metadata: img.metadata,
         id: img.id,
+        showSaveButton: img.canSave,
+        showCopyButton: img.canSave,
       );
     }).toList();
 
@@ -68,7 +75,10 @@ class GenerationSaveService {
       showMetadataPanel: true,
       showThumbnails: allImages.length > 1,
       callbacks: ImageDetailCallbacks(
-        onSave: (image) => saveImageFromDetail(context, ref, image),
+        onSave: (image) async {
+          if (!image.showSaveButton) return;
+          await saveImageFromDetail(context, ref, image);
+        },
       ),
     );
   }
@@ -87,24 +97,29 @@ class GenerationSaveService {
       if (saveDirPath == null) return;
 
       final fileName = 'NAI_${DateTime.now().millisecondsSinceEpoch}.png';
-      final filePath = '$saveDirPath/$fileName';
+      final filePath = p.join(saveDirPath, fileName);
 
       // 获取已有元数据（如果图像已包含）
       final existingMetadata = image.metadata;
 
       if (existingMetadata != null) {
-        // 使用已有元数据重新嵌入（保持完整性）
-        await ImageSaveUtils.saveWithPrebuiltMetadata(
-          imageBytes: imageBytes,
-          filePath: filePath,
-          metadata: {
-            'Description': existingMetadata.prompt,
-            'Software': 'NovelAI',
-            'Source': existingMetadata.source ?? 'NovelAI Diffusion',
-            'Comment':
-                jsonEncode(buildCommentJsonFromMetadata(existingMetadata)),
-          },
-        );
+        if (ImageSaveUtils.hasEmbeddedNovelAiMetadata(imageBytes)) {
+          final file = File(filePath);
+          await file.writeAsBytes(imageBytes);
+        } else {
+          // 使用已有元数据重新嵌入（保持完整性）
+          await ImageSaveUtils.saveWithPrebuiltMetadata(
+            imageBytes: imageBytes,
+            filePath: filePath,
+            metadata: {
+              'Description': existingMetadata.prompt,
+              'Software': 'NovelAI',
+              'Source': existingMetadata.source ?? 'NovelAI Diffusion',
+              'Comment':
+                  jsonEncode(buildCommentJsonFromMetadata(existingMetadata)),
+            },
+          );
+        }
       } else {
         // 没有元数据，直接保存原始字节
         final file = File(filePath);
@@ -114,18 +129,19 @@ class GenerationSaveService {
       ref.read(localGalleryNotifierProvider.notifier).refresh();
 
       if (context.mounted) {
-        AppToast.success(context, '图像已保存到: $saveDirPath');
+        AppToast.success(context, context.l10n.image_imageSaved(saveDirPath));
       }
     } catch (e) {
       if (context.mounted) {
-        AppToast.error(context, '保存图像失败: $e');
+        AppToast.error(context, context.l10n.image_saveFailed(e.toString()));
       }
     }
   }
 
   /// 从元数据构建 Comment JSON
   static Map<String, dynamic> buildCommentJsonFromMetadata(
-      NaiImageMetadata metadata,) {
+    NaiImageMetadata metadata,
+  ) {
     final commentJson = <String, dynamic>{
       'prompt': metadata.prompt,
       'uc': metadata.negativePrompt,

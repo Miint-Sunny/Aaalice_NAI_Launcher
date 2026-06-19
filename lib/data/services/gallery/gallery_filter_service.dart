@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/database/datasources/gallery_data_source.dart';
 import '../../../core/database/utils/lru_cache.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/isolate_pool.dart';
+import '../../../core/utils/tag_normalizer.dart';
 
 export 'gallery_filter_service.dart' show FilterCriteria;
 
@@ -108,12 +110,19 @@ class FilterCriteria {
       showFavoritesOnly: showFavoritesOnly ?? this.showFavoritesOnly,
       selectedTags: selectedTags ?? this.selectedTags,
       filterModel: clearFilterModel ? null : (filterModel ?? this.filterModel),
-      filterSampler: clearFilterSampler ? null : (filterSampler ?? this.filterSampler),
-      filterMinSteps: clearFilterMinSteps ? null : (filterMinSteps ?? this.filterMinSteps),
-      filterMaxSteps: clearFilterMaxSteps ? null : (filterMaxSteps ?? this.filterMaxSteps),
-      filterMinCfg: clearFilterMinCfg ? null : (filterMinCfg ?? this.filterMinCfg),
-      filterMaxCfg: clearFilterMaxCfg ? null : (filterMaxCfg ?? this.filterMaxCfg),
-      filterResolution: clearFilterResolution ? null : (filterResolution ?? this.filterResolution),
+      filterSampler:
+          clearFilterSampler ? null : (filterSampler ?? this.filterSampler),
+      filterMinSteps:
+          clearFilterMinSteps ? null : (filterMinSteps ?? this.filterMinSteps),
+      filterMaxSteps:
+          clearFilterMaxSteps ? null : (filterMaxSteps ?? this.filterMaxSteps),
+      filterMinCfg:
+          clearFilterMinCfg ? null : (filterMinCfg ?? this.filterMinCfg),
+      filterMaxCfg:
+          clearFilterMaxCfg ? null : (filterMaxCfg ?? this.filterMaxCfg),
+      filterResolution: clearFilterResolution
+          ? null
+          : (filterResolution ?? this.filterResolution),
       minWidth: clearMinWidth ? null : (minWidth ?? this.minWidth),
       minHeight: clearMinHeight ? null : (minHeight ?? this.minHeight),
       maxWidth: clearMaxWidth ? null : (maxWidth ?? this.maxWidth),
@@ -122,7 +131,9 @@ class FilterCriteria {
       maxFileSize: clearMaxFileSize ? null : (maxFileSize ?? this.maxFileSize),
       metadataStatuses: metadataStatuses ?? this.metadataStatuses,
       categoryId: clearCategoryId ? null : (categoryId ?? this.categoryId),
-      categoryFolderPath: clearCategoryFolderPath ? null : (categoryFolderPath ?? this.categoryFolderPath),
+      categoryFolderPath: clearCategoryFolderPath
+          ? null
+          : (categoryFolderPath ?? this.categoryFolderPath),
     );
   }
 
@@ -251,9 +262,6 @@ class GalleryFilterService {
   final LRUCache<String, FilterResult> _filterCache =
       LRUCache(maxSize: _maxCacheSize);
 
-  // 批量处理配置
-  static const int _dateBatchSize = 50;
-
   // 取消令牌
   final Map<String, CancelToken> _activeFilters = {};
 
@@ -266,6 +274,10 @@ class GalleryFilterService {
   void clearCache() {
     _filterCache.clear();
     AppLogger.i('Filter cache cleared', 'GalleryFilterService');
+  }
+
+  String _buildCacheKey(List<File> allFiles, FilterCriteria criteria) {
+    return '${criteria.cacheKey}|files:${allFiles.length}|rev:${_dataSource.dataRevision}';
   }
 
   /// 异步应用过滤条件
@@ -287,7 +299,7 @@ class GalleryFilterService {
 
     try {
       // 检查缓存
-      final cacheKey = criteria.cacheKey;
+      final cacheKey = _buildCacheKey(allFiles, criteria);
       final cached = _filterCache.get(cacheKey);
       if (cached != null) {
         AppLogger.d('Filter cache hit: $cacheKey', 'GalleryFilterService');
@@ -325,8 +337,27 @@ class GalleryFilterService {
       List<File> filtered;
 
       if (criteria.searchQuery.isNotEmpty) {
-        // 有搜索关键词：使用数据库搜索
-        filtered = await _searchInDatabase(allFiles, criteria, cancelToken);
+        if (_hasDelimitedSearchQuery(criteria.searchQuery)) {
+          // 逗号分隔搜索使用后台 AND 过滤，避免 FTS 多词搜索的 OR 语义。
+          filtered = allFiles;
+          if (_hasDatabasePreSearchFilters(criteria)) {
+            filtered = await _searchInDatabase(
+              allFiles,
+              criteria.copyWith(searchQuery: ''),
+              cancelToken,
+            );
+          }
+          filtered = await _filterByDelimitedSearchQuery(
+            filtered,
+            criteria.searchQuery,
+            cancelToken,
+          );
+        } else {
+          // 有普通搜索关键词：使用数据库搜索
+          filtered = await _searchInDatabase(allFiles, criteria, cancelToken);
+        }
+        filtered =
+            await _applyPostSearchFilters(filtered, criteria, cancelToken);
       } else {
         // 本地过滤
         filtered = await _applyLocalFilters(allFiles, criteria, cancelToken);
@@ -351,7 +382,7 @@ class GalleryFilterService {
 
       AppLogger.d(
         'Filter completed in ${stopwatch.elapsedMilliseconds}ms: ${filtered.length} results (from ${allFiles.length} files)'
-        ' | search="${criteria.searchQuery}" | tags=${criteria.selectedTags} | fav=${criteria.showFavoritesOnly}',
+            ' | search="${criteria.searchQuery}" | tags=${criteria.selectedTags} | fav=${criteria.showFavoritesOnly}',
         'GalleryFilterService',
       );
 
@@ -383,7 +414,7 @@ class GalleryFilterService {
         metadataStatuses: criteria.metadataStatuses.isNotEmpty
             ? criteria.metadataStatuses
             : null,
-        limit: 10000,
+        limit: max(1, allFiles.length),
       );
 
       if (cancelToken.isCancelled) return [];
@@ -411,14 +442,18 @@ class GalleryFilterService {
 
     AppLogger.d(
       '_applyLocalFilters START: ${filtered.length} files, '
-      'tags=${criteria.selectedTags}, dateStart=${criteria.dateStart}, dateEnd=${criteria.dateEnd}, favOnly=${criteria.showFavoritesOnly}',
+          'tags=${criteria.selectedTags}, dateStart=${criteria.dateStart}, dateEnd=${criteria.dateEnd}, favOnly=${criteria.showFavoritesOnly}',
       'GalleryFilterService',
     );
 
     // 标签过滤（需要数据库查询）
     if (criteria.selectedTags.isNotEmpty) {
-      filtered = await _filterByTags(filtered, criteria.selectedTags, cancelToken);
-      AppLogger.d('_applyLocalFilters after tags filter: ${filtered.length} files', 'GalleryFilterService');
+      filtered =
+          await _filterByTags(filtered, criteria.selectedTags, cancelToken);
+      AppLogger.d(
+        '_applyLocalFilters after tags filter: ${filtered.length} files',
+        'GalleryFilterService',
+      );
     }
 
     if (cancelToken.isCancelled) return [];
@@ -426,7 +461,10 @@ class GalleryFilterService {
     // 日期过滤
     if (criteria.dateStart != null || criteria.dateEnd != null) {
       filtered = await _filterByDateRange(filtered, criteria, cancelToken);
-      AppLogger.d('_applyLocalFilters after date filter: ${filtered.length} files', 'GalleryFilterService');
+      AppLogger.d(
+        '_applyLocalFilters after date filter: ${filtered.length} files',
+        'GalleryFilterService',
+      );
     }
 
     if (cancelToken.isCancelled) return [];
@@ -434,19 +472,92 @@ class GalleryFilterService {
     // 收藏过滤
     if (criteria.showFavoritesOnly) {
       filtered = await _filterByFavorites(filtered, cancelToken);
-      AppLogger.d('_applyLocalFilters after fav filter: ${filtered.length} files', 'GalleryFilterService');
+      AppLogger.d(
+        '_applyLocalFilters after fav filter: ${filtered.length} files',
+        'GalleryFilterService',
+      );
     }
 
     if (cancelToken.isCancelled) return [];
 
     // 分类过滤（按文件夹路径）
     if (criteria.categoryFolderPath != null) {
-      filtered = await _filterByCategory(filtered, criteria.categoryFolderPath!, cancelToken);
-      AppLogger.d('_applyLocalFilters after category filter: ${filtered.length} files', 'GalleryFilterService');
+      filtered = await _filterByCategory(
+        filtered,
+        criteria.categoryFolderPath!,
+        cancelToken,
+      );
+      AppLogger.d(
+        '_applyLocalFilters after category filter: ${filtered.length} files',
+        'GalleryFilterService',
+      );
     }
 
-    AppLogger.d('_applyLocalFilters END: ${filtered.length} files', 'GalleryFilterService');
+    AppLogger.d(
+      '_applyLocalFilters END: ${filtered.length} files',
+      'GalleryFilterService',
+    );
     return filtered;
+  }
+
+  /// 应用数据库文本搜索之后仍需叠加的本地过滤。
+  Future<List<File>> _applyPostSearchFilters(
+    List<File> files,
+    FilterCriteria criteria,
+    CancelToken cancelToken,
+  ) async {
+    var filtered = files;
+
+    if (criteria.selectedTags.isNotEmpty) {
+      filtered =
+          await _filterByTags(filtered, criteria.selectedTags, cancelToken);
+    }
+
+    if (cancelToken.isCancelled) return [];
+
+    if (criteria.categoryFolderPath != null) {
+      filtered = await _filterByCategory(
+        filtered,
+        criteria.categoryFolderPath!,
+        cancelToken,
+      );
+    }
+
+    return filtered;
+  }
+
+  /// 按逗号分隔的搜索片段做 AND 包含匹配。
+  Future<List<File>> _filterByDelimitedSearchQuery(
+    List<File> files,
+    String searchQuery,
+    CancelToken cancelToken,
+  ) async {
+    final segments = _parseDelimitedSearchSegments(searchQuery);
+    if (segments.isEmpty || files.isEmpty) return files;
+
+    try {
+      final imageIds = await _dataSource.searchByDelimitedTextSegments(
+        segments,
+        limit: max(1, files.length),
+        candidatePaths: files.map((file) => file.path).toList(),
+      );
+
+      if (cancelToken.isCancelled) return [];
+
+      final images = await _dataSource.getImagesByIds(imageIds);
+      final validPaths = images.map((image) => image.filePath).toSet();
+
+      return files.where((file) {
+        if (cancelToken.isCancelled) return false;
+        return validPaths.contains(file.path);
+      }).toList();
+    } catch (e) {
+      AppLogger.w(
+        'Failed to filter by delimited search query: $e',
+        'GalleryFilterService',
+      );
+      return files;
+    }
   }
 
   /// 按标签过滤
@@ -456,6 +567,12 @@ class GalleryFilterService {
     CancelToken cancelToken,
   ) async {
     try {
+      final requiredTags = tags
+          .map(TagNormalizer.normalizeTagForMatch)
+          .where((tag) => tag.isNotEmpty)
+          .toSet();
+      if (requiredTags.isEmpty) return files;
+
       // 获取文件路径到图片 ID 的映射
       final pathToIdMap = await _dataSource.getImageIdsByPaths(
         files.map((f) => f.path).toList(),
@@ -464,6 +581,7 @@ class GalleryFilterService {
       // 获取所有图片的标签
       final imageIds = pathToIdMap.values.whereType<int>().toList();
       final tagsMap = await _dataSource.getTagsByImageIds(imageIds);
+      final metadataMap = await _dataSource.getMetadataByImageIds(imageIds);
 
       return files.where((file) {
         if (cancelToken.isCancelled) return false;
@@ -471,13 +589,45 @@ class GalleryFilterService {
         final imageId = pathToIdMap[file.path];
         if (imageId == null) return false;
 
-        final fileTags = tagsMap[imageId] ?? [];
-        return tags.every((tag) => fileTags.contains(tag));
+        final fileTags = (tagsMap[imageId] ?? [])
+            .map(TagNormalizer.normalizeTagForMatch)
+            .where((tag) => tag.isNotEmpty)
+            .toSet();
+        final metadataText = TagNormalizer.normalizeTagForMatch(
+          metadataMap[imageId]?.fullPromptText ?? '',
+        );
+
+        return requiredTags.every(
+          (tag) =>
+              fileTags.contains(tag) ||
+              _normalizedTextContainsTag(metadataText, tag),
+        );
       }).toList();
     } catch (e) {
       AppLogger.w('Failed to filter by tags: $e', 'GalleryFilterService');
       return files;
     }
+  }
+
+  bool _hasDelimitedSearchQuery(String value) {
+    return value.contains(',') || value.contains('，');
+  }
+
+  bool _hasDatabasePreSearchFilters(FilterCriteria criteria) {
+    return criteria.dateStart != null ||
+        criteria.dateEnd != null ||
+        criteria.showFavoritesOnly ||
+        criteria.hasAdvancedFilters;
+  }
+
+  List<String> _parseDelimitedSearchSegments(String value) {
+    return TagNormalizer.parseDelimitedSearchSegments(value);
+  }
+
+  bool _normalizedTextContainsTag(String normalizedText, String normalizedTag) {
+    if (normalizedText.isEmpty || normalizedTag.isEmpty) return false;
+
+    return ' $normalizedText '.contains(' $normalizedTag ');
   }
 
   /// 按日期范围过滤
@@ -486,35 +636,22 @@ class GalleryFilterService {
     FilterCriteria criteria,
     CancelToken cancelToken,
   ) async {
+    if (files.isEmpty) return files;
+    if (cancelToken.isCancelled) return [];
+
     final effectiveEndDate = criteria.dateEnd?.add(const Duration(days: 1));
-    final result = <File>[];
+    final matchingPaths = await ComputeGate().runCompute(
+      _filterBatchByDate,
+      _DateFilterParams(
+        filePaths: files.map((file) => file.path).toList(),
+        dateStart: criteria.dateStart,
+        dateEnd: effectiveEndDate,
+      ),
+    );
 
-    // 分批处理避免阻塞
-    for (var i = 0; i < files.length; i += _dateBatchSize) {
-      if (cancelToken.isCancelled) return [];
+    if (cancelToken.isCancelled) return [];
 
-      final end = min(i + _dateBatchSize, files.length);
-      final batch = files.sublist(i, end);
-
-      // 使用 compute 在后台 isolate 处理
-      final batchResult = await compute(
-        _filterBatchByDate,
-        _DateFilterParams(
-          filePaths: batch.map((f) => f.path).toList(),
-          dateStart: criteria.dateStart,
-          dateEnd: effectiveEndDate,
-        ),
-      );
-
-      result.addAll(batchResult.map((path) => File(path)));
-
-      // 让出时间片
-      if (i + _dateBatchSize < files.length) {
-        await Future.delayed(Duration.zero);
-      }
-    }
-
-    return result;
+    return matchingPaths.map((path) => File(path)).toList();
   }
 
   /// 按收藏状态过滤
@@ -554,13 +691,15 @@ class GalleryFilterService {
   ) async {
     try {
       // 规范化路径分隔符并转换为小写以便比较
-      final normalizedCategoryPath = categoryFolderPath.replaceAll('\\', '/').toLowerCase();
+      final normalizedCategoryPath =
+          categoryFolderPath.replaceAll('\\', '/').toLowerCase();
 
       return files.where((file) {
         if (cancelToken.isCancelled) return false;
 
         // 规范化文件路径
-        final normalizedFilePath = file.path.replaceAll('\\', '/').toLowerCase();
+        final normalizedFilePath =
+            file.path.replaceAll('\\', '/').toLowerCase();
 
         // 检查文件路径是否包含分类文件夹路径
         // 使用 / 确保精确匹配文件夹名（如 "test_batch/" 不匹配 "test_batch_2/"）

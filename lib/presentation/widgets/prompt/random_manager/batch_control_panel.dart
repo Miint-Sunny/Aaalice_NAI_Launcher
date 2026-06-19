@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/localization_extension.dart';
 import '../../../providers/random_preset_provider.dart';
 import '../../common/elevated_card.dart';
 import '../../common/app_toast.dart';
@@ -140,8 +141,9 @@ class _BatchControlPanelState extends ConsumerState<BatchControlPanel> {
       AppToast.success(
         context,
         enabled
-            ? '已启用 ${widget.selectedIds.length} 个项目'
-            : '已禁用 ${widget.selectedIds.length} 个项目',
+            ? context.l10n.randomManager_enabledItems(widget.selectedIds.length)
+            : context.l10n
+                .randomManager_disabledItems(widget.selectedIds.length),
       );
     }
   }
@@ -152,17 +154,21 @@ class _BatchControlPanelState extends ConsumerState<BatchControlPanel> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('批量删除'),
-        content: Text('确定要删除选中的 ${widget.selectedIds.length} 个项目吗？此操作不可撤销。'),
+        title: Text(context.l10n.randomManager_batchDeleteTitle),
+        content: Text(
+          context.l10n.randomManager_batchDeleteContent(
+            widget.selectedIds.length,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(context.l10n.common_cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('删除'),
+            child: Text(context.l10n.common_delete),
           ),
         ],
       ),
@@ -179,7 +185,10 @@ class _BatchControlPanelState extends ConsumerState<BatchControlPanel> {
     widget.onSelectionChanged({});
 
     if (mounted) {
-      AppToast.success(context, '已删除 ${widget.selectedIds.length} 个项目');
+      AppToast.success(
+        context,
+        context.l10n.randomManager_deletedItems(widget.selectedIds.length),
+      );
     }
   }
 }
@@ -207,7 +216,7 @@ class _SelectionInfo extends StatelessWidget {
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: hasSelection
-                ? colorScheme.primary.withOpacity(0.15)
+                ? colorScheme.primary.withValues(alpha: 0.15)
                 : colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(6),
           ),
@@ -225,14 +234,16 @@ class _SelectionInfo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              hasSelection ? '已选择 $selectedCount 项' : '批量操作',
+              hasSelection
+                  ? context.l10n.randomManager_selectedItems(selectedCount)
+                  : context.l10n.randomManager_batchOperations,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: hasSelection ? colorScheme.primary : null,
               ),
             ),
             Text(
-              '共 $totalCount 项',
+              context.l10n.randomManager_totalItems(totalCount),
               style: theme.textTheme.labelSmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -269,24 +280,26 @@ class _QuickActions extends StatelessWidget {
       children: [
         _QuickActionButton(
           icon: Icons.select_all,
-          tooltip: '全选',
+          tooltip: context.l10n.common_selectAll,
           onPressed: onSelectAll,
         ),
         _QuickActionButton(
           icon: Icons.deselect,
-          tooltip: '取消全选',
+          tooltip: context.l10n.common_deselectAll,
           onPressed: hasSelection ? onDeselectAll : null,
         ),
         _QuickActionButton(
           icon: Icons.flip_to_back,
-          tooltip: '反选',
+          tooltip: context.l10n.randomManager_invertSelection,
           onPressed: onInvertSelection,
         ),
         const SizedBox(width: 8),
         // 展开按钮
         _QuickActionButton(
           icon: isExpanded ? Icons.expand_less : Icons.expand_more,
-          tooltip: isExpanded ? '收起' : '更多操作',
+          tooltip: isExpanded
+              ? context.l10n.common_collapseAll
+              : context.l10n.randomManager_moreActions,
           onPressed: onToggleExpand,
           highlighted: isExpanded,
         ),
@@ -336,7 +349,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: widget.highlighted || (_isHovered && isEnabled)
-                  ? colorScheme.primary.withOpacity(0.12)
+                  ? colorScheme.primary.withValues(alpha: 0.12)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(6),
             ),
@@ -347,7 +360,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
                   ? (widget.highlighted
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant)
-                  : colorScheme.onSurfaceVariant.withOpacity(0.4),
+                  : colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
             ),
           ),
         ),
@@ -381,7 +394,7 @@ class _BatchOperations extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withOpacity(0.05),
+            color: colorScheme.shadow.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -393,19 +406,19 @@ class _BatchOperations extends StatelessWidget {
         children: [
           _BatchOperationButton(
             icon: Icons.check_circle_outline,
-            label: '启用选中',
+            label: context.l10n.randomManager_enableSelected,
             color: Colors.green,
             onPressed: hasSelection ? onEnableSelected : null,
           ),
           _BatchOperationButton(
             icon: Icons.remove_circle_outline,
-            label: '禁用选中',
+            label: context.l10n.randomManager_disableSelected,
             color: Colors.orange,
             onPressed: hasSelection ? onDisableSelected : null,
           ),
           _BatchOperationButton(
             icon: Icons.delete_outline,
-            label: '删除选中',
+            label: context.l10n.randomManager_deleteSelected,
             color: Colors.red,
             onPressed: hasSelection ? onDeleteSelected : null,
           ),
@@ -440,7 +453,7 @@ class _BatchOperationButtonState extends State<_BatchOperationButton> {
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null;
     final effectiveColor =
-        isEnabled ? widget.color : widget.color.withOpacity(0.4);
+        isEnabled ? widget.color : widget.color.withValues(alpha: 0.4);
 
     return MouseRegion(
       cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -453,13 +466,13 @@ class _BatchOperationButtonState extends State<_BatchOperationButton> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: _isHovered && isEnabled
-                ? effectiveColor.withOpacity(0.15)
-                : effectiveColor.withOpacity(0.08),
+                ? effectiveColor.withValues(alpha: 0.15)
+                : effectiveColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(6),
             boxShadow: _isHovered && isEnabled
                 ? [
                     BoxShadow(
-                      color: effectiveColor.withOpacity(0.2),
+                      color: effectiveColor.withValues(alpha: 0.2),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),

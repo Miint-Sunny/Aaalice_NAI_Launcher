@@ -25,7 +25,6 @@ class RandomModeSelector extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: RandomGenerationMode.values
-          .where((mode) => mode != RandomGenerationMode.hybrid) // 暂时隐藏混合模式
           .map(
             (mode) => _buildModeOption(
               context,
@@ -58,7 +57,7 @@ class RandomModeSelector extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.5)
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
               : null,
           borderRadius: BorderRadius.circular(8),
         ),
@@ -141,6 +140,11 @@ class RandomModePopupMenu extends ConsumerWidget {
         _buildMenuItem(
           context,
           RandomGenerationMode.custom,
+          currentMode,
+        ),
+        _buildMenuItem(
+          context,
+          RandomGenerationMode.hybrid,
           currentMode,
         ),
       ],
@@ -298,9 +302,7 @@ class RandomModeIndicator extends ConsumerWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                currentMode == RandomGenerationMode.naiOfficial
-                    ? context.l10n.randomMode_naiIndicator
-                    : context.l10n.randomMode_customIndicator,
+                _getModeIndicator(context, currentMode),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.primary,
                 ),
@@ -317,6 +319,14 @@ class RandomModeIndicator extends ConsumerWidget {
       RandomGenerationMode.naiOfficial => Icons.auto_awesome,
       RandomGenerationMode.custom => Icons.tune,
       RandomGenerationMode.hybrid => Icons.merge_type,
+    };
+  }
+
+  String _getModeIndicator(BuildContext context, RandomGenerationMode mode) {
+    return switch (mode) {
+      RandomGenerationMode.naiOfficial => context.l10n.randomMode_naiIndicator,
+      RandomGenerationMode.custom => context.l10n.randomMode_customIndicator,
+      RandomGenerationMode.hybrid => context.l10n.randomMode_hybrid,
     };
   }
 

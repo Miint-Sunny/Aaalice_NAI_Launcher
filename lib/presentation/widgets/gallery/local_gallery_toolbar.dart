@@ -3,9 +3,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/shortcuts/default_shortcuts.dart';
+import '../../../core/utils/localization_extension.dart';
 import '../../providers/local_gallery_provider.dart';
 import '../../providers/selection_mode_provider.dart';
 import '../bulk_action_bar.dart';
@@ -77,6 +79,10 @@ class LocalGalleryToolbar extends ConsumerStatefulWidget {
   /// 分类面板切换按钮回调
   final VoidCallback? onToggleCategoryPanel;
 
+  /// Whether search autocomplete is enabled.
+  /// 是否启用搜索自动补全。
+  final bool enableSearchAutocomplete;
+
   const LocalGalleryToolbar({
     super.key,
     this.use3DCardView = true,
@@ -96,6 +102,7 @@ class LocalGalleryToolbar extends ConsumerStatefulWidget {
     this.onMoveToFolder,
     this.showCategoryPanel = true,
     this.onToggleCategoryPanel,
+    this.enableSearchAutocomplete = true,
   });
 
   @override
@@ -105,9 +112,15 @@ class LocalGalleryToolbar extends ConsumerStatefulWidget {
 
 class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
+  late final FocusNode _searchFocusNode;
   Timer? _debounceTimer;
   Future<LocalTagStrategy>? _searchStrategyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocusNode = FocusNode(onKeyEvent: _handleSearchKeyEvent);
+  }
 
   @override
   void dispose() {
@@ -127,64 +140,115 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
     });
   }
 
+  KeyEventResult _handleSearchKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.keyA) {
+      return KeyEventResult.ignored;
+    }
+
+    final keyboard = HardwareKeyboard.instance;
+    if (!keyboard.isControlPressed && !keyboard.isMetaPressed) {
+      return KeyEventResult.ignored;
+    }
+
+    _searchController.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _searchController.text.length,
+    );
+    return KeyEventResult.handled;
+  }
+
+  Future<void> _selectAllFilteredImages() async {
+    final paths = await ref
+        .read(localGalleryNotifierProvider.notifier)
+        .getFilteredImagePaths();
+    if (!mounted) return;
+
+    ref
+        .read(localGallerySelectionNotifierProvider.notifier)
+        .replaceSelection(paths);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(localGalleryNotifierProvider);
     final selectionState = ref.watch(localGallerySelectionNotifierProvider);
     final theme = Theme.of(context);
+    final l10n = context.l10n;
     final isDark = theme.brightness == Brightness.dark;
 
     // Show bulk action bar when in selection mode
     // 选择模式时显示批量操作栏
     if (selectionState.isActive) {
-      final allImagePaths = state.currentImages.map((r) => r.path).toList();
-      final isAllSelected = allImagePaths.isNotEmpty &&
-          allImagePaths.every((p) => selectionState.selectedIds.contains(p));
+      final currentPageImagePaths =
+          state.currentImages.map((r) => r.path).toList();
+      final isCurrentPageSelected = currentPageImagePaths.isNotEmpty &&
+          currentPageImagePaths
+              .every((p) => selectionState.selectedIds.contains(p));
+      final selectableResultCount =
+          state.hasFilters ? state.filteredCount : state.totalCount;
+      final isAllResultSelected = selectableResultCount > 0 &&
+          selectionState.selectedIds.length == selectableResultCount;
 
       return BulkActionBar(
         selectedCount: selectionState.selectedIds.length,
-        isAllSelected: isAllSelected,
+        isAllSelected: isCurrentPageSelected,
+        isAllAvailableSelected: isAllResultSelected,
         onExit: () =>
             ref.read(localGallerySelectionNotifierProvider.notifier).exit(),
         onSelectAll: () {
-          if (isAllSelected) {
+          if (isCurrentPageSelected) {
             ref
                 .read(localGallerySelectionNotifierProvider.notifier)
-                .clearSelection();
+                .deselectAll(currentPageImagePaths);
           } else {
             ref
                 .read(localGallerySelectionNotifierProvider.notifier)
-                .selectAll(allImagePaths);
+                .selectAll(currentPageImagePaths);
           }
         },
+        onSelectAllAvailable: selectableResultCount > 0
+            ? () {
+                if (isAllResultSelected) {
+                  ref
+                      .read(localGallerySelectionNotifierProvider.notifier)
+                      .clearSelection();
+                } else {
+                  unawaited(_selectAllFilteredImages());
+                }
+              }
+            : null,
+        selectAllLabel: l10n.localGallery_selectCurrentPage,
+        deselectAllLabel: l10n.localGallery_deselectCurrentPage,
+        selectAllAvailableLabel: l10n.localGallery_selectAllResults,
+        deselectAllAvailableLabel: l10n.localGallery_deselectAllResults,
         actions: [
           BulkActionItem(
             icon: Icons.drive_file_move_outline,
-            label: '移动',
+            label: l10n.localGallery_moveSelected,
             onPressed: widget.onMoveToFolder,
             color: theme.colorScheme.secondary,
           ),
           BulkActionItem(
             icon: Icons.archive_outlined,
-            label: '打包',
+            label: l10n.localGallery_packSelected,
             onPressed: widget.onPackSelected,
             color: theme.colorScheme.tertiary,
           ),
           BulkActionItem(
             icon: Icons.edit_outlined,
-            label: '编辑',
+            label: l10n.localGallery_editMetadata,
             onPressed: widget.onEditMetadata,
             color: theme.colorScheme.primary,
           ),
           BulkActionItem(
             icon: Icons.playlist_add,
-            label: '收藏',
+            label: l10n.localGallery_addToCollection,
             onPressed: widget.onAddToCollection,
             color: theme.colorScheme.secondary,
           ),
           BulkActionItem(
             icon: Icons.delete_outline,
-            label: '删除',
+            label: l10n.common_delete,
             onPressed: widget.onDeleteSelected,
             color: theme.colorScheme.error,
             isDanger: true,
@@ -204,11 +268,11 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
           constraints: const BoxConstraints(minHeight: 62),
           decoration: BoxDecoration(
             color: isDark
-                ? theme.colorScheme.surfaceContainerHigh.withOpacity(0.9)
-                : theme.colorScheme.surface.withOpacity(0.8),
+                ? theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.9)
+                : theme.colorScheme.surface.withValues(alpha: 0.8),
             border: Border(
               bottom: BorderSide(
-                color: theme.dividerColor.withOpacity(isDark ? 0.2 : 0.3),
+                color: theme.dividerColor.withValues(alpha: isDark ? 0.2 : 0.3),
               ),
             ),
           ),
@@ -220,7 +284,7 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                 children: [
                   // Title
                   Text(
-                    '本地画廊',
+                    l10n.localGallery_title,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -236,9 +300,9 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                       decoration: BoxDecoration(
                         color: isDark
                             ? theme.colorScheme.primaryContainer
-                                .withOpacity(0.4)
+                                .withValues(alpha: 0.4)
                             : theme.colorScheme.primaryContainer
-                                .withOpacity(0.3),
+                                .withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -264,15 +328,23 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                   const SizedBox(width: 6),
                   // 日期分组视图切换按钮
                   CompactIconButton(
-                    icon: state.isGroupedView ? Icons.view_module : Icons.calendar_today,
-                    label: state.isGroupedView ? '网格' : '日期',
-                    tooltip: state.isGroupedView ? '切换到网格视图' : '切换到日期分组视图',
+                    icon: state.isGroupedView
+                        ? Icons.view_module
+                        : Icons.calendar_today,
+                    label: state.isGroupedView
+                        ? l10n.common_grid
+                        : l10n.common_date,
+                    tooltip: state.isGroupedView
+                        ? l10n.localGallery_switchToGridView
+                        : l10n.localGallery_switchToDateGroupedView,
                     shortcutId: ShortcutIds.jumpToDate,
                     isActive: state.isGroupedView,
                     onPressed: () {
                       if (state.isGroupedView) {
                         // 退出分组视图
-                        ref.read(localGalleryNotifierProvider.notifier).setGroupedView(false);
+                        ref
+                            .read(localGalleryNotifierProvider.notifier)
+                            .setGroupedView(false);
                       } else {
                         // 进入分组视图
                         _pickDateAndJump(context);
@@ -282,8 +354,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                   const SizedBox(width: 6),
                   CompactIconButton(
                     icon: Icons.tune,
-                    label: '筛选',
-                    tooltip: '打开筛选面板',
+                    label: l10n.common_filter,
+                    tooltip: l10n.localGallery_openFilterPanel,
                     shortcutId: ShortcutIds.openFilterPanel,
                     onPressed: () => showGalleryFilterPanel(context),
                   ),
@@ -292,8 +364,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                     const SizedBox(width: 6),
                     CompactIconButton(
                       icon: Icons.filter_alt_off,
-                      label: '清除',
-                      tooltip: '清除筛选',
+                      label: l10n.common_clear,
+                      tooltip: l10n.localGallery_clearFilters,
                       shortcutId: ShortcutIds.clearFilter,
                       onPressed: () {
                         _searchController.clear();
@@ -310,7 +382,7 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                     child: Container(
                       width: 1,
                       height: 24,
-                      color: theme.dividerColor.withOpacity(0.3),
+                      color: theme.dividerColor.withValues(alpha: 0.3),
                     ),
                   ),
                   // Category panel toggle
@@ -319,8 +391,10 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                       icon: widget.showCategoryPanel
                           ? Icons.view_sidebar
                           : Icons.view_sidebar_outlined,
-                      label: '分类',
-                      tooltip: widget.showCategoryPanel ? '隐藏分类面板' : '显示分类面板',
+                      label: l10n.common_categories,
+                      tooltip: widget.showCategoryPanel
+                          ? l10n.localGallery_hideCategoryPanel
+                          : l10n.localGallery_showCategoryPanel,
                       shortcutId: ShortcutIds.toggleCategoryPanel,
                       onPressed: widget.onToggleCategoryPanel,
                     ),
@@ -330,13 +404,13 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                   if (widget.canUndo || widget.canRedo) ...[
                     CompactIconButton(
                       icon: Icons.undo,
-                      tooltip: '撤销',
+                      tooltip: l10n.common_undo,
                       onPressed: widget.canUndo ? widget.onUndo : null,
                     ),
                     const SizedBox(width: 4),
                     CompactIconButton(
                       icon: Icons.redo,
-                      tooltip: '重做',
+                      tooltip: l10n.common_redo,
                       onPressed: widget.canRedo ? widget.onRedo : null,
                     ),
                     const SizedBox(width: 6),
@@ -344,8 +418,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                   // Multi-select
                   CompactIconButton(
                     icon: Icons.checklist,
-                    label: '多选',
-                    tooltip: '进入选择模式',
+                    label: l10n.common_multiSelect,
+                    tooltip: l10n.localGallery_enterSelectionMode,
                     shortcutId: ShortcutIds.enterSelectionMode,
                     onPressed: widget.onEnterSelectionMode,
                   ),
@@ -353,8 +427,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                   // Open folder
                   CompactIconButton(
                     icon: Icons.folder_open,
-                    label: '文件夹',
-                    tooltip: '打开文件夹',
+                    label: l10n.common_folder,
+                    tooltip: l10n.shortcut_action_open_folder,
                     shortcutId: ShortcutIds.openFolder,
                     onPressed: widget.onOpenFolder,
                   ),
@@ -362,13 +436,17 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                   // Refresh button
                   CompactIconButton(
                     icon: Icons.refresh,
-                    label: '刷新',
-                    tooltip: '刷新画廊\n\n自动检测新增/修改的图片并更新索引',
+                    label: l10n.common_refresh,
+                    tooltip: l10n.localGallery_refreshTooltip,
                     shortcutId: ShortcutIds.refreshGallery,
                     onPressed: widget.onRefresh,
                   ),
                 ],
               ),
+              if (state.filterCriteria.selectedTags.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildSelectedTagChips(theme, state),
+              ],
             ],
           ),
         ),
@@ -379,6 +457,64 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
   /// Build search field
   /// 构建搜索框 - 类似在线画廊的简洁圆角样式
   Widget _buildSearchField(ThemeData theme, LocalGalleryState state) {
+    final searchField = Container(
+      height: 36,
+      constraints: const BoxConstraints(maxWidth: 300),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        style: theme.textTheme.bodyMedium,
+        decoration: InputDecoration(
+          hintText: context.l10n.localGallery_searchFilenamePromptPlaceholder,
+          hintStyle: TextStyle(
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            fontSize: 13,
+          ),
+          prefixIcon: Icon(
+            Icons.search,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.6),
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    ref
+                        .read(localGalleryNotifierProvider.notifier)
+                        .setSearchQuery('');
+                    setState(() {});
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          isDense: true,
+        ),
+        onChanged: (value) {
+          setState(() {}); // 更新清除按钮可见性
+          _onSearchChanged(value);
+        },
+        onSubmitted: (value) {
+          _debounceTimer?.cancel();
+          ref.read(localGalleryNotifierProvider.notifier).setSearchQuery(value);
+        },
+      ),
+    );
+
+    if (!widget.enableSearchAutocomplete) {
+      return searchField;
+    }
+
     // 缓存策略 Future，避免每次build都创建新的
     _searchStrategyFuture ??= LocalTagStrategy.create(
       ref,
@@ -396,64 +532,50 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
       focusNode: _searchFocusNode,
       asyncStrategy: _searchStrategyFuture!,
       onSuggestionSelected: (value) {
-        // 选择补全建议后立即触发搜索
+        // 选择补全建议后仍然作为搜索框文本处理，不转为标签 chip。
         _debounceTimer?.cancel();
         ref.read(localGalleryNotifierProvider.notifier).setSearchQuery(value);
       },
-      child: Container(
-        height: 36,
-        constraints: const BoxConstraints(maxWidth: 300),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: TextField(
-          controller: _searchController,
-          focusNode: _searchFocusNode,
-          style: theme.textTheme.bodyMedium,
-          decoration: InputDecoration(
-            hintText: '搜索文件名或 Prompt...',
-            hintStyle: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
-              fontSize: 13,
+      child: searchField,
+    );
+  }
+
+  Widget _buildSelectedTagChips(ThemeData theme, LocalGalleryState state) {
+    final tags = state.filterCriteria.selectedTags;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 2),
+            child: Text(
+              context.l10n.localGallery_tagIntersection,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            prefixIcon: Icon(
-              Icons.search,
-              size: 18,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
-            ),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: Icon(
-                      Icons.close,
-                      size: 16,
-                      color:
-                          theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
-                    ),
-                    onPressed: () {
-                      _searchController.clear();
-                      ref
-                          .read(localGalleryNotifierProvider.notifier)
-                          .setSearchQuery('');
-                      setState(() {});
-                    },
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            isDense: true,
           ),
-          onChanged: (value) {
-            setState(() {}); // 更新清除按钮可见性
-            _onSearchChanged(value);
-          },
-          onSubmitted: (value) {
-            _debounceTimer?.cancel();
-            ref
-                .read(localGalleryNotifierProvider.notifier)
-                .setSearchQuery(value);
-          },
-        ),
+          for (final tag in tags)
+            InputChip(
+              avatar: const Icon(Icons.tag, size: 14),
+              label: Text(tag),
+              onDeleted: () {
+                ref
+                    .read(localGalleryNotifierProvider.notifier)
+                    .removeSelectedTag(tag);
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+              side: BorderSide(
+                color: theme.colorScheme.primary.withValues(alpha: 0.35),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -461,7 +583,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
   /// Build date range button
   /// 构建日期范围按钮
   Widget _buildDateRangeButton(ThemeData theme, LocalGalleryState state) {
-    final hasDateRange = state.filterCriteria.dateStart != null || state.filterCriteria.dateEnd != null;
+    final hasDateRange = state.filterCriteria.dateStart != null ||
+        state.filterCriteria.dateEnd != null;
 
     return OutlinedButton.icon(
       onPressed: () => _selectDateRange(context, state),
@@ -472,8 +595,11 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
       ),
       label: Text(
         hasDateRange
-            ? _formatDateRange(state.filterCriteria.dateStart, state.filterCriteria.dateEnd)
-            : '日期过滤',
+            ? _formatDateRange(
+                state.filterCriteria.dateStart,
+                state.filterCriteria.dateEnd,
+              )
+            : context.l10n.localGallery_dateFilterButton,
         style: TextStyle(
           fontSize: 12,
           color: hasDateRange ? theme.colorScheme.primary : null,
@@ -513,8 +639,12 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: now,
-      initialDateRange: state.filterCriteria.dateStart != null && state.filterCriteria.dateEnd != null
-          ? DateTimeRange(start: state.filterCriteria.dateStart!, end: state.filterCriteria.dateEnd!)
+      initialDateRange: state.filterCriteria.dateStart != null &&
+              state.filterCriteria.dateEnd != null
+          ? DateTimeRange(
+              start: state.filterCriteria.dateStart!,
+              end: state.filterCriteria.dateEnd!,
+            )
           : DateTimeRange(
               start: now.subtract(const Duration(days: 30)),
               end: now,
@@ -522,7 +652,7 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            dialogTheme: DialogTheme(
+            dialogTheme: DialogThemeData(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -554,7 +684,7 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
       builder: (pickerContext, child) {
         return Theme(
           data: Theme.of(pickerContext).copyWith(
-            dialogTheme: DialogTheme(
+            dialogTheme: DialogThemeData(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -605,13 +735,12 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
 
       // Show hint message
       if (context.mounted) {
+        final month = picked.month.toString().padLeft(2, '0');
         AppToast.info(
           context,
-          '已跳转到 ${picked.year}-${picked.month.toString().padLeft(2, '0')}',
+          context.l10n.localGallery_jumpedToMonth(picked.year, month),
         );
       }
     }
   }
 }
-
-

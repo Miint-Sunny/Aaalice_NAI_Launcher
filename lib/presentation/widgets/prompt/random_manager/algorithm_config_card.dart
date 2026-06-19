@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/localization_extension.dart';
 import '../../../providers/random_preset_provider.dart';
 import '../../../../data/models/prompt/algorithm_config.dart';
+import '../../../../data/models/prompt/character_count_config.dart';
 import '../../../../data/models/prompt/random_preset.dart';
 import '../../common/elevated_card.dart';
+import 'random_config_l10n.dart';
 import 'random_manager_widgets.dart';
 
 /// 算法配置卡片组件
@@ -83,6 +86,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
 
   Widget _buildHeader(BuildContext context, ColorScheme colorScheme) {
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     return InkWell(
       onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -97,8 +101,8 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    colorScheme.primary.withOpacity(0.15),
-                    colorScheme.primary.withOpacity(0.05),
+                    colorScheme.primary.withValues(alpha: 0.15),
+                    colorScheme.primary.withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(6),
@@ -109,7 +113,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.2),
+                      color: colorScheme.primary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Icon(
@@ -120,7 +124,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '算法配置',
+                    l10n.randomManager_algorithmConfig,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: colorScheme.primary,
@@ -137,7 +141,8 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  color: colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
@@ -156,9 +161,16 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
   Widget _buildCompactView(BuildContext context, AlgorithmConfig config) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = context.l10n;
 
-    final weights = config.characterCountWeights;
-    final maxWeight = weights.fold<int>(0, (max, w) => w[1] > max ? w[1] : max);
+    final characterConfig = config.effectiveCharacterCountConfig;
+    final countCategories = characterConfig.categories
+        .where((category) => !category.isMultiPersonContainer)
+        .toList();
+    final maxWeight = countCategories.fold<int>(
+      0,
+      (max, category) => category.weight > max ? category.weight : max,
+    );
 
     final barColors = [
       colorScheme.primary,
@@ -167,9 +179,11 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
       Colors.orange.shade400,
     ];
 
-    final female = config.genderWeights['female'] ?? 60;
-    final male = config.genderWeights['male'] ?? 30;
-    final other = config.genderWeights['other'] ?? 10;
+    final soloOptions =
+        characterConfig.findCategoryById('solo')?.tagOptions ?? const [];
+    final female = _slotWeight(soloOptions, 'girl', fallback: 60);
+    final male = _slotWeight(soloOptions, 'boy', fallback: 30);
+    final other = _slotWeight(soloOptions, 'other', fallback: 10);
     final total = female + male + other;
 
     return Column(
@@ -183,7 +197,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.shadow.withOpacity(0.04),
+                color: colorScheme.shadow.withValues(alpha: 0.04),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -201,7 +215,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '角色数量分布',
+                    l10n.naiAlgorithm_characterCount,
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: colorScheme.onSurfaceVariant,
@@ -210,11 +224,11 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                 ],
               ),
               const SizedBox(height: 10),
-              ...weights.asMap().entries.map((entry) {
+              ...countCategories.asMap().entries.map((entry) {
                 final index = entry.key;
-                final count = entry.value[0];
-                final weight = entry.value[1];
-                final label = count == 0 ? '无人物' : '$count人';
+                final category = entry.value;
+                final weight = category.weight;
+                final label = l10n.characterCountLabel(category);
                 final widthRatio = maxWeight > 0 ? weight / maxWeight : 0.0;
                 final color = barColors[index % barColors.length];
 
@@ -240,7 +254,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: colorScheme.shadow.withOpacity(0.04),
+                color: colorScheme.shadow.withValues(alpha: 0.04),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -258,7 +272,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '性别分布',
+                    l10n.randomManager_soloGenderOptions,
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: colorScheme.onSurfaceVariant,
@@ -281,21 +295,21 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                       _GenderSegment(
                         flex: female,
                         color: Colors.pink.shade400,
-                        label: '女',
+                        label: l10n.randomManager_femaleShort,
                         value: female,
                         total: total,
                       ),
                       _GenderSegment(
                         flex: male,
                         color: Colors.blue.shade400,
-                        label: '男',
+                        label: l10n.randomManager_maleShort,
                         value: male,
                         total: total,
                       ),
                       _GenderSegment(
                         flex: other,
                         color: Colors.purple.shade400,
-                        label: '其他',
+                        label: l10n.randomManager_other,
                         value: other,
                         total: total,
                       ),
@@ -310,19 +324,19 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
                 children: [
                   ChartLegendItem(
                     icon: Icons.female,
-                    label: '女',
+                    label: l10n.randomManager_femaleShort,
                     value: female,
                     color: Colors.pink.shade400,
                   ),
                   ChartLegendItem(
                     icon: Icons.male,
-                    label: '男',
+                    label: l10n.randomManager_maleShort,
                     value: male,
                     color: Colors.blue.shade400,
                   ),
                   ChartLegendItem(
                     icon: Icons.transgender,
-                    label: '其他',
+                    label: l10n.randomManager_other,
                     value: other,
                     color: Colors.purple.shade400,
                   ),
@@ -342,7 +356,13 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
   ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = context.l10n;
     final isReadOnly = widget.isPresetDefault || preset.isDefault;
+    final characterConfig = config.effectiveCharacterCountConfig;
+    final countCategories = characterConfig.categories
+        .where((category) => !category.isMultiPersonContainer)
+        .toList();
+    final soloCategory = characterConfig.findCategoryById('solo');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,8 +374,8 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                colorScheme.primary.withOpacity(0.3),
-                colorScheme.secondary.withOpacity(0.1),
+                colorScheme.primary.withValues(alpha: 0.3),
+                colorScheme.secondary.withValues(alpha: 0.1),
                 Colors.transparent,
               ],
             ),
@@ -364,21 +384,23 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
         // 角色数量权重滑块
         SectionHeader(
           icon: Icons.people_outline,
-          title: '角色数量权重',
+          title: l10n.randomManager_characterCountWeight,
           color: colorScheme.primary,
         ),
         const SizedBox(height: 12),
-        ...config.characterCountWeights.map((w) {
-          final count = w[0];
-          final weight = w[1];
-          final label = count == 0 ? '无人物' : '$count 人';
+        ...countCategories.map((category) {
+          final label = l10n.characterCountLabel(category);
           return _WeightSlider(
             label: label,
-            value: weight,
+            value: category.weight,
             color: colorScheme.primary,
             enabled: !isReadOnly,
             onChanged: (newWeight) {
-              _updateCharacterCountWeight(preset, count, newWeight);
+              _updateCharacterCountCategoryWeight(
+                preset,
+                category.id,
+                newWeight,
+              );
             },
           );
         }),
@@ -386,42 +408,37 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
         // 性别权重滑块
         SectionHeader(
           icon: Icons.wc_outlined,
-          title: '性别权重',
+          title: l10n.randomManager_genderWeight,
           color: colorScheme.secondary,
         ),
         const SizedBox(height: 12),
-        _WeightSlider(
-          label: '女性',
-          value: config.genderWeights['female'] ?? 60,
-          color: Colors.pink.shade400,
-          enabled: !isReadOnly,
-          onChanged: (newWeight) {
-            _updateGenderWeight(preset, 'female', newWeight);
-          },
-        ),
-        _WeightSlider(
-          label: '男性',
-          value: config.genderWeights['male'] ?? 30,
-          color: Colors.blue.shade400,
-          enabled: !isReadOnly,
-          onChanged: (newWeight) {
-            _updateGenderWeight(preset, 'male', newWeight);
-          },
-        ),
-        _WeightSlider(
-          label: '其他',
-          value: config.genderWeights['other'] ?? 10,
-          color: Colors.purple.shade400,
-          enabled: !isReadOnly,
-          onChanged: (newWeight) {
-            _updateGenderWeight(preset, 'other', newWeight);
-          },
-        ),
+        if (soloCategory != null)
+          ...soloCategory.tagOptions.map((option) {
+            final color = option.mainPromptTags.contains('boy')
+                ? Colors.blue.shade400
+                : option.mainPromptTags.contains('other')
+                    ? Colors.purple.shade400
+                    : Colors.pink.shade400;
+            return _WeightSlider(
+              label: l10n.characterTagOptionLabel(option),
+              value: option.weight,
+              color: color,
+              enabled: !isReadOnly,
+              onChanged: (newWeight) {
+                _updateCharacterTagOptionWeight(
+                  preset,
+                  soloCategory.id,
+                  option.id,
+                  newWeight,
+                );
+              },
+            );
+          }),
         const SizedBox(height: 20),
         // 全局设置
         SectionHeader(
           icon: Icons.settings_applications_outlined,
-          title: '全局设置',
+          title: l10n.randomManager_globalSettings,
           color: colorScheme.tertiary,
         ),
         const SizedBox(height: 12),
@@ -436,13 +453,15 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
     AlgorithmConfig config,
     bool isReadOnly,
   ) {
+    final l10n = context.l10n;
+
     return Column(
       children: [
         // 季节性词库开关
         _SettingRow(
           icon: Icons.celebration_outlined,
-          label: '启用季节性词库',
-          subtitle: '圣诞节、万圣节等特殊日期词库',
+          label: l10n.randomManager_enableSeasonalWordlists,
+          subtitle: l10n.randomManager_enableSeasonalWordlistsDesc,
           trailing: Switch(
             value: config.enableSeasonalWordlists,
             onChanged: isReadOnly
@@ -458,7 +477,7 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
         // 全局强调概率
         _SettingRow(
           icon: Icons.highlight_outlined,
-          label: '全局强调概率',
+          label: l10n.randomManager_globalEmphasisProbability,
           subtitle: '${(config.globalEmphasisProbability * 100).toInt()}%',
           trailing: SizedBox(
             width: 120,
@@ -484,29 +503,61 @@ class _AlgorithmConfigCardState extends ConsumerState<AlgorithmConfigCard> {
     );
   }
 
-  void _updateCharacterCountWeight(
+  int _slotWeight(
+    List<CharacterTagOption> options,
+    String slot, {
+    required int fallback,
+  }) {
+    for (final option in options) {
+      if (option.slotTags.any((tag) => tag.characterTag == slot)) {
+        return option.weight;
+      }
+    }
+    return fallback;
+  }
+
+  void _updateCharacterCountCategoryWeight(
     RandomPreset preset,
-    int count,
+    String categoryId,
     int newWeight,
   ) {
     final config = preset.algorithmConfig;
-    final newWeights = config.characterCountWeights.map((w) {
-      if (w[0] == count) {
-        return [count, newWeight];
+    final characterConfig = config.effectiveCharacterCountConfig;
+    final categories = characterConfig.categories.map((category) {
+      if (category.id == categoryId) {
+        return category.copyWith(weight: newWeight);
       }
-      return w;
+      return category;
     }).toList();
 
-    final newConfig = config.copyWith(characterCountWeights: newWeights);
+    final newConfig = config.copyWith(
+      characterCountConfig: characterConfig.copyWith(categories: categories),
+    );
     _updateConfig(preset, newConfig);
   }
 
-  void _updateGenderWeight(RandomPreset preset, String gender, int newWeight) {
+  void _updateCharacterTagOptionWeight(
+    RandomPreset preset,
+    String categoryId,
+    String optionId,
+    int newWeight,
+  ) {
     final config = preset.algorithmConfig;
-    final newWeights = Map<String, int>.from(config.genderWeights);
-    newWeights[gender] = newWeight;
+    final characterConfig = config.effectiveCharacterCountConfig;
+    final categories = characterConfig.categories.map((category) {
+      if (category.id != categoryId) return category;
+      final options = category.tagOptions.map((option) {
+        if (option.id == optionId) {
+          return option.copyWith(weight: newWeight.clamp(1, 100));
+        }
+        return option;
+      }).toList();
+      return category.copyWith(tagOptions: options);
+    }).toList();
 
-    final newConfig = config.copyWith(genderWeights: newWeights);
+    final newConfig = config.copyWith(
+      characterCountConfig: characterConfig.copyWith(categories: categories),
+    );
     _updateConfig(preset, newConfig);
   }
 
@@ -551,20 +602,20 @@ class _HorizontalBarState extends State<_HorizontalBar> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: _isHovered
-              ? widget.color.withOpacity(0.15)
+              ? widget.color.withValues(alpha: 0.15)
               : colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(6),
           boxShadow: _isHovered
               ? [
                   BoxShadow(
-                    color: widget.color.withOpacity(0.2),
+                    color: widget.color.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
               : [
                   BoxShadow(
-                    color: colorScheme.shadow.withOpacity(0.05),
+                    color: colorScheme.shadow.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -602,14 +653,14 @@ class _HorizontalBarState extends State<_HorizontalBar> {
                           gradient: LinearGradient(
                             colors: [
                               widget.color,
-                              widget.color.withOpacity(0.7),
+                              widget.color.withValues(alpha: 0.7),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(4),
                           boxShadow: _isHovered
                               ? [
                                   BoxShadow(
-                                    color: widget.color.withOpacity(0.4),
+                                    color: widget.color.withValues(alpha: 0.4),
                                     blurRadius: 6,
                                     offset: const Offset(0, 2),
                                   ),
@@ -627,7 +678,7 @@ class _HorizontalBarState extends State<_HorizontalBar> {
               width: 40,
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: widget.color.withOpacity(0.15),
+                color: widget.color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -691,13 +742,15 @@ class _GenderSegmentState extends State<_GenderSegment> {
                 end: Alignment.bottomCenter,
                 colors: [
                   widget.color,
-                  _isHovered ? widget.color : widget.color.withOpacity(0.8),
+                  _isHovered
+                      ? widget.color
+                      : widget.color.withValues(alpha: 0.8),
                 ],
               ),
               boxShadow: _isHovered
                   ? [
                       BoxShadow(
-                        color: widget.color.withOpacity(0.5),
+                        color: widget.color.withValues(alpha: 0.5),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
@@ -803,8 +856,8 @@ class _WeightSliderState extends State<_WeightSlider> {
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: effectiveColor,
                     thumbColor: effectiveColor,
-                    inactiveTrackColor: effectiveColor.withOpacity(0.15),
-                    overlayColor: effectiveColor.withOpacity(0.1),
+                    inactiveTrackColor: effectiveColor.withValues(alpha: 0.15),
+                    overlayColor: effectiveColor.withValues(alpha: 0.1),
                     trackHeight: 5,
                     thumbShape: const RoundSliderThumbShape(
                       enabledThumbRadius: 7,
@@ -827,7 +880,7 @@ class _WeightSliderState extends State<_WeightSlider> {
                 width: 50,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: effectiveColor.withOpacity(0.1),
+                  color: effectiveColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -884,8 +937,8 @@ class _SettingRowState extends State<_SettingRow> {
           boxShadow: [
             BoxShadow(
               color: _isHovered
-                  ? colorScheme.shadow.withOpacity(0.1)
-                  : colorScheme.shadow.withOpacity(0.05),
+                  ? colorScheme.shadow.withValues(alpha: 0.1)
+                  : colorScheme.shadow.withValues(alpha: 0.05),
               blurRadius: _isHovered ? 8 : 4,
               offset: const Offset(0, 2),
             ),
@@ -896,7 +949,7 @@ class _SettingRowState extends State<_SettingRow> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.3),
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(

@@ -8,6 +8,7 @@ import 'package:super_drag_and_drop/super_drag_and_drop.dart';
 import '_internal/loading_overlay.dart';
 import '_internal/picker_handler.dart';
 import '_internal/preview_thumbnail.dart';
+import '../../../utils/dropped_file_reader.dart';
 import 'image_picker_result.dart';
 import 'image_picker_type.dart';
 
@@ -188,7 +189,7 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
             size: 28,
             color: _isHovered || _isDragOver
                 ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withOpacity(0.5),
+                : theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 8),
           Text(
@@ -196,7 +197,7 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
             style: theme.textTheme.bodySmall?.copyWith(
               color: _isHovered || _isDragOver
                   ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withOpacity(0.6),
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             textAlign: TextAlign.center,
           ),
@@ -205,7 +206,7 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
             Text(
               widget.hintText!,
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -289,7 +290,7 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
       top: 4,
       right: 4,
       child: Material(
-        color: theme.colorScheme.surface.withOpacity(0.9),
+        color: theme.colorScheme.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: widget.onClear,
@@ -312,7 +313,7 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
     return Positioned.fill(
       child: Container(
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.1),
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: theme.colorScheme.primary,
@@ -361,83 +362,29 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
 
   /// 处理拖拽放置
   Future<void> _handleDrop(PerformDropEvent event) async {
+    var handledAny = false;
     for (final item in event.session.items) {
       final reader = item.dataReader;
       if (reader == null) continue;
 
-      // 尝试获取文件 URI
-      if (reader.canProvide(Formats.fileUri)) {
-        final progress = reader.getValue(
-          Formats.fileUri,
-          (uri) async {
-            if (uri == null) return;
-
-            try {
-              final file = File(uri.toFilePath());
-              final filePath = file.path;
-              final fileName = filePath.split(Platform.pathSeparator).last;
-              final bytes = await file.readAsBytes();
-
-              if (mounted) {
-                _handleFileResult(bytes, fileName, filePath);
-              }
-            } catch (e) {
-              widget.onError?.call('读取文件失败: $e');
-            }
-          },
-          onError: (e) {
-            widget.onError?.call('获取文件URI失败: $e');
-          },
+      try {
+        final file = await DroppedFileReader.read(
+          reader,
+          logTag: 'ImagePickerDrop',
         );
-        // 关键检查：如果返回 null，说明格式不可用
-        if (progress != null) return;
+        if (file != null && mounted) {
+          handledAny = true;
+          _handleFileResult(file.bytes, file.fileName, file.sourcePath);
+          if (!widget.allowMultiple) {
+            return;
+          }
+        }
+      } catch (e) {
+        widget.onError?.call('读取拖入图片失败: $e');
       }
-
-      // 尝试获取 PNG 数据
-      if (reader.canProvide(Formats.png)) {
-        final progress = reader.getFile(
-          Formats.png,
-          (file) async {
-            try {
-              final bytes = await file.readAll();
-              final fileName = file.fileName ?? 'dropped_image.png';
-              if (mounted) {
-                _handleFileResult(Uint8List.fromList(bytes), fileName, null);
-              }
-            } catch (e) {
-              widget.onError?.call('读取图片失败: $e');
-            }
-          },
-          onError: (e) {
-            widget.onError?.call('获取PNG失败: $e');
-          },
-        );
-        // 关键检查：如果返回 null，说明格式不可用
-        if (progress != null) return;
-      }
-
-      // 尝试获取 JPEG 数据
-      if (reader.canProvide(Formats.jpeg)) {
-        final progress = reader.getFile(
-          Formats.jpeg,
-          (file) async {
-            try {
-              final bytes = await file.readAll();
-              final fileName = file.fileName ?? 'dropped_image.jpg';
-              if (mounted) {
-                _handleFileResult(Uint8List.fromList(bytes), fileName, null);
-              }
-            } catch (e) {
-              widget.onError?.call('读取图片失败: $e');
-            }
-          },
-          onError: (e) {
-            widget.onError?.call('获取JPEG失败: $e');
-          },
-        );
-        // 关键检查：如果返回 null，说明格式不可用
-        if (progress != null) return;
-      }
+    }
+    if (!handledAny) {
+      widget.onError?.call('拖入源未提供可读取的图片文件或图片链接');
     }
   }
 
@@ -530,24 +477,24 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
     if (_hasSelection) {
       return _isHovered
           ? theme.colorScheme.primary
-          : theme.colorScheme.primary.withOpacity(0.6);
+          : theme.colorScheme.primary.withValues(alpha: 0.6);
     }
     return _isHovered
         ? theme.colorScheme.primary
-        : theme.colorScheme.outline.withOpacity(0.5);
+        : theme.colorScheme.outline.withValues(alpha: 0.5);
   }
 
   Color _getBackgroundColor(ThemeData theme) {
     if (_isDragOver) {
-      return theme.colorScheme.primary.withOpacity(0.08);
+      return theme.colorScheme.primary.withValues(alpha: 0.08);
     }
     if (_hasSelection) {
       return _isHovered
-          ? theme.colorScheme.primary.withOpacity(0.08)
-          : theme.colorScheme.primary.withOpacity(0.04);
+          ? theme.colorScheme.primary.withValues(alpha: 0.08)
+          : theme.colorScheme.primary.withValues(alpha: 0.04);
     }
     return _isHovered
-        ? theme.colorScheme.primary.withOpacity(0.05)
+        ? theme.colorScheme.primary.withValues(alpha: 0.05)
         : Colors.transparent;
   }
 
@@ -557,7 +504,7 @@ class _ImagePickerCardState extends State<ImagePickerCard> {
 
     return [
       BoxShadow(
-        color: theme.colorScheme.primary.withOpacity(0.15),
+        color: theme.colorScheme.primary.withValues(alpha: 0.15),
         blurRadius: 20,
         spreadRadius: 0,
       ),

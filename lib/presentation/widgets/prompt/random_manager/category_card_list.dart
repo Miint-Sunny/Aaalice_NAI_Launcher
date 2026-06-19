@@ -25,7 +25,11 @@ class CategoryCardList extends ConsumerWidget {
     final preset = presetState.selectedPreset;
 
     if (preset == null) {
-      return const Center(child: Text('请选择一个预设'));
+      return Center(
+        child: Text(
+          AppLocalizations.of(context)!.randomManager_selectPresetRequired,
+        ),
+      );
     }
 
     return ElevatedCard(
@@ -86,7 +90,11 @@ class CategoryCardGrid extends ConsumerWidget {
     final preset = presetState.selectedPreset;
 
     if (preset == null) {
-      return const Center(child: Text('请选择一个预设'));
+      return Center(
+        child: Text(
+          AppLocalizations.of(context)!.randomManager_selectPresetRequired,
+        ),
+      );
     }
 
     return ElevatedCard(
@@ -170,8 +178,8 @@ class _CategoryHeader extends ConsumerWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                colorScheme.primary.withOpacity(0.15),
-                colorScheme.primary.withOpacity(0.05),
+                colorScheme.primary.withValues(alpha: 0.15),
+                colorScheme.primary.withValues(alpha: 0.05),
               ],
             ),
             borderRadius: BorderRadius.circular(6),
@@ -182,7 +190,7 @@ class _CategoryHeader extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.2),
+                  color: colorScheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(

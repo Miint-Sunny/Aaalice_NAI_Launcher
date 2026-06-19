@@ -27,6 +27,9 @@ abstract class EditorTool {
   /// 是否是绘画工具
   bool get isPaintTool => false;
 
+  /// 工具是否自行处理 Alt 键（跳过临时拾色器切换）
+  bool get handlesAltKey => false;
+
   /// 指针按下
   void onPointerDown(PointerDownEvent event, EditorState state);
 
@@ -139,13 +142,13 @@ extension SelectionModeExtension on SelectionMode {
   String get label {
     switch (this) {
       case SelectionMode.replace:
-        return '新建';
+        return 'Replace';
       case SelectionMode.add:
-        return '添加';
+        return 'Add';
       case SelectionMode.subtract:
-        return '减去';
+        return 'Subtract';
       case SelectionMode.intersect:
-        return '交叉';
+        return 'Intersect';
     }
   }
 

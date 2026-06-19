@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/localization_extension.dart';
 import '../../providers/gallery_scan_progress_provider.dart';
 
 /// 画廊扫描进度面板
@@ -16,6 +17,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scanState = ref.watch(galleryScanProgressProvider);
     final theme = Theme.of(context);
+    final l10n = context.l10n;
 
     // 只有在扫描中或刚完成时显示
     if (!scanState.isScanning) {
@@ -34,7 +36,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
         color: theme.colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -58,7 +60,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '正在缓存元数据...',
+                  l10n.localGallery_cachingMetadata,
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.onSurface,
@@ -68,7 +70,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.2),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -96,7 +98,8 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                  color:
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -120,7 +123,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           // 元数据缓存统计
-          _buildMetadataStatsCard(theme, stats),
+          _buildMetadataStatsCard(context, theme, stats),
           // 当前文件名
           if (stats.currentFile.isNotEmpty)
             _buildCurrentFile(theme, stats.currentFile),
@@ -130,11 +133,16 @@ class GalleryScanProgressPanel extends ConsumerWidget {
   }
 
   /// 构建元数据缓存统计卡片
-  Widget _buildMetadataStatsCard(ThemeData theme, MetadataCacheStats stats) {
+  Widget _buildMetadataStatsCard(
+    BuildContext context,
+    ThemeData theme,
+    MetadataCacheStats stats,
+  ) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -148,7 +156,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                '元数据缓存统计',
+                l10n.localGallery_metadataCacheStats,
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.primary,
@@ -163,7 +171,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               Expanded(
                 child: _buildStatColumn(
                   theme,
-                  label: '总图片',
+                  label: l10n.localGallery_totalImages,
                   value: '${stats.totalImages}',
                   icon: Icons.photo_library_outlined,
                 ),
@@ -171,7 +179,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               Expanded(
                 child: _buildStatColumn(
                   theme,
-                  label: '有元数据',
+                  label: l10n.localGallery_withMetadata,
                   value: '${stats.withMetadata}',
                   icon: Icons.check_circle_outline,
                   valueColor: Colors.green,
@@ -180,7 +188,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               Expanded(
                 child: _buildStatColumn(
                   theme,
-                  label: '跳过',
+                  label: l10n.localGallery_skipped,
                   value: '${stats.skipped}',
                   icon: Icons.skip_next_outlined,
                   valueColor: Colors.orange,
@@ -189,7 +197,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
               Expanded(
                 child: _buildStatColumn(
                   theme,
-                  label: '剩余',
+                  label: l10n.localGallery_remaining,
                   value: '${stats.remaining}',
                   icon: Icons.pending_outlined,
                   valueColor: theme.colorScheme.outline,
@@ -243,7 +251,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -271,16 +279,19 @@ class GalleryScanProgressPanel extends ConsumerWidget {
   }
 
   /// 构建彩色分段进度条
-  /// 
+  ///
   /// 使用不同颜色显示不同状态的文件：
   /// - 绿色：已扫描过且跳过（缓存命中）
   /// - 蓝色：有元数据（解析成功）
   /// - 红色：扫描错误
   /// - 灰色/默认：待处理
-  Widget _buildSegmentedProgressBar(ThemeData theme, ScanProgressState scanState) {
+  Widget _buildSegmentedProgressBar(
+    ThemeData theme,
+    ScanProgressState scanState,
+  ) {
     final stats = scanState.cacheStats;
     final total = stats.totalImages;
-    
+
     if (total == 0) {
       // 初始状态显示灰色进度条
       return ClipRRect(
@@ -301,10 +312,12 @@ class GalleryScanProgressPanel extends ConsumerWidget {
     final withMetadataRatio = stats.withMetadata / total;
     final failedRatio = stats.failedMetadata / total;
     final processedRatio = stats.processed / total;
-    
+
     // 当前正在处理的部分 = 已处理 - 已分类
-    final processingRatio = (processedRatio - skippedRatio - withMetadataRatio - failedRatio).clamp(0.0, 1.0);
-    
+    final processingRatio =
+        (processedRatio - skippedRatio - withMetadataRatio - failedRatio)
+            .clamp(0.0, 1.0);
+
     // 待处理的部分
     final pendingRatio = (1.0 - processedRatio).clamp(0.0, 1.0);
 
@@ -345,7 +358,8 @@ class GalleryScanProgressPanel extends ConsumerWidget {
             if (pendingRatio > 0)
               Expanded(
                 flex: (pendingRatio * 1000).round(),
-                child: Container(color: theme.colorScheme.surfaceContainerHighest),
+                child:
+                    Container(color: theme.colorScheme.surfaceContainerHighest),
               ),
           ],
         ),
@@ -356,7 +370,7 @@ class GalleryScanProgressPanel extends ConsumerWidget {
   /// 构建进度条图例
   Widget _buildProgressLegend(ThemeData theme, ScanProgressState scanState) {
     final stats = scanState.cacheStats;
-    
+
     return Wrap(
       spacing: 12,
       runSpacing: 4,
@@ -435,7 +449,7 @@ class _AnimatedStripesState extends State<_AnimatedStripes>
           size: const Size(double.infinity, 8),
           painter: _StripesPainter(
             progress: _controller.value,
-            color: Colors.white.withOpacity(0.3),
+            color: Colors.white.withValues(alpha: 0.3),
           ),
         );
       },
@@ -461,7 +475,9 @@ class _StripesPainter extends CustomPainter {
     const gap = 8.0;
     final offset = progress * (stripeWidth + gap);
 
-    for (double x = -stripeWidth; x < size.width + stripeWidth; x += stripeWidth + gap) {
+    for (double x = -stripeWidth;
+        x < size.width + stripeWidth;
+        x += stripeWidth + gap) {
       canvas.drawLine(
         Offset(x + offset, 0),
         Offset(x + offset - stripeWidth / 2, size.height),

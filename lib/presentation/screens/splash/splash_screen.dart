@@ -104,7 +104,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               AppVersion.versionName,
               style: TextStyle(
                 fontSize: 12,
-                color: theme.colorScheme.onSurface.withOpacity(0.3),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -124,7 +124,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               center: const Alignment(0, -0.3),
               radius: 1.5,
               colors: [
-                primaryColor.withOpacity(_glowAnimation.value * 0.15),
+                primaryColor.withValues(alpha: _glowAnimation.value * 0.15),
                 backgroundColor,
               ],
             ),
@@ -150,12 +150,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 end: Alignment.bottomRight,
                 colors: [
                   primaryColor,
-                  primaryColor.withOpacity(0.6),
+                  primaryColor.withValues(alpha: 0.6),
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: primaryColor.withOpacity(_glowAnimation.value * 0.5),
+                  color: primaryColor.withValues(
+                    alpha: _glowAnimation.value * 0.5,
+                  ),
                   blurRadius: 40,
                   spreadRadius: 5,
                 ),
@@ -199,7 +201,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           'NovelAI Image Generation',
           style: TextStyle(
             fontSize: 14,
-            color: theme.colorScheme.onSurface.withOpacity(0.5),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             letterSpacing: 1,
           ),
         ),
@@ -216,7 +218,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       case 'warmup_complete':
         return l10n.warmup_complete;
       case 'warmup_dataMigration':
-        return '迁移 Hive / Vibe / 图片数据...';
+        return l10n.warmup_dataMigration;
       case 'warmup_networkCheck':
         return l10n.warmup_networkCheck;
       case 'warmup_loadingTranslation':
@@ -252,7 +254,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       case 'warmup_cooccurrenceInit':
         return l10n.warmup_cooccurrenceInit;
       case 'warmup_danbooruTagsInit':
-        return '加载标签数据...';
+        return l10n.warmup_danbooruTagsInit;
+      case 'warmup_galleryDataSource':
+        return l10n.warmup_galleryDataSource;
+      case 'warmup_checkAndRecoverData':
+        return l10n.warmup_checkAndRecoverData;
       case 'warmup_translationInit':
         return l10n.warmup_translationInit;
       case 'warmup_group_dataSourceInitialization':
@@ -284,25 +290,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   String _translateSubTaskMessage(BuildContext context, String message) {
     final l10n = context.l10n;
 
-    // 网络检测相关消息
-    if (message.contains('正在检测网络连接')) {
-      final match = RegExp(r'\(尝试 (\d+)/(\d+)\)').firstMatch(message);
-      if (match != null) {
-        final attempt = match.group(1)!;
-        final maxAttempts = match.group(2)!;
-        return l10n.warmup_networkCheck_attempt(attempt, maxAttempts);
+    if (message.startsWith('warmup_networkCheck_attempt|')) {
+      final parts = message.split('|');
+      if (parts.length == 3) {
+        return l10n.warmup_networkCheck_attempt(parts[1], parts[2]);
       }
       return l10n.warmup_networkCheck_testing;
     }
-    if (message.contains('网络连接正常')) {
-      final match = RegExp(r'\((\d+)ms\)').firstMatch(message);
-      if (match != null) {
-        final latency = match.group(1)!;
-        return l10n.warmup_networkCheck_success(latency);
+    if (message.startsWith('warmup_networkCheck_success|')) {
+      final parts = message.split('|');
+      if (parts.length == 2) {
+        return l10n.warmup_networkCheck_success(parts[1]);
       }
       return l10n.warmup_networkCheck_success('');
     }
-    if (message.contains('网络检测超时') || message.contains('继续离线启动')) {
+    if (message == 'warmup_networkCheck_timeout') {
       return l10n.warmup_networkCheck_timeout;
     }
 
@@ -368,7 +370,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     height: 14,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -377,7 +379,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   translatedTask,
                   style: TextStyle(
                     fontSize: 13,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -391,7 +393,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               _translateSubTaskMessage(context, subTaskMessage),
               style: TextStyle(
                 fontSize: 11,
-                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -407,7 +409,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       height: 4,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(2),
-        color: theme.colorScheme.onSurface.withOpacity(0.1),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -428,7 +430,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryColor.withOpacity(0.5),
+                      color: primaryColor.withValues(alpha: 0.5),
                       blurRadius: 8,
                     ),
                   ],

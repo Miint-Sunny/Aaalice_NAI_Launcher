@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
+import '../../../core/utils/localization_extension.dart';
 import '../../../data/models/gallery/local_image_record.dart';
 import 'draggable_image_card.dart';
 import 'local_image_card_3d.dart';
@@ -44,6 +45,7 @@ class GalleryGrid extends StatefulWidget {
   )? onSecondaryTapDown;
   final void Function(LocalImageRecord record, int index)? onFavoriteToggle;
   final void Function(LocalImageRecord record, int index)? onSendToHome;
+  final void Function(LocalImageRecord record, int index)? onSendToImg2Img;
   final Set<int>? selectedIndices;
   final double preloadScreens;
   final bool enableDrag;
@@ -60,6 +62,7 @@ class GalleryGrid extends StatefulWidget {
     this.onSecondaryTapDown,
     this.onFavoriteToggle,
     this.onSendToHome,
+    this.onSendToImg2Img,
     this.selectedIndices,
     this.preloadScreens = 2.0,
     this.enableDrag = true,
@@ -125,13 +128,16 @@ class _GalleryGridState extends State<GalleryGrid> {
   @override
   Widget build(BuildContext context) {
     if (widget.images.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('暂无图片', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              context.l10n.localGallery_noImagesFound,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
           ],
         ),
       );
@@ -208,9 +214,15 @@ class _GalleryGridState extends State<GalleryGrid> {
                   onLongPress: () => widget.onLongPress?.call(record, index),
                   onSecondaryTapDown: (details) =>
                       widget.onSecondaryTapDown?.call(record, index, details),
-                  onFavoriteToggle: () =>
-                      widget.onFavoriteToggle?.call(record, index),
-                  onSendToHome: () => widget.onSendToHome?.call(record, index),
+                  onFavoriteToggle: widget.onFavoriteToggle != null
+                      ? () => widget.onFavoriteToggle!(record, index)
+                      : null,
+                  onSendToHome: widget.onSendToHome != null
+                      ? () => widget.onSendToHome!(record, index)
+                      : null,
+                  onSendToImg2Img: widget.onSendToImg2Img != null
+                      ? () => widget.onSendToImg2Img!(record, index)
+                      : null,
                 ),
               ),
             );
@@ -271,6 +283,7 @@ class _GalleryImageCard extends StatefulWidget {
   final void Function(TapDownDetails)? onSecondaryTapDown;
   final VoidCallback? onFavoriteToggle;
   final VoidCallback? onSendToHome;
+  final VoidCallback? onSendToImg2Img;
 
   const _GalleryImageCard({
     super.key,
@@ -287,6 +300,7 @@ class _GalleryImageCard extends StatefulWidget {
     this.onSecondaryTapDown,
     this.onFavoriteToggle,
     this.onSendToHome,
+    this.onSendToImg2Img,
   });
 
   @override
@@ -309,11 +323,11 @@ class _GalleryImageCardState extends State<_GalleryImageCard> {
       onSecondaryTapDown: widget.onSecondaryTapDown,
       onFavoriteToggle: widget.onFavoriteToggle,
       onSendToHome: widget.onSendToHome,
+      onSendToImg2Img: widget.onSendToImg2Img,
       // 使用 dragWrapper 将拖拽功能注入到卡片内部
       // 解决 GestureDetector 与拖拽手势的冲突问题
       dragWrapper: widget.enableDrag
           ? DraggableImageCard.createDragWrapper(
-              context: context,
               record: widget.record,
             )
           : null,

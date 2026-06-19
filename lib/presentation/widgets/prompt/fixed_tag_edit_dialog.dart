@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nai_launcher/core/utils/localization_extension.dart';
 
 import '../../../data/models/fixed_tag/fixed_tag_entry.dart';
+import '../../../data/models/fixed_tag/fixed_tag_prompt_type.dart';
 import '../../providers/image_generation_provider.dart';
 import '../../providers/tag_library_page_provider.dart';
 import '../autocomplete/autocomplete.dart';
@@ -16,8 +17,13 @@ import '../prompt/prompt_formatter_wrapper.dart';
 class FixedTagEditDialog extends ConsumerStatefulWidget {
   /// 要编辑的条目，如果为 null 则为新建模式
   final FixedTagEntry? entry;
+  final FixedTagPromptType initialPromptType;
 
-  const FixedTagEditDialog({super.key, this.entry});
+  const FixedTagEditDialog({
+    super.key,
+    this.entry,
+    this.initialPromptType = FixedTagPromptType.positive,
+  });
 
   @override
   ConsumerState<FixedTagEditDialog> createState() => _FixedTagEditDialogState();
@@ -27,6 +33,7 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
   late final TextEditingController _nameController;
   late final NaiSyntaxController _contentController;
   late FixedTagPosition _position;
+  late FixedTagPromptType _promptType;
   late double _weight;
   late bool _enabled;
   bool _saveToLibrary = false;
@@ -44,6 +51,7 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
     _nameController = TextEditingController(text: entry?.name ?? '');
     _contentController = NaiSyntaxController(text: entry?.content ?? '');
     _position = entry?.position ?? FixedTagPosition.prefix;
+    _promptType = entry?.promptType ?? widget.initialPromptType;
     _weight = entry?.weight ?? 1.0;
     _enabled = entry?.enabled ?? true;
   }
@@ -105,7 +113,8 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
                 if (widget.entry?.sourceEntryId != null)
                   Container(
                     margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(6),
@@ -121,7 +130,7 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            '关联自词库（双向同步）',
+                            context.l10n.fixedTags_linkedFromLibrary,
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.blue.shade700,
@@ -201,6 +210,46 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
 
                 const SizedBox(height: 16),
 
+                // 作用范围选择
+                Row(
+                  children: [
+                    Text(
+                      context.l10n.fixedTags_scope,
+                      style: theme.textTheme.labelLarge,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: SegmentedButton<FixedTagPromptType>(
+                        segments: [
+                          ButtonSegment(
+                            value: FixedTagPromptType.positive,
+                            label: Text(context.l10n.fixedTags_positive),
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              size: 16,
+                            ),
+                          ),
+                          ButtonSegment(
+                            value: FixedTagPromptType.negative,
+                            label: Text(context.l10n.fixedTags_negative),
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              size: 16,
+                            ),
+                          ),
+                        ],
+                        selected: {_promptType},
+                        onSelectionChanged: (selection) {
+                          setState(() => _promptType = selection.first);
+                        },
+                        showSelectedIcon: false,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
                 // 位置选择
                 Row(
                   children: [
@@ -239,7 +288,8 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.secondary.withOpacity(0.1),
+                        color:
+                            theme.colorScheme.secondary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -336,13 +386,15 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: _saveToLibrary
-                          ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                          ? theme.colorScheme.primaryContainer
+                              .withValues(alpha: 0.3)
                           : theme.colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _saveToLibrary
-                            ? theme.colorScheme.primary.withOpacity(0.4)
-                            : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                            ? theme.colorScheme.primary.withValues(alpha: 0.4)
+                            : theme.colorScheme.outlineVariant
+                                .withValues(alpha: 0.5),
                       ),
                     ),
                     child: Column(
@@ -465,6 +517,7 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
           content: content,
           weight: _weight,
           position: _position,
+          promptType: _promptType,
           enabled: _enabled,
         ) ??
         FixedTagEntry.create(
@@ -472,6 +525,7 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
           content: content,
           weight: _weight,
           position: _position,
+          promptType: _promptType,
           enabled: _enabled,
         );
 
@@ -575,7 +629,7 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
         const SizedBox(width: 10),
         Expanded(
           child: DropdownButtonFormField<String?>(
-            value: _selectedCategoryId,
+            initialValue: _selectedCategoryId,
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 10,
@@ -584,13 +638,13 @@ class _FixedTagEditDialogState extends ConsumerState<FixedTagEditDialog> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withOpacity(0.3),
+                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
                 ),
               ),
               isDense: true,

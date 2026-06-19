@@ -1,13 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:nai_launcher/core/utils/localization_extension.dart';
-import 'package:nai_launcher/data/models/image/image_params.dart';
 import 'package:nai_launcher/data/models/queue/replication_task.dart';
 import 'package:nai_launcher/presentation/providers/image_generation_provider.dart';
+import 'package:nai_launcher/presentation/providers/krita/krita_bridge_notifier.dart';
 import 'package:nai_launcher/presentation/providers/queue_execution_provider.dart';
 import 'package:nai_launcher/presentation/providers/replication_queue_provider.dart';
 import 'package:nai_launcher/presentation/router/app_router.dart';
+import 'package:nai_launcher/presentation/utils/asset_protection_guard.dart';
 import 'package:nai_launcher/presentation/widgets/common/app_toast.dart';
 import 'package:nai_launcher/presentation/widgets/common/draggable_number_input.dart';
 import 'package:nai_launcher/presentation/widgets/generation/auto_save_toggle_chip.dart';
@@ -26,17 +29,21 @@ class GenerationControls extends ConsumerStatefulWidget {
 }
 
 class _GenerationControlsState extends ConsumerState<GenerationControls> {
-  bool _isHovering = false;
   bool _showAddToQueueButton = false;
 
   @override
   Widget build(BuildContext context) {
     final generationState = ref.watch(imageGenerationNotifierProvider);
-    final params = ref.watch(generationParamsNotifierProvider);
-    final isGenerating = generationState.isGenerating;
+    final kritaBridgeState = ref.watch(kritaBridgeNotifierProvider);
+    final nSamples = ref.watch(
+      generationParamsNotifierProvider.select((params) => params.nSamples),
+    );
+    final isLauncherGenerating = generationState.isGenerating;
+    final isGenerating =
+        isLauncherGenerating || kritaBridgeState.isBridgeGenerating;
 
-    // 悬浮时显示取消，否则显示生成中
-    final showCancel = isGenerating && _isHovering;
+    // 生成中常驻显示取消入口（与移动端一致）
+    final showCancel = isLauncherGenerating;
 
     final randomMode = ref.watch(randomPromptModeProvider);
 
@@ -64,9 +71,17 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
           final currentGenerationState =
               ref.read(imageGenerationNotifierProvider);
           if (!currentGenerationState.isGenerating) {
+            final currentKritaBridgeState =
+                ref.read(kritaBridgeNotifierProvider);
+            if (currentKritaBridgeState.isBridgeGenerating) {
+              return;
+            }
             // 延迟一帧确保提示词已填充
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
+              final latestKritaBridgeState =
+                  ref.read(kritaBridgeNotifierProvider);
+              if (latestKritaBridgeState.isBridgeGenerating) return;
               final currentParams = ref.read(generationParamsNotifierProvider);
               if (currentParams.prompt.isNotEmpty) {
                 ref
@@ -96,7 +111,6 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
               _buildGenerateButtonWithHover(
                 context: context,
                 ref: ref,
-                params: params,
                 isGenerating: isGenerating,
                 showCancel: showCancel,
                 generationState: generationState,
@@ -105,7 +119,7 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
               ),
               const SizedBox(width: 8),
               DraggableNumberInput(
-                value: params.nSamples,
+                value: nSamples,
                 min: 1,
                 prefix: '×',
                 onChanged: (value) {
@@ -140,7 +154,6 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
                   _buildGenerateButtonWithHover(
                     context: context,
                     ref: ref,
-                    params: params,
                     isGenerating: isGenerating,
                     showCancel: showCancel,
                     generationState: generationState,
@@ -149,7 +162,7 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
                   ),
                   const SizedBox(width: 12),
                   DraggableNumberInput(
-                    value: params.nSamples,
+                    value: nSamples,
                     min: 1,
                     prefix: '×',
                     onChanged: (value) {
@@ -175,7 +188,6 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
   Widget _buildGenerateButtonWithHover({
     required BuildContext context,
     required WidgetRef ref,
-    required ImageParams params,
     required bool isGenerating,
     required bool showCancel,
     required ImageGenerationState generationState,
@@ -187,14 +199,12 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
       onEnter: (_) {
         if (!_showAddToQueueButton && shouldShowFloatingButton) {
           setState(() {
-            _isHovering = true;
             _showAddToQueueButton = true;
           });
         }
       },
       onExit: (_) {
         setState(() {
-          _isHovering = false;
           _showAddToQueueButton = false;
         });
       },
@@ -210,7 +220,7 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
                 ? Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: AddToQueueIconButton(
-                      onPressed: () => _handleAddToQueue(context, ref, params),
+                      onPressed: () => _handleAddToQueue(context, ref),
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -220,9 +230,12 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
             isGenerating: isGenerating,
             showCancel: showCancel,
             generationState: generationState,
-            onGenerate: () => _handleGenerate(context, ref, params, randomMode),
+            onGenerate: () => unawaited(_handleGenerate(context, ref)),
             onCancel: () =>
                 ref.read(imageGenerationNotifierProvider.notifier).cancel(),
+            onSkipCurrent: () => ref
+                .read(imageGenerationNotifierProvider.notifier)
+                .skipCurrentRequest(),
           ),
         ],
       ),
@@ -232,8 +245,12 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
   void _handleAddToQueue(
     BuildContext context,
     WidgetRef ref,
-    ImageParams params,
   ) {
+    final params = ref.read(generationParamsNotifierProvider);
+    if (ref.read(kritaBridgeNotifierProvider).isBridgeGenerating) {
+      AppToast.warning(context, context.l10n.toast_kritaBusy);
+      return;
+    }
     if (params.prompt.isEmpty) {
       AppToast.warning(context, context.l10n.generation_pleaseInputPrompt);
       return;
@@ -248,14 +265,21 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
     AppToast.success(context, context.l10n.queue_taskAdded);
   }
 
-  void _handleGenerate(
+  Future<void> _handleGenerate(
     BuildContext context,
     WidgetRef ref,
-    ImageParams params,
-    bool randomMode,
-  ) {
+  ) async {
+    final params = ref.read(generationParamsNotifierProvider);
     if (params.prompt.isEmpty) {
       AppToast.warning(context, context.l10n.generation_pleaseInputPrompt);
+      return;
+    }
+
+    final confirmed = await AssetProtectionGuard.confirmHighAnlasCost(
+      context: context,
+      ref: ref,
+    );
+    if (!confirmed || !context.mounted) {
       return;
     }
 

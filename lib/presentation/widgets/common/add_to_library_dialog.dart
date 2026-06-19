@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nai_launcher/core/utils/localization_extension.dart';
 
-import '../../../../core/utils/localization_extension.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../../../data/models/prompt/tag_category.dart';
 import '../../../../data/models/prompt/weighted_tag.dart';
@@ -118,7 +118,7 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
     final content = _contentController.text.trim();
 
     if (content.isEmpty) {
-      AppToast.warning(context, '内容不能为空');
+      AppToast.warning(context, context.l10n.toast_contentCannotBeEmpty);
       return;
     }
 
@@ -130,7 +130,7 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
       final currentLibrary = ref.read(tagLibraryNotifierProvider).library;
 
       if (currentLibrary == null) {
-        throw Exception('词库未加载');
+        throw Exception(context.l10n.toast_libraryNotLoaded);
       }
 
       // 解析内容（支持逗号分隔的多个标签）
@@ -141,7 +141,7 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
           .toList();
 
       if (tagNames.isEmpty) {
-        throw Exception('没有有效的标签内容');
+        throw Exception(context.l10n.toast_noValidTagContent);
       }
 
       // 确定目标分类
@@ -182,7 +182,9 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
         if (mounted) {
           AppToast.warning(
             context,
-            duplicateCount > 0 ? '所有标签已存在于词库中' : '没有可添加的标签',
+            duplicateCount > 0
+                ? context.l10n.toast_allTagsAlreadyExist
+                : context.l10n.toast_noAddableTags,
           );
         }
         setState(() => _isSaving = false);
@@ -207,17 +209,20 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
         if (duplicateCount > 0) {
           AppToast.success(
             context,
-            '已添加 $addedCount 个标签，跳过 $duplicateCount 个重复标签',
+            context.l10n.toast_addedTagsSkippedDuplicates(
+              addedCount,
+              duplicateCount,
+            ),
           );
         } else {
-          AppToast.success(context, '已添加到词库');
+          AppToast.success(context, context.l10n.toast_addedToLibrary);
         }
         Navigator.of(context).pop(true);
       }
     } catch (e, stackTrace) {
       AppLogger.e('Failed to add to library', e, stackTrace);
       if (mounted) {
-        AppToast.error(context, '添加失败: $e');
+        AppToast.error(context, context.l10n.toast_addFailed(e.toString()));
       }
     } finally {
       if (mounted) {
@@ -237,7 +242,7 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
         children: [
           Icon(Icons.library_add, color: colorScheme.primary),
           const SizedBox(width: 8),
-          const Text('添加到词库'),
+          Text(l10n.tagLibrary_addToLibrary),
         ],
       ),
       content: SizedBox(
@@ -249,7 +254,7 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
             children: [
               // 内容预览
               Text(
-                '内容预览',
+                l10n.tagLibrary_contentPreview,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: colorScheme.primary,
                   fontWeight: FontWeight.w600,
@@ -260,10 +265,12 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  color: colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: colorScheme.outline.withOpacity(0.2)),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Text(
                   widget.content,
@@ -280,14 +287,14 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: '显示名称（可选）',
-                  hintText: '输入名称以便识别',
+                  labelText: 'Display name (optional)',
+                  hintText: 'Enter a name to identify it',
                   prefixIcon: const Icon(Icons.label_outline),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.clear),
                     onPressed: () => _nameController.clear(),
-                    tooltip: '清除',
+                    tooltip: l10n.common_clear,
                   ),
                 ),
               ),
@@ -299,22 +306,26 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
                   const categories = TagSubCategory.values;
 
                   return DropdownButtonFormField<String?>(
-                    value: _selectedCategoryId,
+                    initialValue: _selectedCategoryId,
                     decoration: const InputDecoration(
-                      labelText: '目标分类',
+                      labelText: 'Target Category',
                       prefixIcon: Icon(Icons.folder_outlined),
                       border: OutlineInputBorder(),
                     ),
                     items: [
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: null,
-                        child: Text('未分类'),
+                        child: Text(l10n.tagLibrary_uncategorized),
                       ),
                       ...categories.map((category) {
                         return DropdownMenuItem(
                           value: category.name,
                           child: Text(
-                              TagSubCategoryHelper.getDisplayName(category),),
+                            TagSubCategoryHelper.getDisplayName(
+                              category,
+                              locale: l10n.localeName,
+                            ),
+                          ),
                         );
                       }),
                     ],
@@ -330,14 +341,14 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
               TextField(
                 controller: _tagController,
                 decoration: InputDecoration(
-                  labelText: '添加标签',
-                  hintText: '输入标签后按回车添加',
+                  labelText: l10n.tag_addTag,
+                  hintText: 'Enter a tag and press Enter to add',
                   prefixIcon: const Icon(Icons.tag),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.add),
                     onPressed: _addTag,
-                    tooltip: '添加标签',
+                    tooltip: l10n.tag_addTag,
                   ),
                 ),
                 onSubmitted: (_) => _addTag(),
@@ -379,7 +390,7 @@ class _AddToLibraryDialogState extends ConsumerState<AddToLibraryDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.save, size: 18),
-          label: Text(_isSaving ? '保存中...' : l10n.common_save),
+          label: Text(_isSaving ? l10n.common_saving : l10n.common_save),
         ),
       ],
     );

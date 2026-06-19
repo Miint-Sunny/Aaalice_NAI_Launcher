@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/vibe/vibe_reference.dart';
 import '../../../widgets/common/app_toast.dart';
+import '../../../widgets/common/decoded_memory_image.dart';
+import '../../../widgets/common/editable_double_field.dart';
 import '../../../widgets/common/hover_image_preview.dart';
 
 /// Vibe 卡片组件
@@ -69,9 +71,8 @@ class _VibeCardState extends ConsumerState<VibeCard> {
 
   void _checkAndShowEncodingDialog() {
     final vibe = widget.vibe;
-    final needsEncoding = vibe.sourceType == VibeSourceType.rawImage &&
-        vibe.vibeEncoding.isEmpty &&
-        vibe.rawImageData != null;
+    final needsEncoding =
+        vibe.canReencodeFromRawSource && vibe.vibeEncoding.isEmpty;
 
     if (needsEncoding) {
       // 生成唯一 ID（基于图片数据哈希）
@@ -164,14 +165,17 @@ class _VibeCardState extends ConsumerState<VibeCard> {
                   onChanged: widget.onStrengthChanged,
                 ),
 
-                // Information Extracted 滑条
-                _buildSliderRow(
-                  context,
-                  theme,
-                  label: context.l10n.vibe_infoExtraction,
-                  value: vibe.infoExtracted,
-                  onChanged: widget.onInfoExtractedChanged,
-                ),
+                if (vibe.canReencodeFromRawSource) ...[
+                  const SizedBox(height: 8),
+                  // Information Extracted 滑条
+                  _buildSliderRow(
+                    context,
+                    theme,
+                    label: context.l10n.vibe_infoExtraction,
+                    value: vibe.infoExtracted,
+                    onChanged: widget.onInfoExtractedChanged,
+                  ),
+                ],
               ],
             ),
           ),
@@ -197,17 +201,21 @@ class _VibeCardState extends ConsumerState<VibeCard> {
               ? (previewBytes != null
                   ? HoverImagePreview(
                       imageBytes: previewBytes,
-                      child: Image.memory(
-                        thumbnailBytes,
+                      child: DecodedMemoryImage(
+                        bytes: thumbnailBytes,
                         fit: BoxFit.cover,
+                        maxLogicalWidth: 100,
+                        maxLogicalHeight: 100,
                         errorBuilder: (context, error, stackTrace) {
                           return _buildPlaceholder(theme);
                         },
                       ),
                     )
-                  : Image.memory(
-                      thumbnailBytes,
+                  : DecodedMemoryImage(
+                      bytes: thumbnailBytes,
                       fit: BoxFit.cover,
+                      maxLogicalWidth: 100,
+                      maxLogicalHeight: 100,
                       errorBuilder: (context, error, stackTrace) {
                         return _buildPlaceholder(theme);
                       },
@@ -231,7 +239,7 @@ class _VibeCardState extends ConsumerState<VibeCard> {
   /// 构建编码状态标签
   Widget _buildEncodingStatusChip(BuildContext context, ThemeData theme) {
     final isEncoded = widget.vibe.vibeEncoding.isNotEmpty;
-    final needsEncoding = widget.vibe.sourceType == VibeSourceType.rawImage;
+    final needsEncoding = widget.vibe.canReencodeFromRawSource;
     final l10n = context.l10n;
 
     if (isEncoded) {
@@ -296,9 +304,9 @@ class _VibeCardState extends ConsumerState<VibeCard> {
       constraints: BoxConstraints(maxWidth: maxWidth),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -342,10 +350,10 @@ class _VibeCardState extends ConsumerState<VibeCard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Colors.orange.withOpacity(0.3),
+                  color: Colors.orange.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -439,7 +447,7 @@ class _VibeCardState extends ConsumerState<VibeCard> {
           color: theme.colorScheme.tertiaryContainer,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: theme.colorScheme.tertiary.withOpacity(0.5),
+            color: theme.colorScheme.tertiary.withValues(alpha: 0.5),
           ),
         ),
         child: Row(
@@ -475,6 +483,14 @@ class _VibeCardState extends ConsumerState<VibeCard> {
     required double value,
     required ValueChanged<double> onChanged,
   }) {
+    final isInfoExtracted = label == context.l10n.vibe_infoExtraction;
+    final fieldMin = isInfoExtracted
+        ? VibeReference.minInfoExtracted
+        : VibeReference.minStrength;
+    final sliderMin = isInfoExtracted ? VibeReference.minInfoExtracted : 0.0;
+    const max = 1.0;
+    final sliderValue = value.clamp(sliderMin, max).toDouble();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -485,13 +501,18 @@ class _VibeCardState extends ConsumerState<VibeCard> {
               child: Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.8),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
               ),
             ),
-            Text(
-              value.toStringAsFixed(1),
-              style: theme.textTheme.bodySmall?.copyWith(
+            EditableDoubleField(
+              value: value,
+              min: fieldMin,
+              max: max,
+              decimals: 1,
+              width: 60,
+              onChanged: onChanged,
+              textStyle: theme.textTheme.bodySmall?.copyWith(
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -505,9 +526,9 @@ class _VibeCardState extends ConsumerState<VibeCard> {
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
           ),
           child: Slider(
-            value: value,
-            min: 0.0,
-            max: 1.0,
+            value: sliderValue,
+            min: sliderMin,
+            max: max,
             divisions: 100,
             onChanged: onChanged,
           ),

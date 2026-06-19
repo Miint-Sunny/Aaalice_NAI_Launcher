@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/gallery/gallery_folder.dart';
+import '../../../core/utils/localization_extension.dart';
 import '../../providers/gallery_folder_provider.dart';
 import '../common/app_toast.dart';
 import 'package:nai_launcher/presentation/widgets/common/themed_input.dart';
@@ -38,7 +39,7 @@ class FolderTabs extends ConsumerWidget {
                 children: [
                   // "全部" 标签
                   _FolderTab(
-                    label: '全部',
+                    label: context.l10n.localGallery_allImages,
                     count: folderState.totalImageCount,
                     isActive: folderState.isAllSelected,
                     onTap: () {
@@ -50,24 +51,30 @@ class FolderTabs extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   // 文件夹标签
-                  ...folderState.folders.map((folder) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _FolderTab(
-                          label: folder.name,
-                          count: folder.imageCount,
-                          isActive: folderState.selectedFolderId == folder.id,
-                          onTap: () {
-                            ref
-                                .read(galleryFolderNotifierProvider.notifier)
-                                .selectFolder(folder.id);
-                            onFolderSelected?.call(folder.id);
-                          },
-                          onContextMenu: (details) {
-                            _showFolderContextMenu(
-                                context, ref, folder, details.globalPosition,);
-                          },
-                        ),
-                      ),),
+                  ...folderState.folders.map(
+                    (folder) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _FolderTab(
+                        label: folder.name,
+                        count: folder.imageCount,
+                        isActive: folderState.selectedFolderId == folder.id,
+                        onTap: () {
+                          ref
+                              .read(galleryFolderNotifierProvider.notifier)
+                              .selectFolder(folder.id);
+                          onFolderSelected?.call(folder.id);
+                        },
+                        onContextMenu: (details) {
+                          _showFolderContextMenu(
+                            context,
+                            ref,
+                            folder,
+                            details.globalPosition,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -84,13 +91,15 @@ class FolderTabs extends ConsumerWidget {
 
   /// 显示创建文件夹对话框
   Future<void> _showCreateFolderDialog(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final result = await _showFolderNameDialog(
       context: context,
-      title: '创建文件夹',
-      label: '文件夹名称',
-      hint: '输入文件夹名称',
-      confirmText: '创建',
+      title: context.l10n.localGallery_createCategoryTitle,
+      label: context.l10n.localGallery_folderName,
+      hint: context.l10n.localGallery_folderNameHint,
+      confirmText: context.l10n.common_create,
     );
 
     if (result != null && result.isNotEmpty && context.mounted) {
@@ -98,9 +107,9 @@ class FolderTabs extends ConsumerWidget {
           .read(galleryFolderNotifierProvider.notifier)
           .createFolder(result);
       if (folder != null && context.mounted) {
-        AppToast.success(context, '文件夹创建成功');
+        AppToast.success(context, context.l10n.localGallery_folderCreated);
       } else if (context.mounted) {
-        AppToast.error(context, '文件夹创建失败');
+        AppToast.error(context, context.l10n.localGallery_folderCreateFailed);
       }
     }
   }
@@ -115,14 +124,18 @@ class FolderTabs extends ConsumerWidget {
     showMenu(
       context: context,
       position: RelativeRect.fromLTRB(
-          position.dx, position.dy, position.dx, position.dy,),
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
       items: [
         PopupMenuItem(
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.edit_outlined, size: 18),
-              SizedBox(width: 8),
-              Text('重命名'),
+              const Icon(Icons.edit_outlined, size: 18),
+              const SizedBox(width: 8),
+              Text(context.l10n.common_rename),
             ],
           ),
           onTap: () => _showRenameFolderDialog(context, ref, folder),
@@ -130,11 +143,16 @@ class FolderTabs extends ConsumerWidget {
         PopupMenuItem(
           child: Row(
             children: [
-              Icon(Icons.delete_outline,
-                  size: 18, color: Theme.of(context).colorScheme.error,),
+              Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Theme.of(context).colorScheme.error,
+              ),
               const SizedBox(width: 8),
-              Text('删除',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),),
+              Text(
+                context.l10n.common_delete,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
           ),
           onTap: () => _showDeleteFolderDialog(context, ref, folder),
@@ -154,9 +172,9 @@ class FolderTabs extends ConsumerWidget {
 
     final result = await _showFolderNameDialog(
       context: context,
-      title: '重命名文件夹',
-      label: '新名称',
-      confirmText: '确定',
+      title: context.l10n.localGallery_renameFolderTitle,
+      label: context.l10n.localGallery_newFolderName,
+      confirmText: context.l10n.common_confirm,
       initialValue: folder.name,
     );
 
@@ -168,9 +186,9 @@ class FolderTabs extends ConsumerWidget {
           .read(galleryFolderNotifierProvider.notifier)
           .renameFolder(folder.path, result);
       if (newFolder != null && context.mounted) {
-        AppToast.success(context, '重命名成功');
+        AppToast.success(context, context.l10n.localGallery_renameSuccess);
       } else if (context.mounted) {
-        AppToast.error(context, '重命名失败');
+        AppToast.error(context, context.l10n.localGallery_renameFailed);
       }
     }
   }
@@ -185,14 +203,17 @@ class FolderTabs extends ConsumerWidget {
     if (!context.mounted) return;
 
     final content = folder.imageCount > 0
-        ? '文件夹「${folder.name}」包含 ${folder.imageCount} 张图片，确定要删除吗？\n\n注意：此操作会删除文件夹及其中的所有图片，无法恢复。'
-        : '确定要删除空文件夹「${folder.name}」吗？';
+        ? context.l10n.localGallery_deleteFolderWithImagesContent(
+            folder.name,
+            folder.imageCount,
+          )
+        : context.l10n.localGallery_deleteEmptyFolderContent(folder.name);
 
     final confirmed = await _showConfirmDialog(
       context: context,
-      title: '删除文件夹',
+      title: context.l10n.localGallery_deleteFolderTitle,
       content: content,
-      confirmText: '删除',
+      confirmText: context.l10n.common_delete,
       confirmColor: Theme.of(context).colorScheme.error,
     );
 
@@ -203,9 +224,9 @@ class FolderTabs extends ConsumerWidget {
                 recursive: folder.imageCount > 0,
               );
       if (success && context.mounted) {
-        AppToast.success(context, '文件夹已删除');
+        AppToast.success(context, context.l10n.localGallery_folderDeleted);
       } else if (context.mounted) {
-        AppToast.error(context, '删除失败');
+        AppToast.error(context, context.l10n.localGallery_folderDeleteFailed);
       }
     }
   }
@@ -242,7 +263,7 @@ class FolderTabs extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
+            child: Text(context.l10n.common_cancel),
           ),
           FilledButton(
             onPressed: () {
@@ -275,7 +296,7 @@ class FolderTabs extends ConsumerWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('取消'),
+                child: Text(context.l10n.common_cancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
@@ -333,16 +354,17 @@ class _FolderTabState extends State<_FolderTab> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: widget.isActive
-                ? colorScheme.primaryContainer.withOpacity(isDark ? 0.4 : 0.3)
+                ? colorScheme.primaryContainer
+                    .withValues(alpha: isDark ? 0.4 : 0.3)
                 : _isHovered
-                    ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
+                    ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
                     : Colors.transparent,
             border: Border.all(
               color: widget.isActive
                   ? colorScheme.primary
                   : _isHovered
-                      ? colorScheme.outline.withOpacity(0.3)
-                      : colorScheme.outline.withOpacity(0.15),
+                      ? colorScheme.outline.withValues(alpha: 0.3)
+                      : colorScheme.outline.withValues(alpha: 0.15),
               width: widget.isActive ? 1.5 : 1,
             ),
             borderRadius: BorderRadius.circular(8),
@@ -365,7 +387,7 @@ class _FolderTabState extends State<_FolderTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: widget.isActive
-                      ? colorScheme.primary.withOpacity(0.2)
+                      ? colorScheme.primary.withValues(alpha: 0.2)
                       : colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -419,12 +441,12 @@ class _CreateFolderButtonState extends State<_CreateFolderButton> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: _isHovered
-                  ? colorScheme.primary.withOpacity(0.1)
+                  ? colorScheme.primary.withValues(alpha: 0.1)
                   : Colors.transparent,
               border: Border.all(
                 color: _isHovered
-                    ? colorScheme.primary.withOpacity(0.5)
-                    : colorScheme.outline.withOpacity(0.2),
+                    ? colorScheme.primary.withValues(alpha: 0.5)
+                    : colorScheme.outline.withValues(alpha: 0.2),
                 width: 1,
               ),
               borderRadius: BorderRadius.circular(8),

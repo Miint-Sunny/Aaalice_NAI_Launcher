@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/localization_extension.dart';
 import 'inset_shadow_container.dart';
 import 'themed_confirm_dialog.dart';
 
@@ -11,6 +12,9 @@ import 'themed_confirm_dialog.dart';
 class ThemedInput extends StatefulWidget {
   /// 文本控制器
   final TextEditingController? controller;
+
+  /// 原生撤销栈控制器
+  final UndoHistoryController? undoController;
 
   /// 焦点节点
   final FocusNode? focusNode;
@@ -110,12 +114,18 @@ class ThemedInput extends StatefulWidget {
   final bool clearNeedsConfirm;
 
   /// 自定义上下文菜单构建器
-  final Widget Function(BuildContext context, EditableTextState editableTextState)?
-      contextMenuBuilder;
+  final Widget Function(
+    BuildContext context,
+    EditableTextState editableTextState,
+  )? contextMenuBuilder;
+
+  /// Whether to add a native Ctrl+Y redo shortcut for plain text fields.
+  final bool enableNativeRedoShortcut;
 
   const ThemedInput({
     super.key,
     this.controller,
+    this.undoController,
     this.focusNode,
     this.hintText,
     this.helperText,
@@ -152,12 +162,14 @@ class ThemedInput extends StatefulWidget {
     this.onClearPressed,
     this.clearNeedsConfirm = false,
     this.contextMenuBuilder,
+    this.enableNativeRedoShortcut = true,
   });
 
   /// 创建多行输入框
   const ThemedInput.multiline({
     super.key,
     this.controller,
+    this.undoController,
     this.focusNode,
     this.hintText,
     this.helperText,
@@ -191,6 +203,7 @@ class ThemedInput extends StatefulWidget {
     this.onClearPressed,
     this.clearNeedsConfirm = false,
     this.contextMenuBuilder,
+    this.enableNativeRedoShortcut = true,
   });
 
   @override
@@ -252,11 +265,13 @@ class _ThemedInputState extends State<ThemedInput> {
   Future<void> _handleClear() async {
     // 如果需要确认，显示对话框
     if (widget.clearNeedsConfirm) {
+      final l10n = context.l10n;
       final confirmed = await ThemedConfirmDialog.show(
         context: context,
-        title: '清空确认',
-        content: '确定要清空输入内容吗？',
-        confirmText: '清空',
+        title: l10n.common_confirmClear,
+        content: l10n.common_clearInputConfirm,
+        confirmText: l10n.common_clear,
+        cancelText: l10n.common_cancel,
         type: ThemedConfirmDialogType.warning,
         icon: Icons.clear_all,
       );
@@ -324,8 +339,9 @@ class _ThemedInputState extends State<ThemedInput> {
       );
     }
 
-    final textField = TextField(
+    final field = TextField(
       controller: _effectiveController,
+      undoController: widget.undoController,
       focusNode: widget.focusNode,
       maxLines: widget.maxLines,
       minLines: widget.minLines,
@@ -350,6 +366,16 @@ class _ThemedInputState extends State<ThemedInput> {
       decoration: inputDecoration,
       contextMenuBuilder: widget.contextMenuBuilder,
     );
+
+    final textField = widget.enableNativeRedoShortcut
+        ? Shortcuts(
+            shortcuts: const <ShortcutActivator, Intent>{
+              SingleActivator(LogicalKeyboardKey.keyY, control: true):
+                  RedoTextIntent(SelectionChangedCause.keyboard),
+            },
+            child: field,
+          )
+        : field;
 
     Widget content = textField;
 
@@ -409,7 +435,7 @@ class _ClearButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     return Material(
-      color: colorScheme.surfaceContainerHighest.withOpacity(0.8),
+      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onPressed,

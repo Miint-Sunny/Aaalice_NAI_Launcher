@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,12 +7,14 @@ import 'package:path/path.dart' as path;
 
 import '../../core/cache/danbooru_image_cache_manager.dart';
 import '../../core/utils/localization_extension.dart';
+import '../../core/utils/file_picker_utils.dart';
 import '../../data/models/online_gallery/danbooru_post.dart';
 import '../../data/models/queue/replication_task.dart';
 import '../../data/services/tag_translation_service.dart';
 import '../providers/character_prompt_provider.dart';
 import '../providers/pending_prompt_provider.dart';
 import '../providers/replication_queue_provider.dart';
+import '../providers/reverse_prompt_provider.dart';
 import 'common/card_action_buttons.dart';
 
 import 'common/app_toast.dart';
@@ -97,17 +98,18 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
   }
 
   Future<void> _handleDownload() async {
-    final url = widget.post.largeFileUrl ??
-        widget.post.sampleUrl ??
-        widget.post.previewUrl;
+    final url = widget.post.bestQualityUrl;
     if (url.isEmpty) return;
 
     try {
-      final result = await FilePicker.platform.getDirectoryPath();
+      _removeOverlay();
+      final result = await FilePickerUtils.pickDirectoryModal(
+        dialogTitle: context.l10n.onlineGallery_chooseDownloadDirectory,
+      );
       if (result == null) return;
 
       if (!mounted) return;
-      AppToast.info(context, '开始下载...');
+      AppToast.info(context, context.l10n.onlineGallery_downloadStarted);
 
       final file = await DanbooruImageCacheManager.instance.getSingleFile(url);
       final fileName = path.basename(Uri.parse(url).path);
@@ -116,11 +118,17 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
       await file.copy(destination);
 
       if (mounted) {
-        AppToast.info(context, '已保存到: $destination');
+        AppToast.info(
+          context,
+          context.l10n.onlineGallery_savedToPath(destination),
+        );
       }
     } catch (e) {
       if (mounted) {
-        AppToast.info(context, '下载失败: $e');
+        AppToast.info(
+          context,
+          context.l10n.onlineGallery_downloadFailed('$e'),
+        );
       }
     }
   }
@@ -178,11 +186,18 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                   curve: Curves.easeOut,
                   height: itemHeight,
                   transform: Matrix4.identity()
-                    ..translate(
+                    ..translateByDouble(
                       0.0,
                       _isHovering && !widget.selectionMode ? -4.0 : 0.0,
+                      0,
+                      1,
                     )
-                    ..scale(_isHovering && !widget.selectionMode ? 1.02 : 1.0),
+                    ..scaleByDouble(
+                      _isHovering && !widget.selectionMode ? 1.02 : 1.0,
+                      _isHovering && !widget.selectionMode ? 1.02 : 1.0,
+                      _isHovering && !widget.selectionMode ? 1.02 : 1.0,
+                      1,
+                    ),
                   transformAlignment: Alignment.center,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
@@ -190,28 +205,29 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                         ? Border.all(color: theme.colorScheme.primary, width: 3)
                         : _isHovering && !widget.selectionMode
                             ? Border.all(
-                                color:
-                                    theme.colorScheme.primary.withOpacity(0.4),
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.4),
                                 width: 1.5,
                               )
                             : null,
                     boxShadow: _isHovering && !widget.selectionMode
                         ? [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.3),
                               blurRadius: 16,
                               offset: const Offset(0, 8),
                               spreadRadius: 2,
                             ),
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 24,
                               offset: const Offset(0, 12),
                             ),
                           ]
                         : [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 4,
                             ),
                           ],
@@ -247,12 +263,13 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                           // Selection Overlay
                           if (widget.isSelected)
                             Container(
-                              color: theme.colorScheme.primary.withOpacity(0.2),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.2),
                             ),
                           // Disabled Overlay
                           if (!widget.canSelect)
                             Container(
-                              color: Colors.grey.withOpacity(0.7),
+                              color: Colors.grey.withValues(alpha: 0.7),
                               child: const Center(
                                 child: Icon(Icons.block, color: Colors.white54),
                               ),
@@ -267,7 +284,7 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                                   shape: BoxShape.circle,
                                   color: widget.isSelected
                                       ? theme.colorScheme.primary
-                                      : Colors.black.withOpacity(0.4),
+                                      : Colors.black.withValues(alpha: 0.4),
                                   border: Border.all(
                                     color: Colors.white,
                                     width: 2,
@@ -361,7 +378,7 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                                   begin: Alignment.bottomCenter,
                                   end: Alignment.topCenter,
                                   colors: [
-                                    Colors.black.withOpacity(0.7),
+                                    Colors.black.withValues(alpha: 0.7),
                                     Colors.transparent,
                                   ],
                                 ),
@@ -420,7 +437,9 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                               icon: widget.isFavorited
                                   ? Icons.favorite
                                   : Icons.favorite_border,
-                              tooltip: '收藏',
+                              tooltip: widget.isFavorited
+                                  ? context.l10n.common_unfavorite
+                                  : context.l10n.common_favorite,
                               iconColor: widget.isFavorited
                                   ? Colors.red
                                   : Colors.white,
@@ -429,12 +448,13 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                             ),
                             CardActionButtonConfig(
                               icon: Icons.download,
-                              tooltip: '下载原图',
+                              tooltip:
+                                  context.l10n.onlineGallery_downloadOriginal,
                               onPressed: _handleDownload,
                             ),
                             CardActionButtonConfig(
                               icon: Icons.playlist_add,
-                              tooltip: '添加到队列',
+                              tooltip: context.l10n.onlineGallery_addToQueue,
                               onPressed: () async {
                                 final task = ReplicationTask.create(
                                   prompt: widget.post.tags.join(', '),
@@ -448,16 +468,23 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                                     .add(task);
                                 if (context.mounted) {
                                   if (success) {
-                                    AppToast.info(context, '已添加到队列');
+                                    AppToast.info(
+                                      context,
+                                      context.l10n.onlineGallery_addedToQueue,
+                                    );
                                   } else {
-                                    AppToast.info(context, '队列已满');
+                                    AppToast.info(
+                                      context,
+                                      context.l10n.onlineGallery_queueFullMax,
+                                    );
                                   }
                                 }
                               },
                             ),
                             CardActionButtonConfig(
                               icon: Icons.send,
-                              tooltip: '发送到文生图',
+                              tooltip:
+                                  context.l10n.onlineGallery_sendToTextToImage,
                               onPressed: () {
                                 ref
                                     .read(
@@ -470,12 +497,62 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                                     )
                                     .set(prompt: widget.post.tags.join(', '));
                                 context.go('/');
-                                AppToast.info(context, '已发送到文生图');
+                                AppToast.info(
+                                  context,
+                                  context.l10n.onlineGallery_sentToTextToImage,
+                                );
+                              },
+                            ),
+                            CardActionButtonConfig(
+                              icon: Icons.manage_search_rounded,
+                              tooltip: context
+                                  .l10n.onlineGallery_sendToReversePrompt,
+                              onPressed: () async {
+                                final imageUrl = widget.post.sampleUrl ??
+                                    widget.post.fileUrl ??
+                                    widget.post.previewUrl;
+                                if (imageUrl.isEmpty) {
+                                  AppToast.warning(
+                                    context,
+                                    context.l10n.onlineGallery_noImageUrl,
+                                  );
+                                  return;
+                                }
+                                try {
+                                  final file = await DanbooruImageCacheManager
+                                      .instance
+                                      .getSingleFile(imageUrl);
+                                  final bytes = await file.readAsBytes();
+                                  await ref
+                                      .read(reversePromptProvider.notifier)
+                                      .addImage(
+                                        bytes,
+                                        name: 'danbooru_${widget.post.id}',
+                                      );
+                                  if (context.mounted) {
+                                    context.go('/');
+                                    AppToast.info(
+                                      context,
+                                      context.l10n
+                                          .onlineGallery_sentToReversePrompt,
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    AppToast.error(
+                                      context,
+                                      context.l10n
+                                          .onlineGallery_reversePromptSendFailed(
+                                        '$e',
+                                      ),
+                                    );
+                                  }
+                                }
                               },
                             ),
                             CardActionButtonConfig(
                               icon: Icons.copy,
-                              tooltip: '复制标签',
+                              tooltip: context.l10n.onlineGallery_copyTags,
                               onPressed: () async {
                                 try {
                                   await Clipboard.setData(
@@ -484,7 +561,10 @@ class _DanbooruPostCardState extends State<DanbooruPostCard> {
                                     ),
                                   );
                                   if (context.mounted) {
-                                    AppToast.success(context, '已复制');
+                                    AppToast.success(
+                                      context,
+                                      context.l10n.onlineGallery_copied,
+                                    );
                                   }
                                 } catch (e) {
                                   // ignore
@@ -568,27 +648,27 @@ class _HoverPreviewCardInner extends ConsumerWidget {
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
             width: 2,
           ),
           boxShadow: [
             // 主阴影 - 深色悬浮感
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               blurRadius: 32,
               spreadRadius: 8,
               offset: const Offset(0, 16),
             ),
             // 中层阴影 - 扩散阴影
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
+              color: Colors.black.withValues(alpha: 0.4),
               blurRadius: 60,
               spreadRadius: 16,
               offset: const Offset(0, 24),
             ),
             // 内发光效果 - 边缘高光
             BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.25),
+              color: theme.colorScheme.primary.withValues(alpha: 0.25),
               blurRadius: 20,
               spreadRadius: -8,
               offset: const Offset(0, -4),
@@ -631,7 +711,7 @@ class _HoverPreviewCardInner extends ConsumerWidget {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.5),
+                            color: Colors.black.withValues(alpha: 0.5),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -818,7 +898,8 @@ class _TagRowState extends State<_TagRow> {
   }
 
   Future<void> _loadTranslations() async {
-    final translations = await widget.translationService.translateBatch(widget.tags);
+    final translations =
+        await widget.translationService.translateBatch(widget.tags);
     if (mounted) {
       setState(() => _translations = translations);
     }

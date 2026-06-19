@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,15 +10,18 @@ import '../../../data/models/queue/replication_task.dart';
 import '../../providers/character_panel_dock_provider.dart';
 import '../../providers/character_prompt_provider.dart';
 import '../../providers/image_generation_provider.dart';
+import '../../providers/krita/krita_bridge_notifier.dart';
 import '../../providers/layout_state_provider.dart';
 import '../../providers/prompt_maximize_provider.dart';
 import '../../providers/replication_queue_provider.dart';
 import '../../router/app_router.dart';
 import '../../widgets/common/app_toast.dart';
 import '../../widgets/shortcuts/shortcut_aware_widget.dart';
-import 'widgets/upscale_dialog.dart';
+import '../../services/image_workflow_launcher.dart';
+import '../../utils/asset_protection_guard.dart';
 import 'widgets/resize_handle.dart';
 import 'widgets/left_panel.dart';
+import 'widgets/fixed_tags_sidebar.dart';
 import 'widgets/main_workspace.dart';
 import 'widgets/right_panel.dart';
 import 'package:nai_launcher/core/utils/localization_extension.dart';
@@ -37,10 +42,13 @@ class _DesktopGenerationLayoutState
   static const double _leftPanelMaxWidth = 450;
   static const double _rightPanelMinWidth = 200;
   static const double _rightPanelMaxWidth = 400;
+  static const double _fixedTagsSidebarMinWidth = 240;
+  static const double _fixedTagsSidebarMaxWidth = 400;
 
   // 拖拽状态（拖拽时禁用动画以避免粘滞感）
   bool _isResizingLeft = false;
   bool _isResizingRight = false;
+  bool _isResizingFixedTags = false;
 
   /// 切换提示词区域最大化状态
   void _togglePromptMaximize() {
@@ -52,7 +60,9 @@ class _DesktopGenerationLayoutState
       if (isDocked) {
         ref.read(characterPanelDockProvider.notifier).undock();
         AppLogger.d(
-            'Auto-undocked character panel on maximize', 'DesktopLayout',);
+          'Auto-undocked character panel on maximize',
+          'DesktopLayout',
+        );
       }
     }
 
@@ -64,29 +74,32 @@ class _DesktopGenerationLayoutState
   Widget build(BuildContext context) {
     // 从 Provider 读取布局状态
     final layoutState = ref.watch(layoutStateNotifierProvider);
-    // 从 Provider 读取生成状态和参数（用于快捷键回调）
+    // 从 Provider 读取生成状态（用于快捷键回调）
     final generationState = ref.watch(imageGenerationNotifierProvider);
-    final params = ref.watch(generationParamsNotifierProvider);
-    final isGenerating = generationState.isGenerating;
+    final kritaBridgeState = ref.watch(kritaBridgeNotifierProvider);
+    final isLauncherGenerating = generationState.isGenerating;
+    final isGenerating =
+        isLauncherGenerating || kritaBridgeState.isBridgeGenerating;
 
     // 定义快捷键动作映射（使用 ShortcutIds 常量）
     final shortcuts = <String, VoidCallback>{
       // 生成图像
       ShortcutIds.generateImage: () {
-        if (!isGenerating && params.prompt.isNotEmpty) {
-          ref.read(imageGenerationNotifierProvider.notifier).generate(params);
+        if (!isGenerating) {
+          unawaited(_generateWithProtection());
         }
       },
       // 取消生成
       ShortcutIds.cancelGeneration: () {
-        if (isGenerating) {
+        if (isLauncherGenerating) {
           ref.read(imageGenerationNotifierProvider.notifier).cancel();
         }
       },
       // 加入队列
       ShortcutIds.addToQueue: () {
-        if (params.prompt.isNotEmpty) {
-          final task = ReplicationTask.create(prompt: params.prompt);
+        final currentParams = ref.read(generationParamsNotifierProvider);
+        if (currentParams.prompt.isNotEmpty) {
+          final task = ReplicationTask.create(prompt: currentParams.prompt);
           ref.read(replicationQueueNotifierProvider.notifier).add(task);
           AppToast.success(context, context.l10n.queue_taskAdded);
         }
@@ -114,10 +127,11 @@ class _DesktopGenerationLayoutState
       // 放大图像
       ShortcutIds.upscaleImage: () {
         if (generationState.displayImages.isNotEmpty) {
-          UpscaleDialog.show(
-            context,
-            image: generationState.displayImages.first.bytes,
+          ImageWorkflowLauncher.openUpscale(
+            ref,
+            generationState.displayImages.first.bytes,
           );
+          AppToast.info(context, context.l10n.img2img_upscalePanelOpened);
         }
       },
       // 已移除 Space 全屏预览快捷键，避免在提示词输入时误触发预览
@@ -144,6 +158,53 @@ class _DesktopGenerationLayoutState
                   .setLeftPanelWidth(newWidth);
             },
           ),
+
+        if (layoutState.fixedTagsSidebarExpanded) ...[
+          Builder(
+            builder: (context) {
+              final width = layoutState.fixedTagsSidebarWidth;
+              final decoration = BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  right: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ),
+              );
+              final child = FixedTagsSidebar(
+                isResizing: _isResizingFixedTags,
+              );
+              if (_isResizingFixedTags) {
+                return Container(
+                  width: width,
+                  decoration: decoration,
+                  child: child,
+                );
+              }
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: width,
+                decoration: decoration,
+                child: child,
+              );
+            },
+          ),
+          ResizeHandle(
+            onDragStart: () => setState(() => _isResizingFixedTags = true),
+            onDragEnd: () => setState(() => _isResizingFixedTags = false),
+            onDrag: (dx) {
+              final currentWidth =
+                  ref.read(layoutStateNotifierProvider).fixedTagsSidebarWidth;
+              final newWidth = (currentWidth + dx).clamp(
+                _fixedTagsSidebarMinWidth,
+                _fixedTagsSidebarMaxWidth,
+              );
+              ref
+                  .read(layoutStateNotifierProvider.notifier)
+                  .setFixedTagsSidebarWidth(newWidth.toDouble());
+            },
+          ),
+        ],
 
         // 中间 - 主工作区（包裹在 ShortcutAwareWidget 中，确保整个区域都支持快捷键）
         Expanded(
@@ -178,5 +239,24 @@ class _DesktopGenerationLayoutState
         RightPanel(isResizing: _isResizingRight),
       ],
     );
+  }
+
+  Future<void> _generateWithProtection() async {
+    final currentParams = ref.read(generationParamsNotifierProvider);
+    if (ref.read(kritaBridgeNotifierProvider).isBridgeGenerating) {
+      AppToast.warning(context, context.l10n.kritaBridge_busyGenerating);
+      return;
+    }
+    if (currentParams.prompt.isEmpty) {
+      return;
+    }
+    final confirmed = await AssetProtectionGuard.confirmHighAnlasCost(
+      context: context,
+      ref: ref,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    ref.read(imageGenerationNotifierProvider.notifier).generate(currentParams);
   }
 }

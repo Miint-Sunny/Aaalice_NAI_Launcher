@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nai_launcher/core/utils/localization_extension.dart';
 
 import '../../../../../data/services/tag_translation_service.dart';
 import '../../app_toast.dart';
@@ -53,18 +54,22 @@ class _PromptSectionState extends State<PromptSection> {
   void _copyContent() {
     if (widget.content.isEmpty) return;
     Clipboard.setData(ClipboardData(text: widget.content));
-    AppToast.success(context, '${widget.title}已复制');
+    AppToast.success(context, context.l10n.toast_copiedTitle(widget.title));
   }
 
   void _copyTag(String tag) {
     Clipboard.setData(ClipboardData(text: tag));
-    AppToast.success(context, '标签已复制');
+    AppToast.success(context, context.l10n.toast_tagCopied);
   }
 
   List<String> get _displayTags {
     if (widget.tags != null) return widget.tags!;
     if (widget.content.isEmpty) return [];
-    return widget.content.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+    return widget.content
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
   }
 
   int get _tagCount {
@@ -99,16 +104,25 @@ class _PromptSectionState extends State<PromptSection> {
     );
   }
 
-  Widget _buildHeader(ColorScheme colorScheme, ThemeData theme, bool hasContent) {
-    final primaryColor = hasContent ? colorScheme.primary : colorScheme.onSurfaceVariant;
+  Widget _buildHeader(
+    ColorScheme colorScheme,
+    ThemeData theme,
+    bool hasContent,
+  ) {
+    final primaryColor =
+        hasContent ? colorScheme.primary : colorScheme.onSurfaceVariant;
 
     return Row(
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: hasContent ? () => setState(() => _isExpanded = !_isExpanded) : null,
+            onTap: hasContent
+                ? () => setState(() => _isExpanded = !_isExpanded)
+                : null,
             child: MouseRegion(
-              cursor: hasContent ? SystemMouseCursors.click : SystemMouseCursors.basic,
+              cursor: hasContent
+                  ? SystemMouseCursors.click
+                  : SystemMouseCursors.basic,
               child: Row(
                 children: [
                   Icon(widget.icon, size: 16, color: primaryColor),
@@ -123,9 +137,13 @@ class _PromptSectionState extends State<PromptSection> {
                   const SizedBox(width: 8),
                   if (hasContent)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: colorScheme.primaryContainer.withOpacity(0.5),
+                        color:
+                            colorScheme.primaryContainer.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -152,8 +170,9 @@ class _PromptSectionState extends State<PromptSection> {
           const SizedBox(width: 4),
           IconButton(
             onPressed: _copyContent,
-            icon: Icon(Icons.copy, size: 16, color: colorScheme.onSurfaceVariant),
-            tooltip: '复制${widget.title}',
+            icon:
+                Icon(Icons.copy, size: 16, color: colorScheme.onSurfaceVariant),
+            tooltip: context.l10n.detail_copyLabel(widget.title),
             style: IconButton.styleFrom(
               padding: const EdgeInsets.all(6),
               minimumSize: const Size(28, 28),
@@ -162,8 +181,12 @@ class _PromptSectionState extends State<PromptSection> {
           if (widget.showAddToLibrary && widget.onAddToLibrary != null)
             IconButton(
               onPressed: widget.onAddToLibrary,
-              icon: Icon(Icons.library_add, size: 16, color: colorScheme.onSurfaceVariant),
-              tooltip: '添加到词库',
+              icon: Icon(
+                Icons.library_add,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              tooltip: context.l10n.tagLibrary_addToLibrary,
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.all(6),
                 minimumSize: const Size(28, 28),
@@ -174,31 +197,37 @@ class _PromptSectionState extends State<PromptSection> {
     );
   }
 
-  Widget _buildContent(ColorScheme colorScheme, ThemeData theme, List<String> tags) {
-    final borderColor = widget.borderColor?.withOpacity(0.2) ?? colorScheme.outline.withOpacity(0.1);
+  Widget _buildContent(
+    ColorScheme colorScheme,
+    ThemeData theme,
+    List<String> tags,
+  ) {
+    final borderColor = widget.borderColor?.withValues(alpha: 0.2) ??
+        colorScheme.outline.withValues(alpha: 0.1);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: borderColor),
       ),
-      child: widget.customContent ?? (tags.isNotEmpty
-          ? _TagChipGrid(
-              tags: tags,
-              onTagTap: _copyTag,
-              contentColor: widget.contentColor,
-              showTranslation: widget.showTranslation,
-            )
-          : Text(
-              '(无内容)',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontStyle: FontStyle.italic,
-              ),
-            )),
+      child: widget.customContent ??
+          (tags.isNotEmpty
+              ? _TagChipGrid(
+                  tags: tags,
+                  onTagTap: _copyTag,
+                  contentColor: widget.contentColor,
+                  showTranslation: widget.showTranslation,
+                )
+              : Text(
+                  context.l10n.detail_noContent,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                )),
     );
   }
 }
@@ -222,12 +251,16 @@ class _TagChipGrid extends StatelessWidget {
     return Wrap(
       spacing: 6,
       runSpacing: 6,
-      children: tags.map((tag) => _TranslatedTagChip(
-        tag: tag,
-        onTap: () => onTagTap(tag),
-        contentColor: contentColor,
-        showTranslation: showTranslation,
-      ),).toList(),
+      children: tags
+          .map(
+            (tag) => _TranslatedTagChip(
+              tag: tag,
+              onTap: () => onTagTap(tag),
+              contentColor: contentColor,
+              showTranslation: showTranslation,
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -284,19 +317,20 @@ class _TranslatedTagChipState extends ConsumerState<_TranslatedTagChip> {
   /// 例如: "1.10::jaggy_lines::" -> "jaggy_lines"
   String _extractBaseTag(String tag) {
     var text = tag.trim();
-    
+
     // 1. 处理 NAI 数值权重语法: weight::text::
-    final weightMatch = RegExp(r'^(-?\d+\.?\d*)::(.+?)(?:::)?$').firstMatch(text);
+    final weightMatch =
+        RegExp(r'^(-?\d+\.?\d*)::(.+?)(?:::)?$').firstMatch(text);
     if (weightMatch != null) {
       text = weightMatch.group(2)!.trim();
       return text;
     }
-    
+
     // 2. 处理结尾的 ::
     if (text.endsWith('::')) {
       text = text.substring(0, text.length - 2).trim();
     }
-    
+
     return text;
   }
 
@@ -315,11 +349,11 @@ class _TranslatedTagChipState extends ConsumerState<_TranslatedTagChip> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final bgColor = _isHovered
-        ? colorScheme.primary.withOpacity(0.15)
+        ? colorScheme.primary.withValues(alpha: 0.15)
         : colorScheme.surfaceContainerHighest;
     final borderColor = _isHovered
-        ? colorScheme.primary.withOpacity(0.3)
-        : colorScheme.outline.withOpacity(0.15);
+        ? colorScheme.primary.withValues(alpha: 0.3)
+        : colorScheme.outline.withValues(alpha: 0.15);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -375,9 +409,9 @@ class CharacterPromptCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,13 +425,18 @@ class CharacterPromptCard extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          if (negativePrompt?.isNotEmpty == true) _buildNegativePrompt(theme, colorScheme),
+          if (negativePrompt?.isNotEmpty == true)
+            _buildNegativePrompt(context, theme, colorScheme),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, ColorScheme colorScheme, ThemeData theme) {
+  Widget _buildHeader(
+    BuildContext context,
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
     return Row(
       children: [
         Container(
@@ -407,7 +446,7 @@ class CharacterPromptCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            '角色 ${index + 1}',
+            context.l10n.character_number(index + 1),
             style: theme.textTheme.labelSmall?.copyWith(
               color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.w600,
@@ -416,7 +455,11 @@ class CharacterPromptCard extends StatelessWidget {
         ),
         if (position?.isNotEmpty == true) ...[
           const SizedBox(width: 8),
-          Icon(Icons.location_on_outlined, size: 12, color: colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.location_on_outlined,
+            size: 12,
+            color: colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 2),
           Text(
             position!,
@@ -429,14 +472,15 @@ class CharacterPromptCard extends StatelessWidget {
         IconButton(
           onPressed: () {
             final textToCopy = negativePrompt?.isNotEmpty == true
-                ? '正向: $prompt\n负向: $negativePrompt'
+                ? '${context.l10n.prompt_positivePrompt}: $prompt\n'
+                    '${context.l10n.prompt_negativePrompt}: $negativePrompt'
                 : prompt;
             Clipboard.setData(ClipboardData(text: textToCopy));
-            AppToast.success(context, '角色提示词已复制');
+            AppToast.success(context, context.l10n.toast_characterPromptCopied);
             onCopy?.call();
           },
           icon: Icon(Icons.copy, size: 16, color: colorScheme.onSurfaceVariant),
-          tooltip: '复制角色提示词',
+          tooltip: context.l10n.detail_copyCharacterPrompt,
           style: IconButton.styleFrom(
             padding: const EdgeInsets.all(4),
             minimumSize: const Size(24, 24),
@@ -446,21 +490,29 @@ class CharacterPromptCard extends StatelessWidget {
     );
   }
 
-  Widget _buildNegativePrompt(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildNegativePrompt(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        Divider(color: colorScheme.outline.withOpacity(0.2), height: 1),
+        Divider(color: colorScheme.outline.withValues(alpha: 0.2), height: 1),
         const SizedBox(height: 8),
         Row(
           children: [
-            Icon(Icons.block_outlined, size: 12, color: colorScheme.error.withOpacity(0.7)),
+            Icon(
+              Icons.block_outlined,
+              size: 12,
+              color: colorScheme.error.withValues(alpha: 0.7),
+            ),
             const SizedBox(width: 4),
             Text(
-              '负向:',
+              '${context.l10n.prompt_negativePrompt}:',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: colorScheme.error.withOpacity(0.7),
+                color: colorScheme.error.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -471,7 +523,7 @@ class CharacterPromptCard extends StatelessWidget {
           style: theme.textTheme.bodySmall?.copyWith(
             fontFamily: 'monospace',
             height: 1.5,
-            color: colorScheme.error.withOpacity(0.8),
+            color: colorScheme.error.withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -482,7 +534,8 @@ class CharacterPromptCard extends StatelessWidget {
 /// 角色提示词分组组件
 class CharacterPromptSection extends StatelessWidget {
   final String title;
-  final List<({String prompt, String? negativePrompt, String? position})> characters;
+  final List<({String prompt, String? negativePrompt, String? position})>
+      characters;
   final bool initiallyExpanded;
 
   const CharacterPromptSection({
