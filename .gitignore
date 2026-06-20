@@ -352,6 +352,8 @@ SUBTASK_*.md
 VERIFICATION_*.md
 mask_upload_*.md
 flutter/
+!macos/Flutter/
+!macos/Flutter/*.xcconfig
 flutter_windows.zip
 dist/*.zip
 .claude_settings.json
