@@ -20,16 +20,30 @@ echo "========================================"
 echo
 
 echo "[0/3] 准备预构建数据库（Git LFS）..."
-if command -v git-lfs >/dev/null 2>&1; then
-  git lfs pull --include="assets/databases/*.db" || echo "[WARN] git lfs pull 失败，继续构建（数据库功能可能不可用）"
-else
-  echo "[WARN] 未检测到 git-lfs。assets/databases/*.db 可能仍是 LFS 占位文件，"
-  echo "       翻译/标签等数据库功能将不可用。请先安装：brew install git-lfs && git lfs install"
+if ! command -v git-lfs >/dev/null 2>&1; then
+  echo "[ERROR] 未检测到 git-lfs。请先安装：brew install git-lfs && git lfs install"
+  exit 1
+fi
+
+git lfs pull --include="assets/databases/*.db"
+for db in assets/databases/translation.db assets/databases/cooccurrence.db; do
+  if [ ! -f "$db" ]; then
+    echo "[ERROR] 缺少数据库文件：$db"
+    exit 1
+  fi
+  if [ "$(wc -c < "$db")" -lt 1024 ]; then
+    echo "[ERROR] 数据库文件过小，可能仍是 LFS pointer：$db"
+    exit 1
+  fi
+  if [ "$(dd if="$db" bs=15 count=1 2>/dev/null)" != "SQLite format 3" ]; then
+    echo "[ERROR] 数据库不是有效 SQLite 文件：$db"
+    exit 1
+  fi
 fi
 echo
 
 echo "[1/3] 生成本地化文件..."
-flutter gen-l10n || true
+flutter gen-l10n
 # 若拉取/修改了带注解的源码，需要重新生成 freezed/json/riverpod 代码，取消下一行注释：
 # dart run build_runner build --delete-conflicting-outputs
 echo

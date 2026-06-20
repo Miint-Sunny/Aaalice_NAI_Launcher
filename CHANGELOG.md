@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [1.0.0-beta13] - 2026-06-20
+
+本次更新新增 macOS 最小适配，并开始同时发布 Windows 与 macOS 压缩包。
+
+### Added
+
+- 新增 macOS 桌面端最小适配，支持启动、登录、本地数据库、在线图库视频、系统代理、Keychain 安全存储、图片复制和文件定位（[#52](https://github.com/Aaalice233/Aaalice_NAI_Launcher/pull/52) by [@Miint-Sunny](https://github.com/Miint-Sunny)）。
+- 新增 macOS 应用图标、构建脚本和本地签名辅助脚本，方便贡献者在 macOS 上构建与调试（[#52](https://github.com/Aaalice233/Aaalice_NAI_Launcher/pull/52) by [@Miint-Sunny](https://github.com/Miint-Sunny)）。
+- 新增 GitHub Actions 双平台发布流程，推送 `v*` tag 后会构建 Windows 和 macOS 压缩包并上传到同一个 Release。
+
+### Changed
+
+- macOS bundle id 调整为 `com.aaalice.naiLauncher`，避免后续正式签名或公证时继续使用 `com.example` 和下划线标识。
+- README 已按当前功能、平台状态、构建步骤和发布流程整体刷新。
+
+### Fixed
+
+- 修复复制 JPG、JPEG 或 WebP 图片时可能被错误当作 PNG 写入剪贴板的问题；复制前会统一生成可粘贴的 PNG 数据，同时保留现有的元数据剥离设置（[#52](https://github.com/Aaalice233/Aaalice_NAI_Launcher/pull/52) by [@Miint-Sunny](https://github.com/Miint-Sunny)）。
+
 ## [1.0.0-beta12] - 2026-06-20
 
 本次为 Windows 端大版本更新，汇总 `v1.0.0-beta7` 之后的主要改动，重点补齐图生图、局部重绘、扩图、本地工作流、Krita 联动、Vibe、提示词编辑和生成稳定性。
