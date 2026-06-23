@@ -4,13 +4,13 @@
 > （Claude Code / Codex / zcode 等）和人工接手者快速上手。
 > Claude Code 用户：根目录 `CLAUDE.md` 已用 `@` 指向本文件，会自动加载。
 > ⚠️ 上游已合并依赖统一大 PR（#54），原先「不应进 PR 的 SDK 兼容补丁」已被上游做掉，见 §3、§5。
-> 最后更新：2026-06-20。
+> 最后更新：2026-06-21。
 
 ---
 
 ## 0. 一句话现状
 
-Flutter 跨平台 NovelAI 客户端（原支持 Windows + Android），**已完成 macOS 适配并端到端验证通过**。PR [#52](https://github.com/Aaalice233/Aaalice_NAI_Launcher/pull/52) 已按作者 review **rebase 到最新 `main` 并 force-push**（rebase / 提交 lockfile / 修剪贴板格式 bug 三项已处理，MERGEABLE），等作者再审。上游已合并依赖统一大 PR（#54），SDK 抬到 **Flutter ≥3.35 / Dart ≥3.10.7**，与本机 **Flutter 3.44.2** 兼容，**原先的 SDK 鸿沟已消失**（见 §3）。
+Flutter 跨平台 NovelAI 客户端（原支持 Windows + Android），**已完成 macOS 适配并端到端验证通过**。PR [#52](https://github.com/Aaalice233/Aaalice_NAI_Launcher/pull/52)（macOS 最小适配）**已被上游合并**（2026-06-21，merge `ac1aa84e`，随 **v1.0.0-beta13** 发布）—— macOS 适配现已是上游官方一部分，README 平台表已列「macOS 最小适配」。更早上游也合并了依赖统一大 PR（#54），SDK 抬到 **Flutter ≥3.35 / Dart ≥3.10.7**，与本机 **Flutter 3.44.2** 兼容（见 §3）。`main` / `feat` 均已同步到 beta13（`17dc9662`）。
 
 - 上游：`Aaalice233/Aaalice_NAI_Launcher`　fork：`Miint-Sunny/Aaalice_NAI_Launcher`
 - 本地路径：`/Users/suzuhashimizu/code/Aaalice_NAI_Launcher_macOS`
@@ -59,11 +59,11 @@ scripts/create_macos_dev_cert.sh
 
 | 分支 | 内容 | 用途 |
 |------|------|------|
-| `pr/macos` | 已 rebase 到新 `main`：macOS 适配（剪贴板改建在 main 的 `ImageShareSanitizer` 管线 + `lib/presentation/utils/clipboard_image.dart` 规范化 PNG）+ 圆角 AppIcon/工具 + 应用名 + README 构建依赖 + lockfile。head `4f26a70d`、6 commit | **PR #52**，MERGEABLE，等作者再审 |
-| `feat/macos-support` | 以 `pr/macos` 为底座重建：再叠 `30f8b834`(托盘 + 窗口生命周期) + AGENTS/CLAUDE 文档 + `scripts/build_dmg.sh` | **本地开发/运行**全功能版（含托盘） |
+| `feat/macos-support` | = 上游 `main`（beta13）+ 托盘/窗口生命周期 + AGENTS/CLAUDE 文档 + `scripts/build_dmg.sh`。已 push fork | **本地开发/运行**全功能版（含托盘）；fork Release 从这里出 |
+| `pr/macos-tray` | 上游 `main` + 仅托盘 1 commit（main.dart/AppDelegate/tray_icon）| 托盘 **follow-up PR** 已备好，**未 push、未开 PR**（发 PR 命令见本地草稿 `/tmp/tray_pr.md`）|
 
-提 PR 基于 `pr/macos`。本地开发待在 `feat/macos-support`（= `pr/macos` + 托盘/文档/DMG）。两者现在都能在本机 3.44 build。
-备份分支 `pr/macos-prerebase`（旧 PR head）、`feat-prerebase`（旧 feat）仍在，确认无误后可删。
+`pr/macos` 分支已随 PR #52 合并而**作废删除**（内容已在上游 `main`）。本地开发待在 `feat/macos-support`。
+备份分支 `feat-bak`（本轮 rebase 前的 feat）仍在，确认无误可删。
 
 ---
 
@@ -73,14 +73,14 @@ scripts/create_macos_dev_cert.sh
   `macos/` 目录、`lib/main.dart`（视频按平台初始化 + 窗口自适应）、`sqflite_bootstrap_service.dart`、`secure_storage_service.dart`、三处剪贴板（`selectable_image_card.dart` / `local_image_card_3d.dart` / `image_detail_viewer.dart` 保留 main 的 `ImageShareSanitizer` 剥离管线，写入改用 `lib/presentation/utils/clipboard_image.dart` 统一规范化 PNG）、README、`.gitignore`、签名脚本、pubspec 加 `media_kit_libs_macos_video` + `screen_retriever` + 同步 lockfile。`history_panel` 的「在文件夹定位」上游已重构进 `FileExplorerUtils.revealFile`（含 macOS `open -R`），**无需再改**。
 - **B — SDK 兼容**：~~曾需手动打~~ **已废**，上游 `main` 自带（见 §3）。
 - **C — 生成产物**：`*.g.dart` / `.metadata` 仍不手动维护（`build_runner` 生成）。⚠️ 新 `main` 把 `lib/l10n/app_localizations*.dart`、`pubspec.lock`、`macos/Podfile.lock` **纳入 git 跟踪**，改依赖/l10n 后要一并提交。
-- **功能补全（仅 `feat`，不在 PR #52）**：系统托盘 + 窗口生命周期（`30f8b834`）—— 等主 PR merge 后再单独提。圆角 AppIcon + `tool/macos_icon` 工具已并入 PR #52。
+- **功能补全（仅 `feat`，未进上游）**：系统托盘 + 窗口生命周期 —— 主 PR #52 已 merge，**follow-up PR 已备好**（分支 `pr/macos-tray`，仅托盘 1 commit，未 push）。圆角 AppIcon + `tool/macos_icon` 工具已随 PR #52 进上游。
 
 ---
 
 ## 6. 设计取舍 / 已知限制
 
 - **关闭了 App Sandbox**（`macos/Runner/*.entitlements`）：为支持 `Process.run`、读写用户目录、Keychain、网络。代价：不能上 Mac App Store（项目本就独立分发，OK）。上 MAS 需重开沙盒并逐项补 entitlements。
-- **系统托盘 + 窗口生命周期闭环**（commit `30f8b834`，在 `feat`，已验证）：菜单栏托盘（`assets/icons/tray_icon.png`）、关窗口隐藏到托盘、Dock/托盘恢复窗口、Cmd+Q 与托盘"退出"正常退出。Swift 层 `macos/Runner/AppDelegate.swift` 加了 `applicationShouldHandleReopen`（点 Dock 恢复）+ `applicationShouldTerminateAfterLastWindowClosed=false`（隐藏不退出）；Dart 层把托盘初始化条件从 `if(isWindows)` 扩到 `if(isWindows||isMacOS)`。**属功能补全，不在 PR #52**，等主 PR merge 后再单独提。
+- **系统托盘 + 窗口生命周期闭环**（commit `30f8b834`，在 `feat`，已验证）：菜单栏托盘（`assets/icons/tray_icon.png`）、关窗口隐藏到托盘、Dock/托盘恢复窗口、Cmd+Q 与托盘"退出"正常退出。Swift 层 `macos/Runner/AppDelegate.swift` 加了 `applicationShouldHandleReopen`（点 Dock 恢复）+ `applicationShouldTerminateAfterLastWindowClosed=false`（隐藏不退出）；Dart 层把托盘初始化条件从 `if(isWindows)` 扩到 `if(isWindows||isMacOS)`。**主 PR #52 已 merge**，已备好 follow-up PR 分支 `pr/macos-tray`（未 push）。
 - **bundle id `com.example.nai_launcher` 含下划线**：Apple 平台有 warning，本地 ad-hoc 运行无碍；正式签名/公证前建议改无下划线（如 `com.example.naiLauncher`）。
 
 ---
