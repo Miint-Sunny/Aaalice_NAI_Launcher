@@ -11,6 +11,7 @@ import '../nai_syntax_controller.dart';
 import '../../tag_expansion/tag_expansion_wrapper.dart';
 import 'translation_tag_span.dart';
 import '../../common/translation_icon.dart';
+import '../../common/themed_text_selection_toolbar.dart';
 import '../../../../core/utils/localization_extension.dart';
 
 export 'translation_pill_editor.dart';
@@ -129,29 +130,54 @@ class _TranslationPillViewState extends State<TranslationPillView> {
     widget.onEdit(details.globalPosition);
   }
 
-  /// 右键菜单：切换原文 / 译文（所有平台都有，用触控板的人不用找中键）。
-  Future<void> _showMenu(Offset globalPosition) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    final local = overlay.globalToLocal(globalPosition);
-    final toggle = await showMenu<bool>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        local.dx,
-        local.dy,
-        overlay.size.width - local.dx,
-        overlay.size.height - local.dy,
-      ),
-      items: [
-        PopupMenuItem(
-          key: const Key('translation-pill-toggle'),
-          value: true,
-          height: 34,
-          child: Text(context.l10n.promptTranslation_toggleFace),
-        ),
-      ],
+  final ContextMenuController _menu = ContextMenuController();
+
+  /// 右键菜单：外层输入框原有的项（剪切 / 复制 / 粘贴 / 全选）后面加一项切换原文 / 译文，
+  /// 所有平台一样（用触控板的人不用找中键）。外层输入框没聚焦时照它自己的右键处理，
+  /// 先把光标放到点的位置。
+  void _showMenu(Offset globalPosition) {
+    final editor = context.findAncestorStateOfType<EditableTextState>();
+    if (editor != null && !editor.renderEditable.hasFocus) {
+      editor.renderEditable.selectPositionAt(
+        from: globalPosition,
+        cause: SelectionChangedCause.tap,
+      );
+    }
+    editor?.clipboardStatus.update();
+    final toggleLabel = context.l10n.promptTranslation_toggleFace;
+    ContextMenuButtonItem closing(ContextMenuButtonItem item) => item.copyWith(
+      onPressed: () {
+        _menu.remove();
+        item.onPressed?.call();
+      },
     );
-    if (toggle == true && mounted) widget.onToggle();
+    _menu.show(
+      context: context,
+      // 点菜单不让外层输入框失焦；点菜单外面关菜单
+      contextMenuBuilder: (_) => TextFieldTapRegion(
+        child: TapRegion(
+          onTapOutside: (_) => _menu.remove(),
+          child: ListenableBuilder(
+            listenable: Listenable.merge([editor?.clipboardStatus]),
+            builder: (menuContext, _) => buildThemedTextSelectionToolbar(
+              menuContext,
+              anchors: TextSelectionToolbarAnchors(
+                primaryAnchor: globalPosition,
+              ),
+              buttonItems: [
+                ...?editor?.contextMenuButtonItems.map(closing),
+                closing(
+                  ContextMenuButtonItem(
+                    label: toggleLabel,
+                    onPressed: widget.onToggle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// 原文输入框自己的右键菜单，多一项切换原文 / 译文。
@@ -234,6 +260,7 @@ class _TranslationPillViewState extends State<TranslationPillView> {
 
   @override
   void dispose() {
+    _menu.remove();
     _syntaxController.dispose();
     _sourceFocus
       ..removeListener(_handleSourceFocus)

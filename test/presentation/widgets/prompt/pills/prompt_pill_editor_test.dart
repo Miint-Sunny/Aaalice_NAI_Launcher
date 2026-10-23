@@ -1,4 +1,5 @@
 import 'package:nai_launcher/presentation/widgets/common/translation_icon.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -814,38 +815,80 @@ void main() {
     variant: TargetPlatformVariant.only(TargetPlatform.macOS),
   );
 
-  testWidgets('translation pill context menu switches original / translation', (
-    tester,
-  ) async {
-    final container = await _pump(
-      tester,
-      libraryState: PromptBlockLibraryState(blocks: [], folders: []),
-    );
-    container
-        .read(pillWorkspaceNotifierProvider.notifier)
-        .insertTranslationAt(offset: 0, source: 'blue eyes', zh: '蓝眼睛');
-    await tester.pump();
-
-    await tester.tap(
-      find.byType(TranslationPillView),
-      buttons: kSecondaryMouseButton,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('切换原文 / 译文'));
-    await tester.pumpAndSettle();
-    expect(
+  testWidgets(
+    'translation pill context menu keeps the editor items and adds the toggle',
+    (tester) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async => switch (call.method) {
+          'Clipboard.hasStrings' => {'value': true},
+          'Clipboard.getData' => {'text': 'red hair, '},
+          _ => null,
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+      final container = await _pump(
+        tester,
+        libraryState: PromptBlockLibraryState(blocks: [], folders: []),
+      );
       container
-          .read(pillWorkspaceNotifierProvider)
-          .document
-          .instances
-          .values
-          .single
-          .translation!
-          .showOriginal,
-      isTrue,
-    );
-    expect(find.text('blue eyes'), findsOneWidget);
-  });
+          .read(pillWorkspaceNotifierProvider.notifier)
+          .insertTranslationAt(offset: 0, source: 'blue eyes', zh: '蓝眼睛');
+      await tester.pump();
+      PillDocument document() =>
+          container.read(pillWorkspaceNotifierProvider).document;
+      Future<void> rightClickPill() async {
+        await tester.tap(
+          find.byType(TranslationPillView),
+          buttons: kSecondaryMouseButton,
+        );
+        await tester.pumpAndSettle();
+      }
+
+      // The editor's own items stay; the toggle comes after them. A macOS
+      // text menu has no Select All, as in the system's own menus.
+      await rightClickPill();
+      expect(find.text('粘贴'), findsOneWidget);
+      expect(
+        find.text('全选'),
+        defaultTargetPlatform == TargetPlatform.macOS
+            ? findsNothing
+            : findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(find.text('粘贴')).dy,
+        lessThan(tester.getTopLeft(find.text('切换原文 / 译文')).dy),
+      );
+      await tester.tap(find.text('粘贴'));
+      await tester.pumpAndSettle();
+      expect(document().text, contains('red hair, '));
+      expect(find.text('切换原文 / 译文'), findsNothing);
+
+      // A click outside closes the menu.
+      await rightClickPill();
+      await tester.tapAt(const Offset(1100, 700));
+      await tester.pumpAndSettle();
+      expect(find.text('切换原文 / 译文'), findsNothing);
+
+      await rightClickPill();
+      await tester.tap(find.text('切换原文 / 译文'));
+      await tester.pumpAndSettle();
+      expect(
+        document().instances.values.single.translation!.showOriginal,
+        isTrue,
+      );
+      expect(find.text('blue eyes'), findsOneWidget);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets(
     'original translation edits at the clicked caret and retains IME composition',
