@@ -1490,8 +1490,11 @@ class SettingsRagPage extends StatelessWidget {
             .every(
               (x) => x.state == SettingsRagState.ready && x.done >= x.total,
             );
-    String? errorText(String? value) =>
-        value == 'initialization_timeout' ? l.set_rgLoadingTimeout : value;
+    String? errorText(String? value) => switch (value) {
+      'initialization_timeout' => l.set_rgLoadingTimeout,
+      'unsupported_platform' => l.set_rgNeedsAppleSilicon,
+      _ => value,
+    };
     final loadingHint = switch (rg.initializationPhase) {
       'loading' => l.set_rgLoadingSaved,
       'restoring' => l.set_rgRestoring(
@@ -1755,7 +1758,9 @@ class SettingsRagPage extends StatelessWidget {
                                   : on && rg.checking && !usable
                                   ? l.set_rgEnvSub
                                   : on && !usable
-                                  ? l.set_rgNotReadySub
+                                  ? (rg.runtimeSupported
+                                        ? l.set_rgNotReadySub
+                                        : l.set_rgNeedsAppleSilicon)
                                   : l.set_rgPool,
                               style: UiText.sans(12, color: c.muted),
                             ),
@@ -1973,12 +1978,17 @@ class SettingsRagPage extends StatelessWidget {
             SettingKeyRow(
               SettingKey.ragDevice,
               title: l.set_rgDevice,
-              control: const SetSeg(SettingKey.ragDevice),
+              control: SetSeg(
+                SettingKey.ragDevice,
+                values: rg.cudaSupported ? null : const ['auto', 'cpu'],
+              ),
             ),
             SettingKeyRow(
               SettingKey.ragPythonPath,
               title: l.set_rgPython,
-              subtitle: l.set_rgPythonSub,
+              subtitle: rg.platform == SettingsRagPlatform.macOS
+                  ? l.set_rgPythonSubMac
+                  : l.set_rgPythonSub,
               below: rg.pythonPending
                   ? Row(
                       spacing: 10,
@@ -2168,18 +2178,22 @@ class _RagRuntimeRowState extends State<_RagRuntimeRow> {
         ),
       );
     }
-    final locked = rg.busy || rg.checking;
+    final locked = rg.busy || rg.checking || !rg.runtimeSupported;
+    // Intel Macs: no PyTorch build to install; say so instead of "missing".
+    final unsupported = !rg.runtimeSupported && !rg.runtimeReady;
     return SettingsRow(
       key: const Key('rag-runtime'),
       anchor: 'rag-runtime',
       title: l.set_rgEnv,
-      subtitle: l.set_rgEnvSub,
+      subtitle: unsupported ? l.set_rgNeedsAppleSilicon : l.set_rgEnvSub,
       badges: [
         UiMini(
           rg.runtimeReady
               ? l.set_rgEnvReady
               : rg.checking
               ? l.set_testing
+              : unsupported
+              ? l.set_rgEnvUnsupported
               : l.set_rgEnvMissing,
           tone: rg.runtimeReady
               ? UiMiniTone.ok
@@ -2202,27 +2216,36 @@ class _RagRuntimeRowState extends State<_RagRuntimeRow> {
                 spacing: 10,
                 children: [
                   Text(
-                    l.set_rgInstallHint,
+                    rg.platform == SettingsRagPlatform.macOS
+                        ? l.set_rgInstallHintMac
+                        : l.set_rgInstallHint,
                     style: UiText.sans(12, color: c.muted, height: 1.55),
                   ),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      SettingsBtn(
-                        key: const Key('rag-install-cuda'),
-                        label: l.set_rgInstallCuda,
-                        small: true,
-                        tone: SettingsBtnTone.primary,
-                        onTap: () {
-                          setState(() => _choosing = false);
-                          a.onRagInstallRuntime(cuda: true);
-                        },
-                      ),
+                      if (rg.cudaSupported)
+                        SettingsBtn(
+                          key: const Key('rag-install-cuda'),
+                          label: l.set_rgInstallCuda,
+                          small: true,
+                          tone: SettingsBtnTone.primary,
+                          onTap: () {
+                            setState(() => _choosing = false);
+                            a.onRagInstallRuntime(cuda: true);
+                          },
+                        ),
+                      // Mac: the one build (Apple GPU or CPU), so plain "Install".
                       SettingsBtn(
                         key: const Key('rag-install-cpu'),
-                        label: l.set_rgInstallCpu,
+                        label: rg.cudaSupported
+                            ? l.set_rgInstallCpu
+                            : l.set_rgInstall,
                         small: true,
+                        tone: rg.cudaSupported
+                            ? SettingsBtnTone.normal
+                            : SettingsBtnTone.primary,
                         onTap: () {
                           setState(() => _choosing = false);
                           a.onRagInstallRuntime(cuda: false);
@@ -2248,7 +2271,7 @@ class _RagRuntimeRowState extends State<_RagRuntimeRow> {
               key: const Key('rag-check'),
               label: rg.checking ? l.set_testing : l.set_rgCheck,
               small: true,
-              onTap: locked ? null : a.onRagCheckRuntime,
+              onTap: rg.busy || rg.checking ? null : a.onRagCheckRuntime,
             ),
             SettingsBtn(
               key: const Key('rag-reinstall'),

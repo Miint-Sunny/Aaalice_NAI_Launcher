@@ -33712,6 +33712,30 @@ abstract class AppLocalizations {
   /// **'CPU'**
   String get set_rgInstallCpu;
 
+  /// No description provided for @set_rgInstallHintMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads Python and inference packages (about 200 MB), not model weights. Needs a Mac with Apple silicon; Auto runs on the Mac\'s GPU.'**
+  String get set_rgInstallHintMac;
+
+  /// No description provided for @set_rgPythonSubMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the standalone runtime by default; you can pick an existing python3.'**
+  String get set_rgPythonSubMac;
+
+  /// No description provided for @set_rgNeedsAppleSilicon.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a Mac with Apple silicon. PyTorch no longer makes builds for Intel Macs, so the runtime can\'t be installed on this Mac.'**
+  String get set_rgNeedsAppleSilicon;
+
+  /// No description provided for @set_rgEnvUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported'**
+  String get set_rgEnvUnsupported;
+
   /// No description provided for @set_rgPhaseExisting.
   ///
   /// In en, this message translates to:

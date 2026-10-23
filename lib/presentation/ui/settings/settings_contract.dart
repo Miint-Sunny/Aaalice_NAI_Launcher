@@ -1535,9 +1535,14 @@ class SettingsRagStep {
   final SettingsTone tone;
 }
 
+/// 运行环境所在的系统：Windows 可选 CUDA；Mac 没有 CUDA，Apple 芯片自动用 GPU（MPS）。
+enum SettingsRagPlatform { windows, macOS }
+
 @immutable
 class SettingsRagData {
   const SettingsRagData({
+    this.platform = SettingsRagPlatform.windows,
+    this.runtimeSupported = true,
     this.runtime = const SettingsRagStep(value: ''),
     this.embedder = const SettingsRagStep(value: ''),
     this.reranker = const SettingsRagStep(value: ''),
@@ -1561,12 +1566,20 @@ class SettingsRagData {
     this.error,
   });
 
+  final SettingsRagPlatform platform;
+
+  /// 这台机器能装运行环境。Intel 芯片的 Mac 不能（PyTorch 没有 Intel Mac 的包）：
+  /// 显示“不支持”和原因，安装按钮置灰。
+  final bool runtimeSupported;
   final SettingsRagStep runtime;
   final SettingsRagStep embedder;
   final SettingsRagStep reranker;
   final SettingsRagStep device;
   final List<SettingsRagSource> sources;
   final int indexBytes;
+
+  /// 能装 CUDA 版运行环境、能选 CUDA 设备（只有 Windows）。
+  bool get cudaSupported => platform == SettingsRagPlatform.windows;
 
   /// 正在检测运行环境。
   final bool checking;
