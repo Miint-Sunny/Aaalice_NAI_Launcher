@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../storage/local_storage_service.dart';
+import 'rag_platform.dart';
 
 enum RagContextMode { before, around }
 
@@ -33,6 +34,13 @@ class RagSettings {
   final String embedding, reranker, python;
   final RagContextMode mode;
   final RagDevice device;
+
+  /// The device sent to the worker: a Mac has no CUDA, so "cuda" means auto
+  /// there (the GPU through MPS when available).
+  RagDevice deviceOn(RagPlatform platform) =>
+      device == RagDevice.cuda && !platform.supportsCuda
+      ? RagDevice.auto
+      : device;
   static const tokenBudget = 120;
   Map<String, Object> toJson() => {
     'version': 1,
