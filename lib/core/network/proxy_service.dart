@@ -42,6 +42,8 @@ class ProxyService {
     try {
       if (Platform.isWindows) {
         return _getWindowsProxy();
+      } else if (Platform.isMacOS) {
+        return _getMacOSProxy();
       }
       return null;
     } catch (e, stackTrace) {
@@ -61,6 +63,46 @@ class ProxyService {
       return proxyString.substring(6);
     }
     return proxyString;
+  }
+
+  /// macOS: 通过 scutil 命令读取代理
+  static String? _getMacOSProxy() {
+    try {
+      final result = Process.runSync('scutil', ['--proxy']);
+      if (result.exitCode != 0) {
+        AppLogger.w('scutil --proxy failed: ${result.stderr}', 'PROXY');
+        return null;
+      }
+
+      final output = result.stdout as String;
+
+      // 检查是否启用了 HTTP 代理
+      final httpEnableMatch = RegExp(
+        r'HTTPEnable\s*:\s*(\d)',
+      ).firstMatch(output);
+      if (httpEnableMatch == null || httpEnableMatch.group(1) != '1') {
+        AppLogger.d('macOS HTTP proxy not enabled', 'PROXY');
+        return null;
+      }
+
+      // 提取代理主机和端口
+      final httpProxyMatch = RegExp(
+        r'HTTPProxy\s*:\s*(\S+)',
+      ).firstMatch(output);
+      final httpPortMatch = RegExp(r'HTTPPort\s*:\s*(\d+)').firstMatch(output);
+
+      if (httpProxyMatch != null && httpPortMatch != null) {
+        final host = httpProxyMatch.group(1);
+        final port = httpPortMatch.group(1);
+        AppLogger.d('macOS proxy detected: $host:$port', 'PROXY');
+        return '$host:$port';
+      }
+
+      return null;
+    } catch (e) {
+      AppLogger.w('Failed to read macOS proxy: $e', 'PROXY');
+      return null;
+    }
   }
 
   /// 创建测试用的 Dio 实例

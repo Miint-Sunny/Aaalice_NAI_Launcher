@@ -53,6 +53,9 @@ import 'data/services/temp_image_service.dart';
 import 'data/services/thumbnail_service.dart';
 import 'presentation/providers/online_gallery_blacklist_provider.dart';
 import 'presentation/screens/splash/app_bootstrap.dart';
+import 'package:nai_launcher/core/utils/desktop_platform.dart';
+import 'package:nai_launcher/core/network/proxy_bypass.dart';
+import 'package:nai_launcher/core/utils/app_bundle_paths.dart';
 
 AppLanguage _storedLanguage() => AppLanguage.fromStorage(
   Hive.box(StorageKeys.settingsBox).get(StorageKeys.locale) as String?,
@@ -116,7 +119,7 @@ class WindowStateObserver extends WidgetsBindingObserver {
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     // 仅桌面端保存窗口状态
-    if (!Platform.isWindows) {
+    if (!isSupportedDesktop) {
       return;
     }
 
@@ -139,11 +142,19 @@ class WindowStateObserver extends WidgetsBindingObserver {
 }
 
 /// 系统托盘监听器，处理托盘图标交互
+// 从托盘显示窗口前先恢复最小化（macOS 上 ⌘M 收进程序坞的窗口）
+Future<void> _restoreWindowIfMinimized() async {
+  if (await windowManager.isMinimized()) await windowManager.restore();
+}
+
 class AppTrayListener extends TrayListener {
   @override
   Future<void> onTrayIconMouseDown() async {
+    // 退出过程中不再打开窗口
+    if (DesktopAppShutdownService.isShuttingDown) return;
     // 左键点击托盘图标 - 恢复窗口
     try {
+      await _restoreWindowIfMinimized();
       await windowManager.show();
       await windowManager.focus();
       await refreshWindowFrame();
@@ -155,15 +166,18 @@ class AppTrayListener extends TrayListener {
 
   @override
   void onTrayIconRightMouseDown() {
+    if (DesktopAppShutdownService.isShuttingDown) return;
     // 右键点击托盘图标 - 显示上下文菜单 (Windows)
     trayManager.popUpContextMenu();
   }
 
   @override
   Future<void> onTrayMenuItemClick(MenuItem menuItem) async {
+    if (DesktopAppShutdownService.isShuttingDown) return;
     try {
       if (menuItem.key == 'show') {
         // 显示窗口
+        await _restoreWindowIfMinimized();
         await windowManager.show();
         await windowManager.focus();
         await refreshWindowFrame();
@@ -326,6 +340,8 @@ Future<void> _bootstrapApplication() async {
 
   // Finish storage migration before Hive, SQLite or background services open.
   await getApplicationSupportDirectory();
+  // macOS 的 Agent 数据等放「应用支持」目录，先解析好供同步取用
+  await AppBundlePaths.init();
 
   await _runNonFatalStartupStep('Fatal diagnostics initialization', () async {
     await FatalDiagnostics.initialize();
@@ -343,7 +359,11 @@ Future<void> _bootstrapApplication() async {
 
   try {
     // 初始化桌面端视频播放支持 (media_kit)
-    VideoPlayerMediaKit.ensureInitialized(windows: true);
+    // Windows 和 macOS 都用 media_kit（macOS 带 media_kit_libs_macos_video）
+    VideoPlayerMediaKit.ensureInitialized(
+      windows: Platform.isWindows,
+      macOS: Platform.isMacOS,
+    );
   } catch (e, stackTrace) {
     AppLogger.e(
       'Video player initialization failed; continuing startup',
@@ -570,7 +590,7 @@ Future<void> _bootstrapApplication() async {
   });
 
   // 桌面端窗口配置
-  if (Platform.isWindows) {
+  if (isSupportedDesktop) {
     try {
       await windowManager.ensureInitialized();
 
@@ -618,7 +638,10 @@ Future<void> _bootstrapApplication() async {
         skipTaskbar: false,
         // FEAT-23 内置一体标题栏：隐藏原生栏，由 Flutter 自绘
         // （拖拽/双击/Aero Snap 经 runner WM_NCHITTEST 返回 HTCAPTION）。
-        titleBarStyle: TitleBarStyle.hidden,
+        // macOS 用系统标题栏和红黄绿按钮（自绘栏的三个窗口按钮是 Windows 样式）
+        titleBarStyle: Platform.isWindows
+            ? TitleBarStyle.hidden
+            : TitleBarStyle.normal,
         title: Brand.name,
       );
 
@@ -645,7 +668,15 @@ Future<void> _bootstrapApplication() async {
       try {
         // 设置托盘图标和提示
         // tray_manager 使用 Flutter 资源路径格式（相对于 data/flutter_assets/）
-        await trayManager.setIcon('assets/icons/window_icon.ico');
+        // macOS 菜单栏不认 .ico，用单色模板图（系统按菜单栏明暗自动反色）
+        if (Platform.isMacOS) {
+          await trayManager.setIcon(
+            'assets/icons/tray_icon_macos.png',
+            isTemplate: true,
+          );
+        } else {
+          await trayManager.setIcon('assets/icons/window_icon.ico');
+        }
         await trayManager.setToolTip(Brand.name);
 
         // 获取本地化字符串
@@ -681,7 +712,7 @@ Future<void> _bootstrapApplication() async {
   }
 
   // 系统代理配置（根据用户设置）
-  if (Platform.isWindows) {
+  if (isSupportedDesktop) {
     final settingsBox = Hive.box(StorageKeys.settingsBox);
     final proxyEnabled =
         settingsBox.get(StorageKeys.proxyEnabled, defaultValue: true) as bool;
@@ -706,7 +737,13 @@ Future<void> _bootstrapApplication() async {
       }
 
       if (proxyAddress != null && proxyAddress.isNotEmpty) {
-        HttpOverrides.global = SystemProxyHttpOverrides('PROXY $proxyAddress');
+        HttpOverrides.global = SystemProxyHttpOverrides(
+          'PROXY $proxyAddress',
+          // 自动模式照系统设置的「不走代理」名单；本机地址总是直连
+          bypass: proxyMode == 'manual'
+              ? ProxyBypassList.loopbackOnly
+              : ProxyBypassList.readMacSystem(),
+        );
         AppLogger.i(
           'Applied proxy: $proxyAddress (mode: $proxyMode)',
           'NETWORK',
@@ -723,7 +760,7 @@ Future<void> _bootstrapApplication() async {
   }
 
   // 注册窗口状态观察者
-  if (Platform.isWindows) {
+  if (isSupportedDesktop) {
     WidgetsBinding.instance.addObserver(WindowStateObserver());
     AppLogger.d('Window state observer registered', 'Main');
   }

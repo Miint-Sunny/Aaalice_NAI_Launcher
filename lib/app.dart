@@ -26,6 +26,8 @@ import 'presentation/providers/subscription_provider.dart'
 import 'presentation/widgets/shortcuts/shortcut_aware_widget.dart';
 import 'presentation/widgets/shortcuts/shortcut_help_dialog.dart';
 import 'presentation/wiring/nai_agent_generation_host.dart';
+import 'core/services/desktop_app_shutdown_service.dart';
+import 'presentation/widgets/common/macos_app_integration.dart';
 
 double windowCaptionHeightForRoute(String path) => switch (path) {
   AppRoutes.localGallery => 62,
@@ -164,7 +166,9 @@ class NAILauncherApp extends ConsumerWidget {
         windowManager.hide();
       },
       ShortcutIds.quitApp: () {
-        windowManager.close();
+        // windowManager.close() 在这里等于藏到托盘，「退出应用」并不会退出；
+        // 走托盘「退出」同一套关闭流程
+        DesktopAppShutdownService.shutdownAndExit(0);
       },
       ShortcutIds.toggleTheme: () {
         ref.read(themeNotifierProvider.notifier).nextTheme();
@@ -197,20 +201,24 @@ class NAILauncherApp extends ConsumerWidget {
             // 让 Navigator 的菜单、提示与对话框位于按钮上方。
             // child 作为普通子组件直传，保证 element 在 MaterialApp
             // rebuild 时原地更新、不拆树重建。
-            return NaiAgentIntegrationScope(
-              child: WorkspaceTypographyScope(
-                child: _RouteAwareTitleBar(
-                  router: router,
-                  // 首个路由解析前按认证状态先行判断，未登录时不先闪 Logo 标题栏；
-                  // 认证尚未建立（例如测试里）时不在这里触发它
-                  initialImmersive: () =>
-                      ref.exists(authNotifierProvider) &&
-                      !ref.read(authNotifierProvider).isAuthenticated &&
-                      !ref.read(guestSessionNotifierProvider),
-                  onToggleTheme: () =>
-                      ref.read(themeNotifierProvider.notifier).nextTheme(),
-                  child: NumpadEditingShortcuts(
-                    child: child ?? const SizedBox.shrink(),
+            // macOS：菜单「设置…」和系统退出请求（⌘Q、程序坞、注销关机）
+            return MacOSAppIntegration(
+              onOpenSettings: () => router.go(AppRoutes.settings),
+              child: NaiAgentIntegrationScope(
+                child: WorkspaceTypographyScope(
+                  child: _RouteAwareTitleBar(
+                    router: router,
+                    // 首个路由解析前按认证状态先行判断，未登录时不先闪 Logo 标题栏；
+                    // 认证尚未建立（例如测试里）时不在这里触发它
+                    initialImmersive: () =>
+                        ref.exists(authNotifierProvider) &&
+                        !ref.read(authNotifierProvider).isAuthenticated &&
+                        !ref.read(guestSessionNotifierProvider),
+                    onToggleTheme: () =>
+                        ref.read(themeNotifierProvider.notifier).nextTheme(),
+                    child: NumpadEditingShortcuts(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               ),

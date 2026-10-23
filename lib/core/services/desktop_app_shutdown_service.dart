@@ -16,6 +16,8 @@ class DesktopAppShutdownService {
   DesktopAppShutdownService._();
 
   static Future<void>? _shutdownFuture;
+  // 退出开始后，托盘点击不再把窗口打开
+  static bool get isShuttingDown => _shutdownFuture != null;
   static final _cleanups = <Future<void> Function()>{};
 
   /// Register owned background work that must finish before stores are closed.
@@ -40,6 +42,25 @@ class DesktopAppShutdownService {
 
   static Future<void> _performShutdown(int code) async {
     AppLogger.i('Application shutdown started', 'AppShutdown');
+
+    // 先藏窗口、撤托盘，再等后台任务、关数据库，
+    // 退出过程中不留一个卡住的窗口
+    if (Platform.isWindows || Platform.isMacOS) {
+      try {
+        await windowManager.hide();
+      } catch (error) {
+        AppLogger.w(
+          'Window hide failed during shutdown: $error',
+          'AppShutdown',
+        );
+      }
+      try {
+        await trayManager.destroy();
+      } catch (error) {
+        AppLogger.w('Tray shutdown failed: $error', 'AppShutdown');
+      }
+    }
+
     await prepareBackgroundShutdown();
 
     try {
@@ -56,13 +77,10 @@ class DesktopAppShutdownService {
       AppLogger.w('Hive shutdown skipped or failed: $error', 'AppShutdown');
     }
 
-    if (Platform.isWindows) {
-      try {
-        await trayManager.destroy();
-      } catch (error) {
-        AppLogger.w('Tray shutdown failed: $error', 'AppShutdown');
-      }
+    // macOS 上从菜单退出（⌘Q）时，下面的 destroy 会让系统立刻结束进程，走不到最后的 flush
+    await AppLogger.flush();
 
+    if (Platform.isWindows || Platform.isMacOS) {
       try {
         await windowManager.setPreventClose(false);
         await windowManager.destroy();

@@ -10,6 +10,13 @@ part 'secure_storage_service.g.dart';
 /// 安全存储服务 - 存储敏感数据（Token、密码等）
 /// 使用内存缓存 + 持久化存储双重保障
 class SecureStorageService {
+  /// macOS 钥匙串里放登录凭据的「服务名」，用应用自己的标识。
+  ///
+  /// flutter_secure_storage 在 macOS 上默认用 `flutter_secure_storage_service`，所有用它的
+  /// 应用共用这一个名字；别的应用存在那里的条目只信任它们自己，本应用一读就弹窗要钥匙串密码。
+  /// 用自己的名字只读写自己的条目。
+  static const macOSKeychainService = 'com.wof.naiStudio';
+
   Future<void> saveAgentMcpConfig(String id, String json) async {
     final key = 'nai_agent_mcp_$id';
     await _storage.write(key: key, value: json);
@@ -44,6 +51,14 @@ class SecureStorageService {
           const FlutterSecureStorage(
             // Windows: 使用默认配置
             wOptions: WindowsOptions(),
+            // macOS：用传统登录钥匙串（useDataProtectionKeyChain: false）。
+            // data protection keychain 需要 keychain-access-groups entitlement，
+            // 而该 entitlement 要求开发者证书签名，ad-hoc 无证书时无法构建。
+            // 钥匙串服务名用本应用自己的，见 [macOSKeychainService]
+            mOptions: MacOsOptions(
+              accountName: macOSKeychainService,
+              useDataProtectionKeyChain: false,
+            ),
           );
 
   // ==================== Access Token ====================
