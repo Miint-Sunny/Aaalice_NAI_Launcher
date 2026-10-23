@@ -360,6 +360,7 @@ SettingsViewData settingsViewData(
       gpu: page == SettingsPageId.upscale
           ? ref.watch(settingsGpuProvider).valueOrNull
           : null,
+      platform: ref.watch(localUpscalePlatformProvider),
     ),
     bridges: settingsBridgesData(context, ref),
     network: SettingsNetworkData(

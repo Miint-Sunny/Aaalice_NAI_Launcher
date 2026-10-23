@@ -1678,6 +1678,8 @@ class SettingsUpscaleData {
     this.seed = const [],
     this.rtx,
     this.seedOffloadMaxBlocks = 32,
+    this.seedAvailable = true,
+    this.rtxAvailable = true,
   });
 
   /// 显卡检测（新增）；null = 没检测到独显。
@@ -1692,6 +1694,11 @@ class SettingsUpscaleData {
   /// Upper bound of the currently edited SeedVR2 model: 3B = 32, 7B = 36.
   /// Wiring supplies Seedvr2Options.maxBlocks for the selected model.
   final int seedOffloadMaxBlocks;
+
+  /// Whether SeedVR2 / RTX Video can be installed on this platform (Windows
+  /// only). When false the install buttons are disabled and the section says so.
+  final bool seedAvailable;
+  final bool rtxAvailable;
 }
 
 // ── 桥接与集成

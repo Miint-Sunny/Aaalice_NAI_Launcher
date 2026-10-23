@@ -5293,7 +5293,7 @@
   "localUpscale_resizing": "이미지 마무리 중…",
   "localUpscale_complete": "업스케일 완료",
   "localUpscale_cancelling": "취소 중…",
-  "localUpscale_unsupportedPlatform": "로컬 업스케일은 현재 Windows를 지원합니다.",
+  "localUpscale_unsupportedPlatform": "이 업스케일 방식은 현재 Windows에서만 지원됩니다.",
   "localUpscale_engineMissing": "로컬 엔진을 사용할 수 없습니다. 전체 Studio 패키지를 다시 설치하세요.",
   "localUpscale_integrity": "파일 검증에 실패했습니다. 모델 또는 Studio를 다시 설치하세요.",
   "localUpscale_modelMissing": "모델을 사용할 수 없습니다. 설치된 모델을 선택하거나 모델 경로 길이를 확인하세요.",

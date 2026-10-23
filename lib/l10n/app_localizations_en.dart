@@ -9981,7 +9981,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localUpscale_unsupportedPlatform =>
-      'Local upscaling currently supports Windows.';
+      'This upscaling method is currently available on Windows only.';
 
   @override
   String get localUpscale_engineMissing =>

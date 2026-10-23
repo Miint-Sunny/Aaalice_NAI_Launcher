@@ -5293,7 +5293,7 @@
   "localUpscale_resizing": "正在完成圖片處理…",
   "localUpscale_complete": "超分完成",
   "localUpscale_cancelling": "正在取消…",
-  "localUpscale_unsupportedPlatform": "本地超分目前支援 Windows。",
+  "localUpscale_unsupportedPlatform": "這種放大方式目前只支援 Windows。",
   "localUpscale_engineMissing": "本地引擎不可用，請重新安裝完整 Studio 執行包。",
   "localUpscale_integrity": "檔案校驗失敗，請重新安裝對應模型或 Studio 執行包。",
   "localUpscale_modelMissing": "模型不可用，請選擇已安裝的模型，或檢查模型目錄路徑是否過長。",

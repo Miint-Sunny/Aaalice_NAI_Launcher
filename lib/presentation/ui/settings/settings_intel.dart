@@ -2431,7 +2431,12 @@ class _SettingsUpscalePageState extends State<SettingsUpscalePage> {
               label: seed ? l.set_install : l.set_download,
               glyph: UiGlyphs.download,
               small: true,
-              onTap: () => a.onUpscaleInstall(m.id),
+              tooltip: seed && !up.seedAvailable
+                  ? l.localUpscale_unsupportedPlatform
+                  : null,
+              onTap: seed && !up.seedAvailable
+                  ? null
+                  : () => a.onUpscaleInstall(m.id),
             );
       return Container(
         key: Key('upscale-${m.id}'),
@@ -2708,7 +2713,9 @@ class _SettingsUpscalePageState extends State<SettingsUpscalePage> {
             key: Key('settings-upscale-seed-logo'),
             size: 18,
           ),
-          subtitle: l.set_upSeedSub,
+          subtitle: up.seedAvailable
+              ? l.set_upSeedSub
+              : l.localUpscale_unsupportedPlatform,
           children: [
             SettingsBlock(
               child: SettingsGrid(
@@ -2802,7 +2809,9 @@ class _SettingsUpscalePageState extends State<SettingsUpscalePage> {
               key: Key('settings-upscale-rtx-logo'),
               size: 18,
             ),
-            subtitle: l.set_upRtxSub,
+            subtitle: up.rtxAvailable
+                ? l.set_upRtxSub
+                : l.localUpscale_unsupportedPlatform,
             children: [
               SettingsRow(
                 title: l.set_upRtxName,
@@ -2826,7 +2835,12 @@ class _SettingsUpscalePageState extends State<SettingsUpscalePage> {
                         label: l.set_install,
                         glyph: UiGlyphs.download,
                         small: true,
-                        onTap: () => a.onUpscaleInstall(up.rtx!.id),
+                        tooltip: up.rtxAvailable
+                            ? null
+                            : l.localUpscale_unsupportedPlatform,
+                        onTap: up.rtxAvailable
+                            ? () => a.onUpscaleInstall(up.rtx!.id)
+                            : null,
                       ),
               ),
             ],

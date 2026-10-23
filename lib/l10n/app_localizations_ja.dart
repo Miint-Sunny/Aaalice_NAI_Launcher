@@ -9653,7 +9653,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get localUpscale_cancelling => 'キャンセル中…';
 
   @override
-  String get localUpscale_unsupportedPlatform => 'ローカル超解像は現在 Windows に対応しています。';
+  String get localUpscale_unsupportedPlatform => 'この拡大方式は現在 Windows のみ対応しています。';
 
   @override
   String get localUpscale_engineMissing =>

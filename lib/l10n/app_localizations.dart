@@ -17327,7 +17327,7 @@ abstract class AppLocalizations {
   /// No description provided for @localUpscale_unsupportedPlatform.
   ///
   /// In en, this message translates to:
-  /// **'Local upscaling currently supports Windows.'**
+  /// **'This upscaling method is currently available on Windows only.'**
   String get localUpscale_unsupportedPlatform;
 
   /// No description provided for @localUpscale_engineMissing.

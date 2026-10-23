@@ -9472,7 +9472,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localUpscale_cancelling => '正在取消…';
 
   @override
-  String get localUpscale_unsupportedPlatform => '本地超分目前支持 Windows。';
+  String get localUpscale_unsupportedPlatform => '这种放大方式目前只支持 Windows。';
 
   @override
   String get localUpscale_engineMissing => '本地引擎不可用，请重新安装完整 Studio 运行包。';
@@ -30481,7 +30481,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get localUpscale_cancelling => '正在取消…';
 
   @override
-  String get localUpscale_unsupportedPlatform => '本地超分目前支援 Windows。';
+  String get localUpscale_unsupportedPlatform => '這種放大方式目前只支援 Windows。';
 
   @override
   String get localUpscale_engineMissing => '本地引擎不可用，請重新安裝完整 Studio 執行包。';
