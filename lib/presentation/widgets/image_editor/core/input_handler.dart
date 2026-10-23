@@ -194,7 +194,11 @@ class InputHandler {
         state.editSelection.copyToLayer(cut: keyboard.isShiftPressed);
         return KeyEventResult.handled;
       }
-      if (isDown && !keyboard.isCtrlPressed && !keyboard.isAltPressed) {
+      // macOS 上按着 Control 的 [ ] ⌫ 也是组合键，不当单键用
+      if (isDown &&
+          !keyboard.isCtrlPressed &&
+          !keyboard.isAltPressed &&
+          !isMacChordModifierPressed()) {
         if (event.logicalKey == LogicalKeyboardKey.bracketLeft) {
           final n = state.brushSize;
           state.setBrushSize(
@@ -239,7 +243,7 @@ class InputHandler {
       return KeyEventResult.ignored;
     }
     // Krita 风格视图快捷键（无修饰键）
-    if (isDown && !keyboard.isCtrlPressed) {
+    if (isDown && !keyboard.isCtrlPressed && !isMacChordModifierPressed()) {
       switch (event.logicalKey) {
         case LogicalKeyboardKey.digit1:
           state.canvasController.resetTo100(canvasSize: state.canvasSize);

@@ -456,9 +456,14 @@ class ShortcutParser {
           modifiers.add(ShortcutModifier.shift);
           continue;
         case 'meta':
+          modifiers.add(ShortcutModifier.meta);
+          continue;
+        // 手写的 cmd 指 ⌘ 键：macOS 上就是主修饰键（和 ctrl 同义），其他平台照旧当 meta
         case 'cmd':
         case 'command':
-          modifiers.add(ShortcutModifier.meta);
+          modifiers.add(
+            primaryIsCommand ? ShortcutModifier.control : ShortcutModifier.meta,
+          );
           continue;
       }
 

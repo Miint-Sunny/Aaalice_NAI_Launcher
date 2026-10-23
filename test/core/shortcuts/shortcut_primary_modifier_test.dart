@@ -20,6 +20,17 @@ void main() {
     expect(AppShortcutManager.normalize('meta+k'), 'meta+k');
   });
 
+  test('macOS：手写的 cmd / command 就是 ⌘，和 ctrl 同义；Windows 上照旧是 meta', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    for (final raw in ['cmd+k', 'command+k']) {
+      final parsed = ShortcutParser.parse(raw)!;
+      expect(parsed.modifiers, {ShortcutModifier.meta}, reason: raw);
+      expect(ShortcutParser.serialize(parsed), 'ctrl+k', reason: raw);
+    }
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    expect(ShortcutParser.parse('cmd+k')!.modifiers, {ShortcutModifier.meta});
+  });
+
   test('macOS：录制时按 ⌘ 存成 ctrl，按 Control 存成 meta', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     expect(

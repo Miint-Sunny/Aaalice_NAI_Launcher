@@ -60,6 +60,25 @@ void main() {
     expect(state.canvasController.scale, greaterThan(scale));
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('macOS：Control+[ 和 Control+] 不调笔刷，单按 [ 照常调', (t) async {
+    final (state, _) = await _pump(t);
+    final size = state.brushSize;
+    await _chord(
+      t,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.bracketLeft,
+    );
+    expect(state.brushSize, size);
+    await _chord(
+      t,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.bracketRight,
+    );
+    expect(state.brushSize, size);
+    await t.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
+    expect(state.brushSize, lessThan(size));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('Windows：照旧 Ctrl+= 放大，Ctrl+E 不切工具', (t) async {
     final (state, _) = await _pump(t);
     final tool = state.currentTool?.id;
