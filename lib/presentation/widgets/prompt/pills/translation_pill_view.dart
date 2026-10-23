@@ -11,7 +11,7 @@ import '../nai_syntax_controller.dart';
 import '../../tag_expansion/tag_expansion_wrapper.dart';
 import 'translation_tag_span.dart';
 import '../../common/translation_icon.dart';
-import '../../common/themed_text_selection_toolbar.dart';
+import '../../common/inline_context_menu_items.dart';
 import '../../../../core/utils/localization_extension.dart';
 
 export 'translation_pill_editor.dart';
@@ -102,6 +102,10 @@ class _TranslationPillViewState extends State<TranslationPillView> {
   void _onPointerDown(PointerDownEvent event) {
     _commandDownAt = null;
     _commandClicked = false;
+    if (event.buttons == kSecondaryMouseButton) {
+      _addToFieldMenu(event);
+      return;
+    }
     if (!usesMacOSConventions ||
         event.buttons != kPrimaryMouseButton ||
         !HardwareKeyboard.instance.isMetaPressed) {
@@ -130,54 +134,17 @@ class _TranslationPillViewState extends State<TranslationPillView> {
     widget.onEdit(details.globalPosition);
   }
 
-  final ContextMenuController _menu = ContextMenuController();
-
-  /// 右键菜单：外层输入框原有的项（剪切 / 复制 / 粘贴 / 全选）后面加一项切换原文 / 译文，
-  /// 所有平台一样（用触控板的人不用找中键）。外层输入框没聚焦时照它自己的右键处理，
-  /// 先把光标放到点的位置。
-  void _showMenu(Offset globalPosition) {
-    final editor = context.findAncestorStateOfType<EditableTextState>();
-    if (editor != null && !editor.renderEditable.hasFocus) {
-      editor.renderEditable.selectPositionAt(
-        from: globalPosition,
-        cause: SelectionChangedCause.tap,
-      );
-    }
-    editor?.clipboardStatus.update();
-    final toggleLabel = context.l10n.promptTranslation_toggleFace;
-    ContextMenuButtonItem closing(ContextMenuButtonItem item) => item.copyWith(
-      onPressed: () {
-        _menu.remove();
-        item.onPressed?.call();
-      },
-    );
-    _menu.show(
-      context: context,
-      // 点菜单不让外层输入框失焦；点菜单外面关菜单
-      contextMenuBuilder: (_) => TextFieldTapRegion(
-        child: TapRegion(
-          onTapOutside: (_) => _menu.remove(),
-          child: ListenableBuilder(
-            listenable: Listenable.merge([editor?.clipboardStatus]),
-            builder: (menuContext, _) => buildThemedTextSelectionToolbar(
-              menuContext,
-              anchors: TextSelectionToolbarAnchors(
-                primaryAnchor: globalPosition,
-              ),
-              buttonItems: [
-                ...?editor?.contextMenuButtonItems.map(closing),
-                closing(
-                  ContextMenuButtonItem(
-                    label: toggleLabel,
-                    onPressed: widget.onToggle,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+  /// 右键交给外层输入框，菜单内容照它自己的（剪切 / 复制 / 粘贴、有选区时的存为块……），
+  /// 这里只在最后加一项切换原文 / 译文（所有平台都有，用触控板的人不用找中键）。
+  void _addToFieldMenu(PointerDownEvent event) {
+    final field = context.findAncestorStateOfType<EditableTextState>();
+    if (field == null) return;
+    InlineContextMenuItems.register(field, event.position, [
+      ContextMenuButtonItem(
+        label: context.l10n.promptTranslation_toggleFace,
+        onPressed: widget.onToggle,
       ),
-    );
+    ]);
   }
 
   /// 原文输入框自己的右键菜单，多一项切换原文 / 译文。
@@ -260,7 +227,6 @@ class _TranslationPillViewState extends State<TranslationPillView> {
 
   @override
   void dispose() {
-    _menu.remove();
     _syntaxController.dispose();
     _sourceFocus
       ..removeListener(_handleSourceFocus)
@@ -412,7 +378,6 @@ class _TranslationPillViewState extends State<TranslationPillView> {
             child: GestureDetector(
               onTapUp: editableSource ? null : _onTapUp,
               onTertiaryTapUp: (_) => widget.onToggle(),
-              onSecondaryTapUp: (details) => _showMenu(details.globalPosition),
               child: content,
             ),
           );

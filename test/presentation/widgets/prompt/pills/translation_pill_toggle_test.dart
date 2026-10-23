@@ -1,6 +1,6 @@
 // 翻译块切换原文 / 译文：Windows 用鼠标中键，macOS 用 ⌘+点击（触控板没有中键），
-// 所有平台的右键菜单里都有「切换原文 / 译文」。装的是应用的 Control+单击处理，
-// macOS 上 Control+单击和右键一样。
+// 所有平台的右键菜单里都有「切换原文 / 译文」（翻译块在输入框里时的菜单见
+// prompt_pill_editor_test）。
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +16,6 @@ import 'package:nai_launcher/core/wiki/tag_wiki_repository.dart';
 import 'package:nai_launcher/core/wiki/wiki_tag_links.dart';
 import 'package:nai_launcher/data/models/prompt_block/pill_document.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
-import 'package:nai_launcher/presentation/utils/control_click.dart';
 import 'package:nai_launcher/presentation/widgets/prompt/pills/translation_pill_view.dart';
 import 'package:nai_launcher/presentation/widgets/tag_expansion/tag_expansion_wrapper.dart';
 
@@ -27,12 +26,7 @@ const _toggleLabel = '切换原文 / 译文';
 final _popup = find.byKey(const Key('tag-expansion-popup'));
 final _sourceField = find.byKey(const Key('translation-pill-source-input'));
 
-class _ControlClickTestBinding extends AutomatedTestWidgetsFlutterBinding
-    with ControlClickBinding {}
-
 void main() {
-  _ControlClickTestBinding();
-
   setUp(() async {
     await Hive.openBox(StorageKeys.settingsBox, bytes: Uint8List(0));
     await Hive.openBox(StorageKeys.historyBox, bytes: Uint8List(0));
@@ -48,8 +42,13 @@ void main() {
   Future<void> pumpPill(
     WidgetTester tester, {
     bool editableSource = false,
+    bool original = false,
   }) async {
-    pill = const TranslationPill(source: _source, zh: _reading);
+    pill = TranslationPill(
+      source: _source,
+      zh: _reading,
+      showOriginal: original,
+    );
     edits = [];
     final controller = TextEditingController(text: 'solo, ');
     final focusNode = FocusNode();
@@ -162,16 +161,6 @@ void main() {
     expect(_popup, findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-  testWidgets('macOS：Control+单击翻译块是右键：出右键菜单，不开编辑窗、不弹相关 tag', (tester) async {
-    await pumpPill(tester);
-    await clickWith(tester, pillFinder(), LogicalKeyboardKey.controlLeft);
-    await tester.pumpAndSettle();
-    expect(find.text(_toggleLabel), findsOneWidget);
-    expect(edits, isEmpty);
-    expect(_popup, findsNothing);
-    expect(pill.showOriginal, isFalse);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
-
   testWidgets('macOS：⌘+点击普通文字照旧打开相关 tag', (tester) async {
     await pumpPill(tester);
     await clickWith(
@@ -201,18 +190,11 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets(
-    '右键菜单「切换原文 / 译文」：译文和可编辑的原文上都有',
+    '可编辑的原文：右键是原文输入框自己的菜单，多一项切换',
     (tester) async {
-      await pumpPill(tester, editableSource: true);
-
-      await tester.tap(pillFinder(), buttons: kSecondaryMouseButton);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(_toggleLabel));
-      await tester.pumpAndSettle();
-      expect(pill.showOriginal, isTrue);
+      await pumpPill(tester, editableSource: true, original: true);
       expect(_sourceField, findsOneWidget);
 
-      // 原文是输入框：右键是输入框自己的菜单，多一项切换
       await tester.tap(_sourceField, buttons: kSecondaryMouseButton);
       await tester.pumpAndSettle();
       expect(find.text(_toggleLabel), findsOneWidget);
