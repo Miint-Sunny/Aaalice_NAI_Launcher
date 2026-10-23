@@ -24,6 +24,7 @@ import '../../../core/wiki/auto_tag_translation_controller.dart';
 import '../autocomplete/tag_category_visuals.dart';
 import '../autocomplete/tag_candidate_title.dart';
 import '../../router/app_router.dart';
+import '../../utils/selection_modifiers.dart';
 import '../common/translation_icon.dart';
 import '../common/related_tags_icon.dart';
 import '../common/wiki_linked_body.dart';
@@ -245,8 +246,8 @@ class _TagExpansionWrapperState extends ConsumerState<TagExpansionWrapper>
     _selectionAtDown = widget.controller.selection;
     _textAtDown = widget.controller.text;
     _dragged = false;
-    final keyboard = HardwareKeyboard.instance;
-    _controlAtDown = keyboard.isControlPressed || keyboard.isMetaPressed;
+    // macOS 上只认 ⌘：Mac 上 Control+单击是右键
+    _controlAtDown = isSelectionModifierPressed();
   }
 
   void _onPointerMove(PointerMoveEvent event) {
