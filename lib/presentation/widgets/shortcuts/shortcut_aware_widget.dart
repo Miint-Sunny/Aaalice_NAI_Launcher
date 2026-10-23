@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/shortcuts/shortcut_config.dart';
 import '../../providers/shortcuts_provider.dart';
+import 'page_focus.dart';
 
 /// 快捷键感知包装器
 /// 自动处理快捷键的注册和注销
@@ -166,9 +167,9 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
       child: Actions(
         key: ValueKey('actions_${config.enableShortcuts}_$configKey'),
         actions: actionsMap,
-        child: Focus(
+        // 不参与焦点遍历，只作为快捷键的锚点；焦点退到上面的范围时拿回来（见 ShortcutFocusAnchor）
+        child: ShortcutFocusAnchor(
           autofocus: widget.autofocus,
-          skipTraversal: true, // 不参与焦点遍历，只作为快捷键的锚点
           child: widget.child,
         ),
       ),
@@ -250,9 +251,8 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
       child: Actions(
         key: ValueKey('actions_default_$defaultHash'),
         actions: actionsMap,
-        child: Focus(
+        child: ShortcutFocusAnchor(
           autofocus: widget.autofocus,
-          skipTraversal: true,
           child: widget.child,
         ),
       ),

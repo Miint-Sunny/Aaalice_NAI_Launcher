@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:nai_launcher/data/services/gallery/gallery_filter_service.dart';
@@ -29,6 +30,7 @@ import 'package:nai_launcher/data/services/gallery/gallery_column_width_store.da
 import 'package:nai_launcher/data/services/gallery/unified_gallery_service.dart';
 import 'package:nai_launcher/data/services/thumbnail_service.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
+import 'package:nai_launcher/presentation/providers/bulk_operation_provider.dart';
 import 'package:nai_launcher/presentation/providers/collection_provider.dart';
 import 'package:nai_launcher/presentation/providers/gallery_category_provider.dart';
 import 'package:nai_launcher/presentation/providers/krita/krita_bridge_notifier.dart';
@@ -71,7 +73,9 @@ void main() {
   setContextOverride(
     MockMessageChannelContext()
       ..registerMockMethodCallHandler('DropManager', (_) async => null)
-      ..registerMockMethodCallHandler('DragManager', (_) async => null),
+      ..registerMockMethodCallHandler('DragManager', (_) async => null)
+      // macOS 上拖放组件还会初始化原生菜单
+      ..registerMockMethodCallHandler('MenuManager', (_) async => null),
   );
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
@@ -303,6 +307,62 @@ void main() {
       await tester.pump(const Duration(minutes: 1));
     });
   }
+
+  testWidgets(
+    'primary+Z / primary+Shift+Z undo and redo bulk operations from the page focus',
+    (tester) async {
+      final bulk = _RecordingBulkOperations();
+      final container = await _pumpScreen(
+        tester,
+        records: records,
+        dimensions: dimensions,
+        locale: const Locale('zh'),
+        dark: false,
+        size: const Size(1600, 1000),
+        extraOverrides: [
+          bulkOperationNotifierProvider.overrideWith(() => bulk),
+        ],
+      );
+      // 主修饰键：macOS 上是 ⌘，其他平台是 Ctrl
+      final mac = defaultTargetPlatform == TargetPlatform.macOS;
+      final primary = mac
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+      Future<void> press(
+        List<LogicalKeyboardKey> modifiers,
+        LogicalKeyboardKey key,
+      ) async {
+        for (final m in modifiers) {
+          await tester.sendKeyDownEvent(m);
+        }
+        await tester.sendKeyEvent(key);
+        for (final m in modifiers.reversed) {
+          await tester.sendKeyUpEvent(m);
+        }
+        await _settle(tester, rounds: 4);
+      }
+
+      await press([primary], LogicalKeyboardKey.keyZ);
+      expect(bulk.calls, ['undo']);
+      await press([
+        primary,
+        LogicalKeyboardKey.shiftLeft,
+      ], LogicalKeyboardKey.keyZ);
+      expect(bulk.calls, ['undo', 'redo']);
+      if (mac) {
+        await press([LogicalKeyboardKey.controlLeft], LogicalKeyboardKey.keyZ);
+        expect(bulk.calls, ['undo', 'redo']);
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      await tester.pump(const Duration(minutes: 1));
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets(
     'card arrow opens the shared import dialog and cancellation preserves gallery state',
@@ -715,6 +775,20 @@ class _CaptionStub extends StatelessWidget {
       ],
     );
   }
+}
+
+class _RecordingBulkOperations extends BulkOperationNotifier {
+  final calls = <String>[];
+
+  @override
+  BulkOperationState build() =>
+      const BulkOperationState(canUndo: true, canRedo: true);
+
+  @override
+  Future<void> undo() async => calls.add('undo');
+
+  @override
+  Future<void> redo() async => calls.add('redo');
 }
 
 class _TestKritaBridgeNotifier extends KritaBridgeNotifier {

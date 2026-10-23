@@ -16,6 +16,7 @@ import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/file_explorer_utils.dart';
 import '../../../core/utils/gallery_path_utils.dart';
+import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/zip_utils.dart';
 import '../../../data/models/gallery/gallery_category.dart';
 import '../../../data/models/gallery/local_image_record.dart';
@@ -265,13 +266,14 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
       ),
     );
 
-    return PageShortcuts(
-      contextType: ShortcutContext.gallery,
-      shortcuts: _shortcuts,
-      child: KeyboardListener(
-        focusNode: _shortcutsFocusNode,
-        autofocus: true,
-        onKeyEvent: (event) => _handleKeyEvent(event, bulkOpState),
+    // 撤销的按键监听放在页面快捷键外面、不抢焦点：页面焦点停在 PageShortcuts 自带的节点上，
+    // 按键从那里往上传，监听器放在它里面时收不到撤销键
+    return KeyboardListener(
+      focusNode: _shortcutsFocusNode,
+      onKeyEvent: (event) => _handleKeyEvent(event, bulkOpState),
+      child: PageShortcuts(
+        contextType: ShortcutContext.gallery,
+        shortcuts: _shortcuts,
         child: Scaffold(
           backgroundColor: theme.colorScheme.surface,
           body: LayoutBuilder(
@@ -902,8 +904,8 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
   void _handleKeyEvent(KeyEvent event, BulkOperationState bulkOpState) {
     if (event is! KeyDownEvent) return;
 
-    final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
-    if (!isCtrlPressed) return;
+    // 主修饰键：macOS 上是 ⌘（⌘Z / ⇧⌘Z），其他平台是 Ctrl
+    if (!isPrimaryShortcutModifierPressed()) return;
 
     if (event.logicalKey == LogicalKeyboardKey.keyZ) {
       if (HardwareKeyboard.instance.isShiftPressed) {
