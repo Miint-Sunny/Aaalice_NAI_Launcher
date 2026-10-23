@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/platform_shortcut_text.dart';
 import 'ui_colors.dart';
 import 'ui_controls.dart';
 import 'ui_glyph.dart';
@@ -33,6 +34,8 @@ class UiMenuItem {
 
   /// 当前选中项（右侧打勾）。
   final bool checked;
+
+  /// 右侧的快捷键字（`Ctrl D`），macOS 上显示成 ⌘D（见 [platformShortcutLabel]）。
   final String? trailing;
   final bool enabled;
 
@@ -138,7 +141,7 @@ class UiMenu extends StatelessWidget {
                             ),
                             if (it.trailing != null)
                               Text(
-                                it.trailing!,
+                                platformShortcutLabel(it.trailing!),
                                 style: UiText.mono(11.5, color: c.faint),
                               ),
                             if (it.checked)

@@ -1,4 +1,5 @@
 // 设置页交互：目录、自动保存与撤销、恢复默认、搜索、需重启、确认框、Agent 草稿、快捷键录制。
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -194,9 +195,110 @@ void main() {
     await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await t.pumpAndSettle();
     expect(rec.calls.where((c) => c.startsWith('record:')), [
-      'record:clear:Ctrl+Shift+K',
+      'record:clear:ctrl+shift+k',
     ]);
   });
+
+  /// 点「清空提示词」进入录制，按下 [modifiers] + [key]，返回录到的组合。
+  Future<String?> record(
+    WidgetTester t,
+    SettingsRecorder rec,
+    List<LogicalKeyboardKey> modifiers,
+    LogicalKeyboardKey key,
+  ) async {
+    rec.calls.clear();
+    await tap(t, 'shortcut-keys-clear');
+    for (final m in modifiers) {
+      await t.sendKeyDownEvent(m);
+    }
+    await t.sendKeyEvent(key);
+    for (final m in modifiers.reversed) {
+      await t.sendKeyUpEvent(m);
+    }
+    await t.pumpAndSettle();
+    return rec.calls
+        .where((c) => c.startsWith('record:clear:'))
+        .map((c) => c.substring('record:clear:'.length))
+        .firstOrNull;
+  }
+
+  testWidgets('快捷键：逗号、斜杠、方向键按配置里的写法录进去', (t) async {
+    final rec = await pumpSettings(t, page: SettingsPageId.shortcuts);
+    const ctrl = [LogicalKeyboardKey.controlLeft];
+    expect(await record(t, rec, ctrl, LogicalKeyboardKey.comma), 'ctrl+comma');
+    expect(await record(t, rec, ctrl, LogicalKeyboardKey.slash), 'ctrl+slash');
+    expect(
+      await record(t, rec, const [], LogicalKeyboardKey.arrowUp),
+      'arrowup',
+    );
+    expect(
+      await record(t, rec, const [
+        LogicalKeyboardKey.altLeft,
+      ], LogicalKeyboardKey.arrowLeft),
+      'alt+arrowleft',
+    );
+  });
+
+  testWidgets('快捷键 macOS：⌘ 存成主修饰键 ctrl，Control 存成 meta，⌘⌫ 是组合不是清除', (t) async {
+    final rec = await pumpSettings(t, page: SettingsPageId.shortcuts);
+    expect(
+      await record(t, rec, const [
+        LogicalKeyboardKey.metaLeft,
+      ], LogicalKeyboardKey.keyK),
+      'ctrl+k',
+    );
+    expect(
+      await record(t, rec, const [
+        LogicalKeyboardKey.controlLeft,
+      ], LogicalKeyboardKey.keyK),
+      'meta+k',
+    );
+    expect(
+      await record(t, rec, const [
+        LogicalKeyboardKey.metaLeft,
+        LogicalKeyboardKey.shiftLeft,
+      ], LogicalKeyboardKey.comma),
+      'ctrl+shift+comma',
+    );
+    expect(
+      await record(t, rec, const [
+        LogicalKeyboardKey.metaLeft,
+      ], LogicalKeyboardKey.backspace),
+      'ctrl+backspace',
+    );
+    expect(rec.calls, isNot(contains('clearShortcut:clear')));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  List<String> keyTexts(WidgetTester t, String key) => [
+    for (final w in t.widgetList<Text>(
+      find.descendant(of: find.byKey(Key(key)), matching: find.byType(Text)),
+    ))
+      w.data!,
+  ];
+
+  testWidgets(
+    '快捷键：macOS 键帽用 Mac 符号，键盘图最下一排是 Mac 的；Windows 照旧',
+    (t) async {
+      await pumpSettings(t, page: SettingsPageId.shortcuts);
+      final mac = defaultTargetPlatform == TargetPlatform.macOS;
+      expect(
+        keyTexts(t, 'shortcut-keys-theme'),
+        mac ? ['⇧', '⌘', 'T'] : ['Ctrl', 'Shift', 'T'],
+      );
+      expect(
+        keyTexts(t, 'shortcut-keys-generate'),
+        mac ? ['⌘', '⏎'] : ['Ctrl', 'Enter'],
+      );
+      expect(find.byKey(const Key('key-Win')), mac ? findsNothing : findsOne);
+      expect(find.byKey(const Key('key-Meta')), mac ? findsOne : findsNothing);
+      expect(keyTexts(t, 'key-Meta'), mac ? contains('⌃') : isEmpty);
+      expect(t.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets('快捷键冲突列出并可一键修复', (t) async {
     await pumpSettings(t, page: SettingsPageId.shortcuts);

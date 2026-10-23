@@ -279,6 +279,19 @@ class ParsedShortcut {
     return parts.join('+');
   }
 
+  /// Mac 写法，一个键一段：⌃⌥⇧⌘ 按 Mac 菜单的顺序在前，特殊键用键盘符号（见 [ShortcutKey.macLabel]）。
+  List<String> get macKeyLabels => [
+    if (modifiers.contains(ShortcutModifier.control)) '⌃',
+    if (modifiers.contains(ShortcutModifier.alt)) '⌥',
+    if (modifiers.contains(ShortcutModifier.shift)) '⇧',
+    if (modifiers.contains(ShortcutModifier.meta)) '⌘',
+    key.macLabel,
+  ];
+
+  /// 键帽用，一个键一段：macOS 上是 [macKeyLabels]，其他平台按 [displayLabel] 拆开。
+  List<String> get keyLabels =>
+      ShortcutParser.primaryIsCommand ? macKeyLabels : displayLabel.split('+');
+
   /// 转换为ShortcutActivator字符串格式
   String toActivatorString() {
     final parts = <String>[
@@ -388,6 +401,22 @@ enum ShortcutKey {
   final String displayName;
 
   const ShortcutKey(this.logicalKey, this.displayName);
+
+  /// macOS 上的写法：特殊键用 Mac 菜单里的键盘符号，其余同 [displayName]。
+  String get macLabel => _macSymbols[this] ?? displayName;
+
+  // Mac 菜单里的 ↩ ↖ ↘ 都有 emoji 写法，应用字体里没有时 Flutter 会回退成彩色 emoji
+  // （加 U+FE0E 也不管用），所以 Return 用没有 emoji 写法的 ISO 9995-7 符号 ⏎。
+  // Home / End 的 ⇱ ⇲ 应用自带的字体里都没有，照旧写字
+  static const _macSymbols = {
+    ShortcutKey.enter: '⏎',
+    ShortcutKey.escape: '⎋',
+    ShortcutKey.tab: '⇥',
+    ShortcutKey.backspace: '⌫',
+    ShortcutKey.delete: '⌦',
+    ShortcutKey.pageup: '⇞',
+    ShortcutKey.pagedown: '⇟',
+  };
 
   /// 从字符串解析
   static ShortcutKey? fromString(String value) {
