@@ -3653,6 +3653,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => '트레이로 최소화';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => '메뉴 막대로 숨기기';
+
+  @override
   String get shortcut_action_quit_app => '앱 종료';
 
   @override
@@ -5363,6 +5366,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get common_swap => '바꾸기';
+
+  @override
+  String get common_showInFinder => 'Finder에서 보기';
 
   @override
   String get addToLibrary_displayNameHint => '이 항목을 알아보기 쉬운 이름을 입력하세요';
@@ -13281,6 +13287,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get imageViewer_missingHint => '탐색기에서 이동, 이름 변경 또는 삭제되었을 수 있습니다';
 
   @override
+  String get imageViewer_missingHintFinder =>
+      'Finder에서 이동, 이름 변경 또는 삭제되었을 수 있습니다';
+
+  @override
   String get imageViewer_openFolder => '폴더 열기';
 
   @override
@@ -17414,6 +17424,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get set_apSystemSub => 'Windows 설정을 따름';
+
+  @override
+  String get set_apSystemSubMac => 'macOS 설정을 따름';
 
   @override
   String get set_apText => '글꼴';

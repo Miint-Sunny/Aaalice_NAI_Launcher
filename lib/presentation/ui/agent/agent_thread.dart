@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/platform_labels.dart';
 import '../../../l10n/app_localizations.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_preview_image.dart';
@@ -3551,7 +3552,11 @@ class _ThumbActions extends StatelessWidget {
         button(AgentImageAction.vibe, AgentGlyphs.wand, l.ag_imageVibe),
         button(AgentImageAction.params, AgentGlyphs.sliders, l.ag_imageParams),
         if (image.path != null)
-          button(AgentImageAction.folder, AgentGlyphs.folder, l.ag_imageFolder),
+          button(
+            AgentImageAction.folder,
+            AgentGlyphs.folder,
+            showInFileManagerLabel(l, l.ag_imageFolder),
+          ),
       ],
     );
   }
@@ -3631,7 +3636,11 @@ Future<void> showAgentImageMenu(
         item('params', AgentGlyphs.sliders, l.ag_imageParams),
       ],
       if (img.path != null)
-        item('folder', AgentGlyphs.folder, l.ag_imageFolder),
+        item(
+          'folder',
+          AgentGlyphs.folder,
+          showInFileManagerLabel(l, l.ag_imageFolder),
+        ),
     ],
   );
   if (!context.mounted) return;

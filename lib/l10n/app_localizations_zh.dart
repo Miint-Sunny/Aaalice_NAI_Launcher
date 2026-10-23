@@ -3598,6 +3598,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => '最小化到托盘';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => '隐藏到菜单栏';
+
+  @override
   String get shortcut_action_quit_app => '退出应用';
 
   @override
@@ -5280,6 +5283,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get common_swap => '交换';
+
+  @override
+  String get common_showInFinder => '在访达中显示';
 
   @override
   String get addToLibrary_displayNameHint => '输入便于识别此条目的名称';
@@ -13050,6 +13056,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imageViewer_missingHint => '可能已经在资源管理器里被移动、改名或删除';
 
   @override
+  String get imageViewer_missingHintFinder => '可能已经在访达里被移动、改名或删除';
+
+  @override
   String get imageViewer_openFolder => '打开所在文件夹';
 
   @override
@@ -17147,6 +17156,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get set_apSystemSub => '按 Windows 设置自动切换';
+
+  @override
+  String get set_apSystemSubMac => '按 macOS 设置自动切换';
 
   @override
   String get set_apText => '文字';
@@ -24585,6 +24597,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get shortcut_action_minimize_to_tray => '最小化到系統匣';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => '隱藏到選單列';
+
+  @override
   String get shortcut_action_quit_app => '退出應用';
 
   @override
@@ -26267,6 +26282,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get common_swap => '交換';
+
+  @override
+  String get common_showInFinder => '在 Finder 中顯示';
 
   @override
   String get addToLibrary_displayNameHint => '輸入便於識別此條目的名稱';
@@ -34037,6 +34055,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get imageViewer_missingHint => '可能已經在資源管理器裡被移動、改名或刪除';
 
   @override
+  String get imageViewer_missingHintFinder => '可能已經在 Finder 裡被移動、改名或刪除';
+
+  @override
   String get imageViewer_openFolder => '開啟所在資料夾';
 
   @override
@@ -38134,6 +38155,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get set_apSystemSub => '按 Windows 設定自動切換';
+
+  @override
+  String get set_apSystemSubMac => '按 macOS 設定自動切換';
 
   @override
   String get set_apText => '文字';

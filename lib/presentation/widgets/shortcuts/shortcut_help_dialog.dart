@@ -10,6 +10,7 @@ import '../../../core/shortcuts/shortcut_manager.dart';
 import '../../../presentation/router/app_router.dart';
 import '../../../presentation/screens/settings/widgets/shortcut_settings_panel.dart';
 import '../../providers/shortcuts_provider.dart';
+import '../../utils/platform_labels.dart';
 
 /// 快捷键帮助对话框
 /// 显示所有可用的快捷键
@@ -482,7 +483,7 @@ class _ShortcutHelpDialogState extends ConsumerState<ShortcutHelpDialog> {
       case 'shortcut_action_open_folder':
         return l10n.shortcut_action_open_folder;
       case 'shortcut_action_minimize_to_tray':
-        return l10n.shortcut_action_minimize_to_tray;
+        return minimizeToTrayLabel(l10n);
       case 'shortcut_action_quit_app':
         return l10n.shortcut_action_quit_app;
       case 'shortcut_action_show_shortcut_help':

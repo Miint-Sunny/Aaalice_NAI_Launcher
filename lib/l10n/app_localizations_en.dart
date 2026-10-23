@@ -3748,6 +3748,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => 'Minimize to Tray';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => 'Hide to Menu Bar';
+
+  @override
   String get shortcut_action_quit_app => 'Quit Application';
 
   @override
@@ -5497,6 +5500,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get common_swap => 'Swap';
+
+  @override
+  String get common_showInFinder => 'Show in Finder';
 
   @override
   String get addToLibrary_displayNameHint =>
@@ -13649,6 +13655,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'It may have been moved, renamed or deleted in Explorer';
 
   @override
+  String get imageViewer_missingHintFinder =>
+      'It may have been moved, renamed or deleted in Finder';
+
+  @override
   String get imageViewer_openFolder => 'Open folder';
 
   @override
@@ -17875,6 +17885,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get set_apSystemSub => 'Follows the Windows setting';
+
+  @override
+  String get set_apSystemSubMac => 'Follows the macOS setting';
 
   @override
   String get set_apText => 'Text';

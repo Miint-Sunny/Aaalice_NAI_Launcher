@@ -1,4 +1,5 @@
 // 设置页交互：目录、自动保存与撤销、恢复默认、搜索、需重启、确认框、Agent 草稿、快捷键录制。
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,24 @@ void main() {
     expect(rec.calls, contains('undo:c1'));
     await t.pump(const Duration(seconds: 5));
   });
+
+  testWidgets(
+    '跟随系统的说明按平台写：Windows 设置 / macOS 设置',
+    (t) async {
+      await pumpSettings(t, page: SettingsPageId.appearance);
+      final mac = defaultTargetPlatform == TargetPlatform.macOS;
+      expect(find.text('按 macOS 设置自动切换'), mac ? findsOneWidget : findsNothing);
+      expect(
+        find.text('按 Windows 设置自动切换'),
+        mac ? findsNothing : findsOneWidget,
+      );
+      await t.pump(const Duration(seconds: 5));
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets('默认跟随系统，主题选项按系统、浅色、深色排列且仍可手动选择', (t) async {
     final rec = await pumpSettings(

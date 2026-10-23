@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/platform_labels.dart';
 import '../channel/channel_contract.dart';
 import '../channel/channel_format.dart';
 import '../channel/channel_geometry.dart';
@@ -536,7 +537,7 @@ class SettingsAppearancePage extends StatelessWidget {
                         description: switch (k) {
                           'light' => 'Geist Light',
                           'dark' => 'Geist Dark',
-                          _ => l.set_apSystemSub,
+                          _ => followSystemAppearanceLabel(l),
                         },
                         onTap: () =>
                             s.actions.onChanged(SettingKey.themeMode, k),

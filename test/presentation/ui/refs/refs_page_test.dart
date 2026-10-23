@@ -148,6 +148,14 @@ void main() {
       expect(rec.adds.single.$2, isTrue);
     });
 
+    testWidgets('macOS：右键菜单写在访达中显示', (t) async {
+      await pump(t);
+      await t.tap(key('refs-card-c12'), buttons: kSecondaryButton);
+      await t.pumpAndSettle();
+      expect(find.text('在访达中显示'), findsOneWidget);
+      expect(find.text('在文件夹中显示'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('没有结果时可以清除筛选', (t) async {
       final base = RefsFixture.vibe();
       await pump(

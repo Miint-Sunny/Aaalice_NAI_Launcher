@@ -644,6 +644,18 @@ void main() {
     await done(t);
   });
 
+  testWidgets('macOS：找不到图时说访达，信息栏按钮叫在访达中显示', (t) async {
+    await pump(t, ViewerFixture.gallery(current: '16', missing: true));
+    expect(find.textContaining('可能已经在访达里被移动、改名或删除'), findsOneWidget);
+    expect(find.textContaining('资源管理器'), findsNothing);
+    await done(t);
+
+    await pump(t, ViewerFixture.gallery());
+    expect(find.byTooltip('在访达中显示'), findsOneWidget);
+    expect(find.byTooltip('在文件夹中显示'), findsNothing);
+    await done(t);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('Vibe：存入 Vibe 库', (t) async {
     await pump(t, ViewerFixture.generation(current: '41'));
     await t.ensureVisible(find.byKey(const Key('viewer-info-vibes')));

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/platform_labels.dart';
 import '../../utils/selection_modifiers.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
@@ -180,7 +181,7 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
           onTap: () => a.onSendTo(cover.id, GenSendTarget.precise),
         ),
         UiMenuItem(
-          label: l.gen_reveal,
+          label: showInFileManagerLabel(l, l.gen_reveal),
           glyph: GenGlyphs.reveal,
           divider: true,
           onTap: () => a.onReveal(cover.id),
