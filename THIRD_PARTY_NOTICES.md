@@ -18,6 +18,10 @@ Real-ESRGAN, NCNN, libwebp and glslang notices, official sources and runtime
 dependencies are included under `assets/local_upscale/`. The compiled
 manifest pins the engine and model archive versions, SHA-256 hashes and file
 sizes. See `assets/local_upscale/THIRD_PARTY_NOTICES.md` and `windows/LICENSE`.
+The macOS app ships the official universal build of the same engine release
+in `Contents/Resources/tools/local-upscale/`, with its license and those of
+MoltenVK (including SPIRV-Cross and cereal) and LLVM OpenMP, which it links
+statically; the texts come from `tool/local_upscale/macos/`.
 
 ## Danbooru/e621 Tag Data
 

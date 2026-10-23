@@ -18,6 +18,11 @@ ARCHITECTURES = ['arm64', 'x86_64']
 STUDIO_BRIDGE = 'Contents/Resources/tools/studio-bridge'
 # npm prebuild folders for one architecture, e.g. prebuilds/darwin-arm64/x.node
 PREBUILD_DIRS = {'darwin-arm64': 'arm64', 'darwin-x64': 'x86_64'}
+# Real-ESRGAN from scripts/build_macos.sh, with the engine's own license and the
+# notices of what it links statically (MoltenVK, SPIRV-Cross, cereal, LLVM OpenMP).
+LOCAL_UPSCALE = 'Contents/Resources/tools/local-upscale'
+LOCAL_UPSCALE_FILES = ('realesrgan-ncnn-vulkan', 'LICENSE', 'MOLTENVK-LICENSE.txt',
+                       'CEREAL-LICENSE.txt', 'LLVM-OPENMP-LICENSE.txt')
 
 
 def files(root):
@@ -109,6 +114,16 @@ def verify_assets(flutter_assets):
                 raise RuntimeError(f'Git LFS pointer packaged instead of the file: {p}')
 
 
+def verify_local_upscale(app, flutter_assets):
+    """The macOS engine is bundled; the Windows engine and worker are not."""
+    for name in LOCAL_UPSCALE_FILES:
+        if not (app / LOCAL_UPSCALE / name).is_file():
+            raise RuntimeError(f'The app bundle must contain {LOCAL_UPSCALE}/{name}')
+    windows = flutter_assets / 'assets/local_upscale/windows'
+    if windows.exists():
+        raise RuntimeError(f'Windows upscaling programs must not be packaged: {windows}')
+
+
 def verify_agent(root, app):
     """Same Pi and Node checks as the Windows payload, on the bundled copy."""
     source = root / 'tool/nai_agent'
@@ -189,6 +204,7 @@ def verify(root, app, version, display, allow_host_only_bridge):
     verify_assets(flutter_assets)
     node = verify_agent(root, app)
     binaries = verify_architectures(app, allow_host_only_bridge)
+    verify_local_upscale(app, flutter_assets)
     print(json.dumps({'node': node, 'machOFiles': binaries}))
 
 
