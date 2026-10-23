@@ -13,6 +13,7 @@ on:
       - "installer/windows/**"
       - "l10n.yaml"
       - "lib/**"
+      - "macos/**"
       - "pubspec.lock"
       - "pubspec.yaml"
       - "scripts/**"
@@ -133,3 +134,54 @@ jobs:
               throw "Missing packaged artifact: $path"
             }
           }
+
+  macos-validation:
+    name: Build and package macOS
+    runs-on: macos-15
+    # Release build of the universal app bundle plus the packaging checks;
+    # tests run in the Windows job. Nothing is uploaded.
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache Node and Dart runtimes
+        uses: actions/cache@v4
+        with:
+          path: build/macos-runtime-cache
+          key: macos-runtime-${{ hashFiles('scripts/build_macos.sh', 'tool/flutter-sdk.json') }}
+
+      - name: Install Rosetta
+        run: sudo softwareupdate --install-rosetta --agree-to-license
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Generate code
+        run: dart run tool/generate.dart
+
+      - name: Build macOS release
+        run: scripts/build_macos.sh --release
+
+      - name: Package macOS artifact
+        run: scripts/package_macos_release.sh
+
+      - name: Verify packaged artifact
+        run: |
+          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | tr -d '[:space:]')"
+          zip="dist/WOF_NAI_Studio_macOS_${version%%+*}_Portable.zip"
+          test -f "$zip"
+          test -f "$zip.sha256"
