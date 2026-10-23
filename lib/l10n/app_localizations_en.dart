@@ -3785,6 +3785,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => 'Minimize to Tray';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => 'Hide to Menu Bar';
+
+  @override
   String get shortcut_action_quit_app => 'Quit Application';
 
   @override
@@ -5559,6 +5562,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get common_swap => 'Swap';
 
   @override
+  String get common_showInFinder => 'Show in Finder';
+
+  @override
   String get addToLibrary_displayNameHint =>
       'Enter a name to identify this entry';
 
@@ -6087,6 +6093,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tips_studio_trick_6 =>
       'Middle-click a translation block to flip between the original and the translation. However good the AI is, peek at the original now and then to make sure \"cat ears\" didn\'t become something strange.';
+
+  @override
+  String get tips_studio_trick_6_mac =>
+      '⌘-click a translation block to flip between the original and the translation; it is also in the right-click menu. However good the AI is, peek at the original now and then to make sure \"cat ears\" didn\'t become something strange.';
 
   @override
   String get tips_studio_trick_7 =>
@@ -9015,8 +9025,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => 'Middle-click a block';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + click a block';
+
+  @override
   String get promptTranslation_guideMiddleText =>
       'Switch original and translation';
+
+  @override
+  String get promptTranslation_toggleFace => 'Switch original / translation';
 
   @override
   String get promptTranslation_guideSourceTitle => 'Left-click the original';
@@ -10018,7 +10034,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localUpscale_unsupportedPlatform =>
-      'Local upscaling currently supports Windows.';
+      'This upscaling method is currently available on Windows only.';
 
   @override
   String get localUpscale_engineMissing =>
@@ -13709,6 +13725,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get imageViewer_missingHint =>
       'It may have been moved, renamed or deleted in Explorer';
+
+  @override
+  String get imageViewer_missingHintFinder =>
+      'It may have been moved, renamed or deleted in Finder';
 
   @override
   String get imageViewer_openFolder => 'Open folder';
@@ -17939,6 +17959,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get set_apSystemSub => 'Follows the Windows setting';
 
   @override
+  String get set_apSystemSubMac => 'Follows the macOS setting';
+
+  @override
   String get set_apText => 'Text';
 
   @override
@@ -19364,6 +19387,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get set_rgInstallCpu => 'CPU';
+
+  @override
+  String get set_rgInstallHintMac =>
+      'Downloads Python and inference packages (about 200 MB), not model weights. Needs a Mac with Apple silicon. Auto runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less.';
+
+  @override
+  String get set_rgPythonSubMac =>
+      'Uses the standalone runtime by default; you can pick an existing python3.';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      'Needs a Mac with Apple silicon. PyTorch no longer makes builds for Intel Macs, so the runtime can\'t be installed on this Mac.';
+
+  @override
+  String get set_rgEnvUnsupported => 'Not supported';
 
   @override
   String get set_rgPhaseExisting => 'Checking existing runtime';

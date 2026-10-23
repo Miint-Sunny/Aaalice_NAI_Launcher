@@ -54,7 +54,8 @@ Windows 版はどちらもアプリ内更新に対応しています。設定、
 - **データの場所**：設定、データベース、Agent のデータは `~/Library/Application Support/com.wof.naiStudio/` にあり、アプリを置き換えても削除されません。
 - **1.x からのアップグレード**：初回起動時に、旧版（Aaalice NAI Launcher）の設定、履歴、各種ライブラリとお気に入りをコピーします。旧版のデータはそのまま残ります。旧版が起動中のときは、先に終了するよう案内されます。ログイン情報はコピーされないため、もう一度ログインしてください。画像や Vibe など「書類」フォルダーにあるファイルは、もともと両方の版で共有されています。
 - **ショートカット**：ショートカットの `Ctrl` は Mac では `⌘` になります。ショートカット一覧は `⌘/` で開きます。
-- **未対応の機能**：ローカルアップスケール（Real-ESRGAN、NVIDIA RTX Video、SeedVR2）とローカルのセマンティック検索（RAG）は、今のところ Windows 版のみです。NovelAI のクラウドアップスケールは通常どおり使えます。
+- **ローカルアップスケール**：Real-ESRGAN が使えます。エンジンとモデルは Windows 版と同じで、Mac の GPU（Metal）で動きます。NVIDIA RTX Video と SeedVR2 は NVIDIA の GPU が必要なため、今のところ Windows 版のみです。
+- **ローカルのセマンティック検索（RAG）**：Apple シリコンの Mac が必要です。実行デバイスが「自動」なら、メモリ 18 GB 以上の Mac では GPU、16 GB 以下では CPU を使います。Intel Mac では使えません。PyTorch が Intel Mac 向けの版を提供していないためです。
 
 ## 3 ステップで始める
 
@@ -226,7 +227,7 @@ scripts/build_macos.sh --release
 scripts/package_macos_release.sh
 ```
 
-`build_macos.sh` はユニバーサルのアプリをビルドし、NAI Agent 用の Node ランタイム、Pi、`studio-bridge` を入れます。`package_macos_release.sh` はそれを検査して `dist/WOF_NAI_Studio_macOS_<バージョン>_Portable.zip` にまとめます。署名は既定で ad-hoc です。Apple の開発者証明書があれば環境変数 `CODESIGN_IDENTITY` で指定します。`tool/branding/wof_icon.svg` を変えたら、`tool/branding/generate_macos_icons.sh` で Mac のアイコンを作り直します（Homebrew の librsvg に含まれる `rsvg-convert` が必要です）。
+`build_macos.sh` はユニバーサルのアプリをビルドし、NAI Agent 用の Node ランタイム、Pi、`studio-bridge` と、ローカルアップスケール用の Real-ESRGAN を入れます。`package_macos_release.sh` はそれを検査して `dist/WOF_NAI_Studio_macOS_<バージョン>_Portable.zip` にまとめます。署名は既定で ad-hoc です。Apple の開発者証明書があれば環境変数 `CODESIGN_IDENTITY` で指定します。`tool/branding/wof_icon.svg` を変えたら、`tool/branding/generate_macos_icons.sh` で Mac のアイコンを作り直します（Homebrew の librsvg に含まれる `rsvg-convert` が必要です）。
 
 開発ルールは [DEVELOPMENT.md](DEVELOPMENT.md)、変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 

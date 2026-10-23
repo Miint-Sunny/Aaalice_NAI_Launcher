@@ -424,6 +424,7 @@ final generationViewDataProvider = Provider.autoDispose
       final localModels = workflow.upscale.backend == UpscaleBackend.novelai
           ? null
           : ref.watch(localUpscaleModelsProvider).valueOrNull;
+      final localPlatform = ref.watch(localUpscalePlatformProvider);
       return GenViewData(
         model: params.model,
         displayModel: ImageModels.baseModelForTurboModel(params.model),
@@ -614,13 +615,13 @@ final generationViewDataProvider = Provider.autoDispose
                 : null,
             available: workflow.upscale.backend == UpscaleBackend.novelai
                 ? cloudCost != null && cloudCost >= 0
-                : ref.watch(toolsWindowsProvider) &&
-                      localModels?.any(
-                            (model) =>
-                                model.installed &&
-                                model.id == workflow.upscale.localModel,
-                          ) ==
-                          true,
+                : localModels?.any(
+                        (model) =>
+                            model.installed &&
+                            model.id == workflow.upscale.localModel &&
+                            localPlatform.supports(model.method),
+                      ) ==
+                      true,
             selected: workflow.upscale.backend == UpscaleBackend.novelai
                 ? 'novelai'
                 : 'local:${workflow.upscale.localModel}',

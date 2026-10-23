@@ -1535,9 +1535,14 @@ class SettingsRagStep {
   final SettingsTone tone;
 }
 
+/// 运行环境所在的系统：Windows 可选 CUDA；Mac 没有 CUDA，Apple 芯片自动用 GPU（MPS）。
+enum SettingsRagPlatform { windows, macOS }
+
 @immutable
 class SettingsRagData {
   const SettingsRagData({
+    this.platform = SettingsRagPlatform.windows,
+    this.runtimeSupported = true,
     this.runtime = const SettingsRagStep(value: ''),
     this.embedder = const SettingsRagStep(value: ''),
     this.reranker = const SettingsRagStep(value: ''),
@@ -1561,12 +1566,20 @@ class SettingsRagData {
     this.error,
   });
 
+  final SettingsRagPlatform platform;
+
+  /// 这台机器能装运行环境。Intel 芯片的 Mac 不能（PyTorch 没有 Intel Mac 的包）：
+  /// 显示“不支持”和原因，安装按钮置灰。
+  final bool runtimeSupported;
   final SettingsRagStep runtime;
   final SettingsRagStep embedder;
   final SettingsRagStep reranker;
   final SettingsRagStep device;
   final List<SettingsRagSource> sources;
   final int indexBytes;
+
+  /// 能装 CUDA 版运行环境、能选 CUDA 设备（只有 Windows）。
+  bool get cudaSupported => platform == SettingsRagPlatform.windows;
 
   /// 正在检测运行环境。
   final bool checking;
@@ -1678,10 +1691,14 @@ class SettingsUpscaleData {
     this.seed = const [],
     this.rtx,
     this.seedOffloadMaxBlocks = 32,
+    this.seedAvailable = true,
+    this.rtxAvailable = true,
   });
 
-  /// 显卡检测（新增）；null = 没检测到独显。
+  /// 显卡检测（新增）；null = 没检测到独显。Apple 芯片的 Mac 上是芯片名（如 Apple M2 Max）。
   final String? gpuName;
+
+  /// 独立显存；0 = 没有单独的显存（Apple 芯片），卡片只显示名字。
   final int vramGb;
   final Set<SettingsGpuCap> caps;
   final String cudaVersion;
@@ -1692,6 +1709,11 @@ class SettingsUpscaleData {
   /// Upper bound of the currently edited SeedVR2 model: 3B = 32, 7B = 36.
   /// Wiring supplies Seedvr2Options.maxBlocks for the selected model.
   final int seedOffloadMaxBlocks;
+
+  /// Whether SeedVR2 / RTX Video can be installed on this platform (Windows
+  /// only). When false the install buttons are disabled and the section says so.
+  final bool seedAvailable;
+  final bool rtxAvailable;
 }
 
 // ── 桥接与集成

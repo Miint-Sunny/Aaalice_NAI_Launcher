@@ -3635,6 +3635,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => '最小化到托盘';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => '隐藏到菜单栏';
+
+  @override
   String get shortcut_action_quit_app => '退出应用';
 
   @override
@@ -5339,6 +5342,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get common_swap => '交换';
 
   @override
+  String get common_showInFinder => '在访达中显示';
+
+  @override
   String get addToLibrary_displayNameHint => '输入便于识别此条目的名称';
 
   @override
@@ -5848,6 +5854,10 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get tips_studio_trick_6 =>
       '在翻译块上按一下鼠标中键，原文和译文来回切换。AI 翻得再好，偶尔也值得偷看一眼原文，确认它没把 cat ears 翻成什么奇怪的东西。';
+
+  @override
+  String get tips_studio_trick_6_mac =>
+      '在翻译块上按住 ⌘ 点一下，原文和译文来回切换，右键菜单里也有这一项。AI 翻得再好，偶尔也值得偷看一眼原文，确认它没把 cat ears 翻成什么奇怪的东西。';
 
   @override
   String get tips_studio_trick_7 =>
@@ -8569,7 +8579,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => '中键点块';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + 点击块';
+
+  @override
   String get promptTranslation_guideMiddleText => '切换原文与译文';
+
+  @override
+  String get promptTranslation_toggleFace => '切换原文 / 译文';
 
   @override
   String get promptTranslation_guideSourceTitle => '左键点原文';
@@ -9509,7 +9525,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localUpscale_cancelling => '正在取消…';
 
   @override
-  String get localUpscale_unsupportedPlatform => '本地超分目前支持 Windows。';
+  String get localUpscale_unsupportedPlatform => '这种放大方式目前只支持 Windows。';
 
   @override
   String get localUpscale_engineMissing => '本地引擎不可用，请重新安装完整 Studio 运行包。';
@@ -13107,6 +13123,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get imageViewer_missingHint => '可能已经在资源管理器里被移动、改名或删除';
+
+  @override
+  String get imageViewer_missingHintFinder => '可能已经在访达里被移动、改名或删除';
 
   @override
   String get imageViewer_openFolder => '打开所在文件夹';
@@ -17208,6 +17227,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get set_apSystemSub => '按 Windows 设置自动切换';
 
   @override
+  String get set_apSystemSubMac => '按 macOS 设置自动切换';
+
+  @override
   String get set_apText => '文字';
 
   @override
@@ -18563,6 +18585,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get set_rgInstallCpu => 'CPU';
+
+  @override
+  String get set_rgInstallHintMac =>
+      '下载 Python 与推理依赖（约 200 MB），不下载模型权重。需要 Apple 芯片的 Mac。“自动”在内存 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。';
+
+  @override
+  String get set_rgPythonSubMac => '默认用自动安装的独立环境；也可以选一个已有的 python3。';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      '需要 Apple 芯片的 Mac。PyTorch 已不再提供 Intel 芯片 Mac 的版本，这台 Mac 装不了运行环境。';
+
+  @override
+  String get set_rgEnvUnsupported => '不支持';
 
   @override
   String get set_rgPhaseExisting => '正在检测已有环境';
@@ -24681,6 +24717,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get shortcut_action_minimize_to_tray => '最小化到系統匣';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => '隱藏到選單列';
+
+  @override
   String get shortcut_action_quit_app => '退出應用';
 
   @override
@@ -26385,6 +26424,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get common_swap => '交換';
 
   @override
+  String get common_showInFinder => '在 Finder 中顯示';
+
+  @override
   String get addToLibrary_displayNameHint => '輸入便於識別此條目的名稱';
 
   @override
@@ -26894,6 +26936,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   @override
   String get tips_studio_trick_6 =>
       '在翻譯塊上按一下滑鼠中鍵，原文和譯文來回切換。AI 翻得再好，偶爾也值得偷看一眼原文，確認它沒把 cat ears 翻成什麼奇怪的東西。';
+
+  @override
+  String get tips_studio_trick_6_mac =>
+      '在翻譯塊上按住 ⌘ 點一下，原文和譯文來回切換，右鍵選單裡也有這一項。AI 翻得再好，偶爾也值得偷看一眼原文，確認它沒把 cat ears 翻成什麼奇怪的東西。';
 
   @override
   String get tips_studio_trick_7 =>
@@ -29615,7 +29661,13 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get promptTranslation_guideMiddleTitle => '中鍵點塊';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + 點選塊';
+
+  @override
   String get promptTranslation_guideMiddleText => '切換原文與譯文';
+
+  @override
+  String get promptTranslation_toggleFace => '切換原文 / 譯文';
 
   @override
   String get promptTranslation_guideSourceTitle => '左鍵點原文';
@@ -30555,7 +30607,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get localUpscale_cancelling => '正在取消…';
 
   @override
-  String get localUpscale_unsupportedPlatform => '本地超分目前支援 Windows。';
+  String get localUpscale_unsupportedPlatform => '這種放大方式目前只支援 Windows。';
 
   @override
   String get localUpscale_engineMissing => '本地引擎不可用，請重新安裝完整 Studio 執行包。';
@@ -34153,6 +34205,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get imageViewer_missingHint => '可能已經在資源管理器裡被移動、改名或刪除';
+
+  @override
+  String get imageViewer_missingHintFinder => '可能已經在 Finder 裡被移動、改名或刪除';
 
   @override
   String get imageViewer_openFolder => '開啟所在資料夾';
@@ -38254,6 +38309,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get set_apSystemSub => '按 Windows 設定自動切換';
 
   @override
+  String get set_apSystemSubMac => '按 macOS 設定自動切換';
+
+  @override
   String get set_apText => '文字';
 
   @override
@@ -39609,6 +39667,20 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get set_rgInstallCpu => 'CPU';
+
+  @override
+  String get set_rgInstallHintMac =>
+      '下載 Python 與推理依賴（約 200 MB），不下載模型權重。需要 Apple 晶片的 Mac。“自動”在記憶體 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。';
+
+  @override
+  String get set_rgPythonSubMac => '預設用自動安裝的獨立環境；也可以選一個已有的 python3。';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      '需要 Apple 晶片的 Mac。PyTorch 已不再提供 Intel 晶片 Mac 的版本，這臺 Mac 裝不了執行環境。';
+
+  @override
+  String get set_rgEnvUnsupported => '不支援';
 
   @override
   String get set_rgPhaseExisting => '正在檢測已有環境';

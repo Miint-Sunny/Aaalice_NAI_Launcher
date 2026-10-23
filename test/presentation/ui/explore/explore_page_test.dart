@@ -105,6 +105,16 @@ void main() {
       expect(find.byKey(const Key('explore-evolution-dialog')), findsOneWidget);
     });
 
+    testWidgets('macOS：⌘⌫ 删除', (t) async {
+      await pump(t);
+      await key(t, LogicalKeyboardKey.arrowRight);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await t.pumpAndSettle();
+      expect(rec.calls.last, 'delete:c28');
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('数字键归组，0 移出，再按一次同组移出', (t) async {
       await pump(t);
       // #27 在“冷色调”（g1）。

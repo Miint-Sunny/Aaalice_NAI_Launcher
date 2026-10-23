@@ -1,12 +1,17 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 
 import '../../../../data/models/prompt_block/pill_document.dart';
+import '../../../../core/utils/desktop_platform.dart';
 import '../../../../core/utils/prompt_input_normalization.dart';
 import '../nai_syntax_controller.dart';
+import '../../tag_expansion/tag_expansion_wrapper.dart';
 import 'translation_tag_span.dart';
 import '../../common/translation_icon.dart';
+import '../../common/inline_context_menu_items.dart';
 import '../../../../core/utils/localization_extension.dart';
 
 export 'translation_pill_editor.dart';
@@ -88,6 +93,75 @@ class _TranslationPillViewState extends State<TranslationPillView> {
     UndoTextIntent: _LocalTextEditingAction<UndoTextIntent>(),
     RedoTextIntent: _LocalTextEditingAction<RedoTextIntent>(),
   };
+
+  /// macOS：⌘+点击切换原文 / 译文（触控板没有中键；Windows 用中键）。按下时记位置，
+  /// 抬起时没拖动才切换；[_commandClicked] 让这一下不再打开编辑窗。
+  Offset? _commandDownAt;
+  bool _commandClicked = false;
+
+  void _onPointerDown(PointerDownEvent event) {
+    _commandDownAt = null;
+    _commandClicked = false;
+    if (event.buttons == kSecondaryMouseButton) {
+      _addToFieldMenu(event);
+      return;
+    }
+    if (!usesMacOSConventions ||
+        event.buttons != kPrimaryMouseButton ||
+        !HardwareKeyboard.instance.isMetaPressed) {
+      return;
+    }
+    _commandDownAt = event.position;
+    // 外层输入框的 ⌘+点击是查相关 tag，点在翻译块上的这一下归切换
+    TagExpansionWrapper.claimPointer(event.pointer);
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    final down = _commandDownAt;
+    _commandDownAt = null;
+    if (down == null) return;
+    final slop = computeHitSlop(
+      event.kind,
+      MediaQuery.maybeGestureSettingsOf(context),
+    );
+    if ((event.position - down).distance > slop) return;
+    _commandClicked = true;
+    widget.onToggle();
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    if (_commandClicked) return;
+    widget.onEdit(details.globalPosition);
+  }
+
+  /// 右键交给外层输入框，菜单内容照它自己的（剪切 / 复制 / 粘贴、有选区时的存为块……），
+  /// 这里只在最后加一项切换原文 / 译文（所有平台都有，用触控板的人不用找中键）。
+  void _addToFieldMenu(PointerDownEvent event) {
+    final field = context.findAncestorStateOfType<EditableTextState>();
+    if (field == null) return;
+    InlineContextMenuItems.register(field, event.position, [
+      ContextMenuButtonItem(
+        label: context.l10n.promptTranslation_toggleFace,
+        onPressed: widget.onToggle,
+      ),
+    ]);
+  }
+
+  /// 原文输入框自己的右键菜单，多一项切换原文 / 译文。
+  Widget _sourceContextMenu(BuildContext context, EditableTextState state) =>
+      AdaptiveTextSelectionToolbar.buttonItems(
+        anchors: state.contextMenuAnchors,
+        buttonItems: [
+          ...state.contextMenuButtonItems,
+          ContextMenuButtonItem(
+            label: context.l10n.promptTranslation_toggleFace,
+            onPressed: () {
+              state.hideToolbar();
+              widget.onToggle();
+            },
+          ),
+        ],
+      );
 
   String _displayText(TranslationPill pill) {
     if (!pill.showOriginal) return pill.zh;
@@ -231,6 +305,7 @@ class _TranslationPillViewState extends State<TranslationPillView> {
                     focusedErrorBorder: InputBorder.none,
                   ),
                   onTapOutside: (_) => _sourceFocus.unfocus(),
+                  contextMenuBuilder: _sourceContextMenu,
                   onChanged: (source) {
                     setState(() {});
                     widget.onSourceChanged!(source);
@@ -284,8 +359,7 @@ class _TranslationPillViewState extends State<TranslationPillView> {
                     message: context.l10n.promptTranslation_blockNeedsReview,
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTapUp: (details) =>
-                          widget.onEdit(details.globalPosition),
+                      onTapUp: _onTapUp,
                       child: Icon(
                         Icons.build_outlined,
                         size: 13,
@@ -297,12 +371,15 @@ class _TranslationPillViewState extends State<TranslationPillView> {
               ],
             ),
           );
-          return GestureDetector(
-            onTapUp: editableSource
-                ? null
-                : (details) => widget.onEdit(details.globalPosition),
-            onTertiaryTapUp: (_) => widget.onToggle(),
-            child: content,
+          return Listener(
+            onPointerDown: _onPointerDown,
+            onPointerUp: _onPointerUp,
+            onPointerCancel: (_) => _commandDownAt = null,
+            child: GestureDetector(
+              onTapUp: editableSource ? null : _onTapUp,
+              onTertiaryTapUp: (_) => widget.onToggle(),
+              child: content,
+            ),
           );
         },
       ),

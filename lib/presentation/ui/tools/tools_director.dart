@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
+import '../../../core/utils/primary_activator.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../gen/gen_parts.dart';
 import '../kit/ui_colors.dart';
@@ -155,14 +157,11 @@ class _ToolsDirectorPageState extends State<ToolsDirectorPage>
             child: CallbackShortcuts(
               bindings: {
                 const SingleActivator(LogicalKeyboardKey.escape): a.onBack,
-                const SingleActivator(
-                  LogicalKeyboardKey.enter,
-                  control: true,
-                ): () {
+                const PrimaryActivator(LogicalKeyboardKey.enter): () {
                   if (widget.data.canRun) a.onRun();
                 },
-                const SingleActivator(LogicalKeyboardKey.keyV, control: true):
-                    a.onPaste,
+                // macOS 上的 ⌘V 也在这里接住，不再一路传到全局的粘贴导入
+                const PrimaryActivator(LogicalKeyboardKey.keyV): a.onPaste,
               },
               child: Focus(
                 autofocus: true,
@@ -869,7 +868,7 @@ class _NoInput extends StatelessWidget {
         key: const Key('tools-no-input'),
         icon: UiGlyph(UiGlyphs.image, size: 26, color: c.muted),
         title: l.tools_noInput,
-        body: l.tools_noInputBody,
+        body: platformShortcutText(l.tools_noInputBody),
         extra: Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 8,
@@ -1323,7 +1322,7 @@ class _Queue extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 340),
             child: Text(
-              l.tools_queueHint,
+              platformShortcutText(l.tools_queueHint),
               textAlign: TextAlign.right,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

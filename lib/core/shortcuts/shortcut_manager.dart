@@ -132,24 +132,10 @@ class AppShortcutManager {
     final parsed = ShortcutParser.parse(shortcut);
     if (parsed == null) return shortcut;
 
-    // macOS 默认用符号（⌘⇧A），不显示成 Ctrl+Shift+A
+    // macOS 默认用符号（⇧⌘A），不显示成 Ctrl+Shift+A
     if (useSymbols ?? ShortcutParser.primaryIsCommand) {
       // 使用符号表示（适合Mac）
-      final parts = <String>[];
-      if (parsed.modifiers.contains(ShortcutModifier.control)) {
-        parts.add('⌃');
-      }
-      if (parsed.modifiers.contains(ShortcutModifier.alt)) {
-        parts.add('⌥');
-      }
-      if (parsed.modifiers.contains(ShortcutModifier.shift)) {
-        parts.add('⇧');
-      }
-      if (parsed.modifiers.contains(ShortcutModifier.meta)) {
-        parts.add('⌘');
-      }
-      parts.add(_macKeySymbols[parsed.key] ?? parsed.key.displayName);
-      return parts.join();
+      return parsed.macKeyLabels.join();
     } else {
       // 使用文本表示（适合Windows/Linux）
       return parsed.displayLabel;
@@ -199,19 +185,13 @@ class AppShortcutManager {
     return actionMap;
   }
 
-  // 符号模式下特殊键用键盘符号，其余键沿用 displayName。
-  // Mac 菜单里的 ↩ ↖ ↘ 都有 emoji 写法，应用字体里没有时 Flutter 会回退成彩色 emoji
-  // （加 U+FE0E 也不管用），所以 Return / Home / End 用没有 emoji 写法的 ISO 9995-7 符号 ⏎ ⇱ ⇲
-  static const _macKeySymbols = {
-    ShortcutKey.enter: '⏎',
-    ShortcutKey.escape: '⎋',
-    ShortcutKey.tab: '⇥',
-    ShortcutKey.backspace: '⌫',
-    ShortcutKey.delete: '⌦',
-    ShortcutKey.pageup: '⇞',
-    ShortcutKey.pagedown: '⇟',
-    ShortcutKey.home: '⇱',
-    ShortcutKey.end: '⇲',
+  /// Flutter 的按键转回 [ShortcutKey]（录快捷键用）；快捷键里用不了的键返回 null。
+  static ShortcutKey? shortcutKeyOf(LogicalKeyboardKey key) =>
+      _shortcutKeys[key];
+
+  static final _shortcutKeys = {
+    for (final key in ShortcutKey.values)
+      if (_getLogicalKey(key) case final logical?) logical: key,
   };
 }
 

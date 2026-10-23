@@ -54,7 +54,8 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 - **Data location**: Settings, databases and Agent data are in `~/Library/Application Support/com.wof.naiStudio/`. Replacing the app leaves them intact.
 - **Upgrading from 1.x**: The first time it opens, the app copies the settings, history, libraries and favorites of the previous version (Aaalice NAI Launcher) and leaves the old data as it was. If the old version is still open, you are asked to quit it first. Sign-ins are not copied, so sign in again. Images, Vibes and other files in Documents are already shared by both versions.
 - **Shortcuts**: `Ctrl` in shortcuts becomes `⌘` on a Mac; `⌘/` shows the shortcut list.
-- **Not available yet**: Local upscaling (Real-ESRGAN, NVIDIA RTX Video, SeedVR2) and local semantic search (RAG) are Windows-only for now. NovelAI cloud upscaling works as usual.
+- **Local upscaling**: Real-ESRGAN works, with the same engine and models as on Windows, running on the Mac's GPU (Metal). NVIDIA RTX Video and SeedVR2 need an NVIDIA GPU and are Windows-only for now.
+- **Local semantic search (RAG)**: Needs a Mac with Apple silicon. With the device set to Auto it runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less. Intel Macs can't use it: PyTorch no longer makes builds for them.
 
 ## Get started in three steps
 
@@ -226,7 +227,7 @@ scripts/build_macos.sh --release
 scripts/package_macos_release.sh
 ```
 
-`build_macos.sh` builds the universal app bundle and adds the Node runtime for NAI Agent, Pi and `studio-bridge`; `package_macos_release.sh` checks it and packs it into `dist/WOF_NAI_Studio_macOS_<version>_Portable.zip`. The app is ad-hoc signed by default; set `CODESIGN_IDENTITY` to sign with your Apple developer certificate. After changing `tool/branding/wof_icon.svg`, regenerate the Mac icons with `tool/branding/generate_macos_icons.sh` (requires `rsvg-convert` from Homebrew's librsvg).
+`build_macos.sh` builds the universal app bundle and adds the Node runtime for NAI Agent, Pi, `studio-bridge` and the Real-ESRGAN engine for local upscaling; `package_macos_release.sh` checks it and packs it into `dist/WOF_NAI_Studio_macOS_<version>_Portable.zip`. The app is ad-hoc signed by default; set `CODESIGN_IDENTITY` to sign with your Apple developer certificate. After changing `tool/branding/wof_icon.svg`, regenerate the Mac icons with `tool/branding/generate_macos_icons.sh` (requires `rsvg-convert` from Homebrew's librsvg).
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for development guidelines and [CHANGELOG.md](CHANGELOG.md) for version history.
 

@@ -3692,6 +3692,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => 'トレイに最小化';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => 'メニューバーに隠す';
+
+  @override
   String get shortcut_action_quit_app => 'アプリケーションを終了します';
 
   @override
@@ -5428,6 +5431,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get common_swap => '入れ替え';
 
   @override
+  String get common_showInFinder => 'Finder で表示';
+
+  @override
   String get addToLibrary_displayNameHint => 'この項目を識別する名前を入力';
 
   @override
@@ -5944,6 +5950,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get tips_studio_trick_6 =>
       '翻訳ブロックを中クリックすると、原文と訳文を切り替えられます。AI の翻訳がどれだけ優秀でも、たまには原文をのぞいて cat ears が変なものになっていないか確かめましょう。';
+
+  @override
+  String get tips_studio_trick_6_mac =>
+      '翻訳ブロックを ⌘ を押しながらクリックすると、原文と訳文を切り替えられます。右クリックメニューからも切り替えられます。AI の翻訳がどれだけ優秀でも、たまには原文をのぞいて cat ears が変なものになっていないか確かめましょう。';
 
   @override
   String get tips_studio_trick_7 =>
@@ -8738,7 +8748,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => 'ブロックを中クリック';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + ブロックをクリック';
+
+  @override
   String get promptTranslation_guideMiddleText => '原文と訳文を切り替え';
+
+  @override
+  String get promptTranslation_toggleFace => '原文 / 訳文を切り替え';
 
   @override
   String get promptTranslation_guideSourceTitle => '原文を左クリック';
@@ -9690,7 +9706,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get localUpscale_cancelling => 'キャンセル中…';
 
   @override
-  String get localUpscale_unsupportedPlatform => 'ローカル超解像は現在 Windows に対応しています。';
+  String get localUpscale_unsupportedPlatform => 'この拡大方式は現在 Windows のみ対応しています。';
 
   @override
   String get localUpscale_engineMissing =>
@@ -13310,6 +13326,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get imageViewer_missingHint => 'エクスプローラーで移動・名前変更・削除された可能性があります';
+
+  @override
+  String get imageViewer_missingHintFinder => 'Finder で移動・名前変更・削除された可能性があります';
 
   @override
   String get imageViewer_openFolder => 'フォルダーを開く';
@@ -17429,6 +17448,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get set_apSystemSub => 'Windows の設定に合わせる';
 
   @override
+  String get set_apSystemSubMac => 'macOS の設定に合わせる';
+
+  @override
   String get set_apText => '文字';
 
   @override
@@ -18787,6 +18809,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get set_rgInstallCpu => 'CPU';
+
+  @override
+  String get set_rgInstallHintMac =>
+      'Python と推論依存をダウンロードします（約 200 MB、モデルの重みは含みません）。Apple シリコンの Mac が必要です。「自動」は、メモリ 18 GB 以上の Mac では GPU、16 GB 以下では CPU を使います。';
+
+  @override
+  String get set_rgPythonSubMac => '既定は自動インストールの独立環境。既存の python3 も選べます。';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      'Apple シリコンの Mac が必要です。PyTorch は Intel Mac 向けの版を提供していないため、この Mac には実行環境をインストールできません。';
+
+  @override
+  String get set_rgEnvUnsupported => '非対応';
 
   @override
   String get set_rgPhaseExisting => '既存の環境を確認中';

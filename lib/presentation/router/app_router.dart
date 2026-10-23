@@ -36,6 +36,7 @@ import '../widgets/drop/global_drop_handler.dart';
 import '../wiring/nav_wiring.dart';
 import '../providers/nav_activity_provider.dart';
 
+import '../widgets/shortcuts/page_focus.dart';
 import '../widgets/shortcuts/shortcut_aware_widget.dart';
 import '../widgets/shortcuts/shortcut_help_dialog.dart';
 import 'app_branch.dart';
@@ -486,7 +487,10 @@ class _MainShellState extends ConsumerState<MainShell> {
 
         // 保活页面始终保持在树中，通过 TickerMode 控制动画
         if (keepAliveBranches.any((branch) => branch.index == index)) {
-          return TickerMode(enabled: isActive, child: child);
+          return TickerMode(
+            enabled: isActive,
+            child: RefocusWhenActive(active: isActive, child: child),
+          );
         }
 
         // 其他索引：非活动时显示空容器（不保活）

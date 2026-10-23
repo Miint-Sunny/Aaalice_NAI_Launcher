@@ -54,6 +54,7 @@ import 'data/services/temp_image_service.dart';
 import 'data/services/thumbnail_service.dart';
 import 'presentation/providers/online_gallery_blacklist_provider.dart';
 import 'presentation/screens/splash/app_bootstrap.dart';
+import 'presentation/utils/control_click.dart';
 import 'package:nai_launcher/core/utils/desktop_platform.dart';
 import 'package:nai_launcher/core/network/proxy_bypass.dart';
 import 'package:nai_launcher/core/utils/app_bundle_paths.dart';
@@ -328,7 +329,8 @@ void main() {
 }
 
 Future<void> _bootstrapApplication() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // macOS 上 Control+单击当右键，见 ControlClickBinding
+  AppWidgetsBinding.ensureInitialized();
   registerStudioAssetLicenses();
   AppErrorReporter.installGlobalHandlers();
 

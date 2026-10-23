@@ -179,6 +179,7 @@ SettingsViewData settingsViewData(
         ? ref.watch(settingsIndexBytesProvider).valueOrNull ?? 0
         : 0,
     preparing: ref.watch(settingsRagStartupProvider).preparing,
+    platform: ref.watch(ragPlatformProvider),
   );
   final storage =
       page == SettingsPageId.storage || page == SettingsPageId.overview
@@ -360,6 +361,7 @@ SettingsViewData settingsViewData(
       gpu: page == SettingsPageId.upscale
           ? ref.watch(settingsGpuProvider).valueOrNull
           : null,
+      platform: ref.watch(localUpscalePlatformProvider),
     ),
     bridges: settingsBridgesData(context, ref),
     network: SettingsNetworkData(

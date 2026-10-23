@@ -54,7 +54,8 @@ Windows 的两个版本都支持应用内更新。你的设置、图库数据库
 - **数据位置**：设置、数据库和 Agent 数据在 `~/Library/Application Support/com.wof.naiStudio/`，替换应用不会删除它们。
 - **从 1.x 升级**：第一次打开时，会把旧版（Aaalice NAI Launcher）的设置、历史记录、各类库和收藏复制过来，旧版自己的数据保持原样；旧版还开着时，会先请你退出它。登录信息不复制，需要重新登录。图片、Vibe 等放在“文稿”里的文件本来就是两版共用的。
 - **快捷键**：快捷键里的 `Ctrl` 在 Mac 上换成 `⌘`，快捷键列表用 `⌘/` 打开。
-- **暂不支持**：本地放大（Real-ESRGAN、NVIDIA RTX Video、SeedVR2）和本地语义检索（RAG）目前只有 Windows 版。NovelAI 云端放大照常可用。
+- **本地放大**：Real-ESRGAN 可以用，引擎和模型与 Windows 版相同，用 Mac 的显卡（Metal）运行。NVIDIA RTX Video 和 SeedVR2 需要 NVIDIA 显卡，目前只有 Windows 版。
+- **本地语义检索（RAG）**：需要 Apple 芯片的 Mac。运行设备选“自动”时，内存 18 GB 及以上的 Mac 用 GPU，16 GB 及以下用 CPU。Intel 芯片的 Mac 用不了：PyTorch 已不再提供 Intel Mac 的版本。
 
 ## 三步上手
 
@@ -226,7 +227,7 @@ scripts/build_macos.sh --release
 scripts/package_macos_release.sh
 ```
 
-`build_macos.sh` 构建通用应用包，并放进 NAI Agent 的 Node 运行时、Pi 和 `studio-bridge`；`package_macos_release.sh` 检查后打成 `dist/WOF_NAI_Studio_macOS_<版本>_Portable.zip`。默认 ad-hoc 签名，有 Apple 开发者证书时用环境变量 `CODESIGN_IDENTITY` 指定。改了 `tool/branding/wof_icon.svg` 后，用 `tool/branding/generate_macos_icons.sh` 重新生成 Mac 图标（需要 `rsvg-convert`，即 Homebrew 的 librsvg）。
+`build_macos.sh` 构建通用应用包，并放进 NAI Agent 的 Node 运行时、Pi、`studio-bridge` 和本地放大用的 Real-ESRGAN；`package_macos_release.sh` 检查后打成 `dist/WOF_NAI_Studio_macOS_<版本>_Portable.zip`。默认 ad-hoc 签名，有 Apple 开发者证书时用环境变量 `CODESIGN_IDENTITY` 指定。改了 `tool/branding/wof_icon.svg` 后，用 `tool/branding/generate_macos_icons.sh` 重新生成 Mac 图标（需要 `rsvg-convert`，即 Homebrew 的 librsvg）。
 
 开发约定见 [DEVELOPMENT.md](DEVELOPMENT.md)，版本记录见 [CHANGELOG.md](CHANGELOG.md)。
 

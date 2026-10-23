@@ -101,7 +101,6 @@ dependencies:
   video_player: ^2.8.0
   video_player_media_kit: ^1.0.5
   media_kit_libs_windows_video: any
-  # mint：Mac 版的视频播放（1.x 有，2.0 的 REFAC-4 删了）
   media_kit_libs_macos_video: any
 
   cached_network_image: ^3.4.1

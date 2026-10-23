@@ -211,6 +211,27 @@ void main() {
     await done(t);
   });
 
+  testWidgets('macOS：⌘Z 撤销删除、⌘S 保存生成结果，Control 不触发', (t) async {
+    Future<void> chord(LogicalKeyboardKey m, LogicalKeyboardKey k) async {
+      await t.sendKeyDownEvent(m);
+      await t.sendKeyEvent(k);
+      await t.sendKeyUpEvent(m);
+      await t.pumpAndSettle();
+    }
+
+    await pump(t, ViewerFixture.deleted());
+    await chord(LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.keyZ);
+    expect(rec.calls.where((c) => c == 'undo'), isEmpty);
+    await chord(LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyZ);
+    expect(rec.calls.where((c) => c == 'undo'), hasLength(1));
+    await pump(t, ViewerFixture.generation());
+    await chord(LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.keyS);
+    expect(rec.calls.where((c) => c.startsWith('action')), isEmpty);
+    await chord(LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyS);
+    expect(rec.calls.where((c) => c.startsWith('action')), ['action:16:save']);
+    await done(t);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('缩放：+ / 0 / 1 / 菜单 / 双击；放大后有小地图和一次性提示', (t) async {
     await pump(t, ViewerFixture.gallery());
     expect(zoomLabel(t), startsWith('适应 · '));
@@ -254,6 +275,27 @@ void main() {
     await t.pumpAndSettle();
     expect(zoomLabel(t), isNot(startsWith('适应')));
     expect(find.byKey(const Key('viewer-zoom-hint')), findsNothing);
+    await done(t);
+  });
+
+  testWidgets('触控板双指捏合以指针处缩放（触控板不发滚轮事件）', (t) async {
+    await pump(t, ViewerFixture.gallery(zoomHintSeen: true));
+    await key(t, LogicalKeyboardKey.digit1);
+    expect(zoomLabel(t), '100%');
+    final center = t.getCenter(find.byKey(const Key('viewer-view')));
+    final trackpad = TestPointer(1, PointerDeviceKind.trackpad);
+    await t.sendEventToBinding(trackpad.panZoomStart(center));
+    await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 1.5));
+    await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 2));
+    await t.sendEventToBinding(trackpad.panZoomEnd());
+    await t.pumpAndSettle();
+    expect(zoomLabel(t), '200%');
+
+    await t.sendEventToBinding(trackpad.panZoomStart(center));
+    await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: .5));
+    await t.sendEventToBinding(trackpad.panZoomEnd());
+    await t.pumpAndSettle();
+    expect(zoomLabel(t), '100%');
     await done(t);
   });
 
@@ -622,6 +664,18 @@ void main() {
     ]);
     await done(t);
   });
+
+  testWidgets('macOS：找不到图时说访达，信息栏按钮叫在访达中显示', (t) async {
+    await pump(t, ViewerFixture.gallery(current: '16', missing: true));
+    expect(find.textContaining('可能已经在访达里被移动、改名或删除'), findsOneWidget);
+    expect(find.textContaining('资源管理器'), findsNothing);
+    await done(t);
+
+    await pump(t, ViewerFixture.gallery());
+    expect(find.byTooltip('在访达中显示'), findsOneWidget);
+    expect(find.byTooltip('在文件夹中显示'), findsNothing);
+    await done(t);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('Vibe：存入 Vibe 库', (t) async {
     await pump(t, ViewerFixture.generation(current: '41'));

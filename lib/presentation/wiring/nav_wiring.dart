@@ -53,7 +53,7 @@ Map<NavPage, List<String>> navShortcutKeycaps(ShortcutConfig? config) {
       if (config.getEffectiveShortcut(entry.key) case final String shortcut)
         if (ShortcutParser.parse(shortcut) case final ParsedShortcut parsed)
           navPageForBranch(entry.value): List<String>.unmodifiable(
-            parsed.displayLabel.split('+'),
+            parsed.keyLabels,
           ),
   });
 }

@@ -6773,6 +6773,12 @@ abstract class AppLocalizations {
   /// **'Minimize to Tray'**
   String get shortcut_action_minimize_to_tray;
 
+  /// No description provided for @shortcut_action_hide_to_menu_bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide to Menu Bar'**
+  String get shortcut_action_hide_to_menu_bar;
+
   /// No description provided for @shortcut_action_quit_app.
   ///
   /// In en, this message translates to:
@@ -9779,6 +9785,12 @@ abstract class AppLocalizations {
   /// **'Swap'**
   String get common_swap;
 
+  /// No description provided for @common_showInFinder.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in Finder'**
+  String get common_showInFinder;
+
   /// No description provided for @addToLibrary_displayNameHint.
   ///
   /// In en, this message translates to:
@@ -10647,6 +10659,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Middle-click a translation block to flip between the original and the translation. However good the AI is, peek at the original now and then to make sure \"cat ears\" didn\'t become something strange.'**
   String get tips_studio_trick_6;
+
+  /// macOS variant of tips_studio_trick_6: Cmd+click toggles a translation block (promptTranslation_toggleFace).
+  ///
+  /// In en, this message translates to:
+  /// **'⌘-click a translation block to flip between the original and the translation; it is also in the right-click menu. However good the AI is, peek at the original now and then to make sure \"cat ears\" didn\'t become something strange.'**
+  String get tips_studio_trick_6_mac;
 
   /// settings_limitGenerationIntervalTitle / settings_setGenerationIntervalJitterTitle.
   ///
@@ -15686,11 +15704,23 @@ abstract class AppLocalizations {
   /// **'Middle-click a block'**
   String get promptTranslation_guideMiddleTitle;
 
+  /// No description provided for @promptTranslation_guideCommandClickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'⌘ + click a block'**
+  String get promptTranslation_guideCommandClickTitle;
+
   /// No description provided for @promptTranslation_guideMiddleText.
   ///
   /// In en, this message translates to:
   /// **'Switch original and translation'**
   String get promptTranslation_guideMiddleText;
+
+  /// No description provided for @promptTranslation_toggleFace.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch original / translation'**
+  String get promptTranslation_toggleFace;
 
   /// No description provided for @promptTranslation_guideSourceTitle.
   ///
@@ -17375,7 +17405,7 @@ abstract class AppLocalizations {
   /// No description provided for @localUpscale_unsupportedPlatform.
   ///
   /// In en, this message translates to:
-  /// **'Local upscaling currently supports Windows.'**
+  /// **'This upscaling method is currently available on Windows only.'**
   String get localUpscale_unsupportedPlatform;
 
   /// No description provided for @localUpscale_engineMissing.
@@ -23796,6 +23826,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'It may have been moved, renamed or deleted in Explorer'**
   String get imageViewer_missingHint;
+
+  /// No description provided for @imageViewer_missingHintFinder.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been moved, renamed or deleted in Finder'**
+  String get imageViewer_missingHintFinder;
 
   /// No description provided for @imageViewer_openFolder.
   ///
@@ -31252,6 +31288,12 @@ abstract class AppLocalizations {
   /// **'Follows the Windows setting'**
   String get set_apSystemSub;
 
+  /// No description provided for @set_apSystemSubMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows the macOS setting'**
+  String get set_apSystemSubMac;
+
   /// No description provided for @set_apText.
   ///
   /// In en, this message translates to:
@@ -33759,6 +33801,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CPU'**
   String get set_rgInstallCpu;
+
+  /// No description provided for @set_rgInstallHintMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads Python and inference packages (about 200 MB), not model weights. Needs a Mac with Apple silicon. Auto runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less.'**
+  String get set_rgInstallHintMac;
+
+  /// No description provided for @set_rgPythonSubMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the standalone runtime by default; you can pick an existing python3.'**
+  String get set_rgPythonSubMac;
+
+  /// No description provided for @set_rgNeedsAppleSilicon.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a Mac with Apple silicon. PyTorch no longer makes builds for Intel Macs, so the runtime can\'t be installed on this Mac.'**
+  String get set_rgNeedsAppleSilicon;
+
+  /// No description provided for @set_rgEnvUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Not supported'**
+  String get set_rgEnvUnsupported;
 
   /// No description provided for @set_rgPhaseExisting.
   ///
