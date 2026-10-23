@@ -1263,7 +1263,7 @@ class _SettingsShortcutsPageState extends State<SettingsShortcutsPage> {
                   key: const Key('shortcut-search'),
                   width: 280,
                   value: _query,
-                  hint: l.set_scSearch,
+                  hint: platformShortcutText(l.set_scSearch),
                   leading: UiGlyph(UiGlyphs.search, size: 14, color: c.faint),
                   onChanged: (v) => setState(() => _query = v),
                 ),

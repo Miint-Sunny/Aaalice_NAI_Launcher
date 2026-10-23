@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/primary_activator.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../gen/gen_parts.dart';
@@ -867,7 +868,7 @@ class _NoInput extends StatelessWidget {
         key: const Key('tools-no-input'),
         icon: UiGlyph(UiGlyphs.image, size: 26, color: c.muted),
         title: l.tools_noInput,
-        body: l.tools_noInputBody,
+        body: platformShortcutText(l.tools_noInputBody),
         extra: Row(
           mainAxisSize: MainAxisSize.min,
           spacing: 8,
@@ -1321,7 +1322,7 @@ class _Queue extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 340),
             child: Text(
-              l.tools_queueHint,
+              platformShortcutText(l.tools_queueHint),
               textAlign: TextAlign.right,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

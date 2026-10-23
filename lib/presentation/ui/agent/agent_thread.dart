@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/primary_activator.dart';
 import '../../../l10n/app_localizations.dart';
 import '../kit/ui_colors.dart';
@@ -700,7 +701,7 @@ class _UserLineState extends State<_UserLine> {
                   onPressed: _sending ? null : _cancel,
                 ),
                 Tooltip(
-                  message: 'Ctrl + Enter',
+                  message: platformShortcutLabel('Ctrl + Enter'),
                   waitDuration: const Duration(milliseconds: 600),
                   child: AgentButton(
                     key: Key('agent-edit-send-${m.entryId}'),

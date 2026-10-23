@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/primary_activator.dart';
 import '../kit/ui_block_pill.dart';
 import '../kit/ui_colors.dart';
@@ -257,7 +258,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
                       const Spacer(),
                       UiGlyph(UiGlyphs.keyboard, size: 13, color: c.faint),
                       Text(
-                        l10n.blocks_saveShortcut,
+                        platformShortcutText(l10n.blocks_saveShortcut),
                         style: UiText.sans(12, color: c.faint),
                       ),
                       const SizedBox(width: 4),

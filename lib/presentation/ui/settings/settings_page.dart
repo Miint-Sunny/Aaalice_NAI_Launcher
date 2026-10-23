@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../agent/agent_glyphs.dart';
 import '../kit/ui_colors.dart';
@@ -876,7 +877,7 @@ class _ToastDock extends StatelessWidget {
         if (change.undoable) ...[
           SettingsDockButton(label: l.set_undo, onTap: onUndo),
           Text(
-            'Ctrl+Z',
+            platformShortcutLabel('Ctrl+Z'),
             style: UiText.mono(
               10.5,
               weight: FontWeight.w500,

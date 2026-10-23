@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/primary_activator.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_lib_controls.dart';
@@ -691,7 +692,7 @@ class AgentComposerState extends State<AgentComposer> {
                   height: 28,
                   onPressed: comp.canSend ? () => _send(steer: false) : null,
                   trailing: Text(
-                    comp.enterSends ? '↵' : 'Ctrl ↵',
+                    comp.enterSends ? '↵' : platformShortcutLabel('Ctrl ↵'),
                     style: UiText.mono(
                       11,
                       color: (comp.canSend ? c.bg : c.faint).withValues(

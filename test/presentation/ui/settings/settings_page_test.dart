@@ -57,6 +57,13 @@ void main() {
     final rec = await pumpSettings(t, page: SettingsPageId.appearance);
     await tap(t, 'switch-completionSound');
     expect(find.byKey(const Key('settings-toast')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('settings-toast')),
+        matching: find.text('⌘Z'),
+      ),
+      findsOneWidget,
+    );
     await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
     await t.sendKeyEvent(LogicalKeyboardKey.keyZ);
     await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);

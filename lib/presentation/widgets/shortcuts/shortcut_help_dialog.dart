@@ -7,6 +7,7 @@ import 'package:nai_launcher/core/utils/localization_extension.dart';
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/shortcuts/shortcut_config.dart';
 import '../../../core/shortcuts/shortcut_manager.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../presentation/router/app_router.dart';
 import '../../../presentation/screens/settings/widgets/shortcut_settings_panel.dart';
 import '../../providers/shortcuts_provider.dart';
@@ -526,7 +527,7 @@ class ShortcutHelpFab extends ConsumerWidget {
     return FloatingActionButton.small(
       heroTag: 'shortcut_help',
       onPressed: () => ShortcutHelpDialog.show(context),
-      tooltip: context.l10n.shortcut_help_fabTooltip,
+      tooltip: platformShortcutText(context.l10n.shortcut_help_fabTooltip),
       child: const Icon(Icons.keyboard),
     );
   }

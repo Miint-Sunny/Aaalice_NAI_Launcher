@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/primary_activator.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -1436,7 +1437,7 @@ class _SaveDock extends StatelessWidget {
           ),
         ),
         Text(
-          'Ctrl+S',
+          platformShortcutLabel('Ctrl+S'),
           style: UiText.mono(
             10.5,
             weight: FontWeight.w500,

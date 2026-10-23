@@ -29,6 +29,33 @@ void main() {
   test('其他平台原样', () {
     for (final p in [TargetPlatform.windows, TargetPlatform.linux]) {
       expect(platformShortcutText('撤销 (Ctrl+Z)', platform: p), '撤销 (Ctrl+Z)');
+      expect(
+        platformShortcutText('按 F1 查看；按住 Alt 滚动', platform: p),
+        '按 F1 查看；按住 Alt 滚动',
+      );
+    }
+  });
+
+  test('macOS：Alt 写成 ⌥，F1 / F5 / F11 换成 Mac 上的默认键', () {
+    const cases = {
+      'Alt+L 复制成新图层': '⌥L 复制成新图层',
+      'Alt + 点击设置来源': '⌥ + 点击设置来源',
+      '按住 Alt 滚动滚轮': '按住 ⌥ 滚动滚轮',
+      'Alt+←/→ 历史': '⌥←/→ 历史',
+      'Alt+click': '⌥+click',
+      'Alternative': 'Alternative',
+      'Ctrl+, 打开设置': '⌘, 打开设置',
+      // 后面是鼠标动作时留着加号
+      'Ctrl+scroll to zoom': '⌘+scroll to zoom',
+      'Ctrl+drag across a phrase': '⌘+drag across a phrase',
+      'Ctrl+滚轮缩放': '⌘+滚轮缩放',
+      '按 F1 查看全部快捷键': '按 ⌘/ 查看全部快捷键',
+      'F5 刷新画廊': '⌘R 刷新画廊',
+      '全屏（F11）': '全屏（⌃⌘F）',
+      'Press F1 to see shortcuts': 'Press ⌘/ to see shortcuts',
+    };
+    for (final MapEntry(key: text, value: want) in cases.entries) {
+      expect(platformShortcutText(text, platform: mac), want, reason: text);
     }
   });
 

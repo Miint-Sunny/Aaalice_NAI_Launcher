@@ -1,24 +1,32 @@
 import 'package:flutter/foundation.dart';
 
+import '../shortcuts/default_shortcuts.dart';
 import '../shortcuts/shortcut_config.dart';
 
 /// 界面文案里写的 Ctrl 快捷键，macOS 上按规范换成 ⌘ 的写法；其他平台原样。
 ///
 /// Ctrl+Shift+Space → ⇧⌘Space，Ctrl+Enter → ⌘Enter，Ctrl+单击 / Ctrl+click → ⌘+单击 / ⌘+click。
+/// 后面跟的是一个键时连写，跟的是鼠标动作（单击、拖选、scroll）时留着加号。
+/// Alt 是 Mac 的 Option：Alt+L → ⌥L，按住 Alt → 按住 ⌥。F 键在 Mac 上要按 fn，文案里的 F1、F5、F11
+/// 换成 Mac 上的默认键（快捷键帮助 ⌘/、刷新 ⌘R、全屏 ⌃⌘F，见 DefaultShortcuts.macOverrides）。
 /// 文案本身（ARB）不动，调用处套一层即可。
 String platformShortcutText(String text, {TargetPlatform? platform}) {
   if (!_isMac(platform)) return text;
   return text
+      .replaceAllMapped(RegExp('Ctrl\\+Shift\\+$_keyAhead'), (_) => '⇧⌘')
+      .replaceAllMapped(RegExp('Ctrl\\+$_keyAhead'), (_) => '⌘')
+      .replaceAll('Ctrl', '⌘')
+      .replaceAllMapped(RegExp('\\bAlt\\+$_keyAhead'), (_) => '⌥')
+      .replaceAll(RegExp(r'\bAlt\b'), '⌥')
       .replaceAllMapped(
-        RegExp(r'Ctrl\+Shift\+(?![Cc]lick)(?=[A-Za-z0-9])'),
-        (_) => '⇧⌘',
-      )
-      .replaceAllMapped(
-        RegExp(r'Ctrl\+(?![Cc]lick)(?=[A-Za-z0-9])'),
-        (_) => '⌘',
-      )
-      .replaceAll('Ctrl', '⌘');
+        RegExp(r'\bF(?:1|5|11)\b'),
+        (m) => _macFunctionKeys[m[0]]!,
+      );
 }
+
+// 加号后面是一个键：单个字母 / 数字 / 符号，或者 Enter、Space 这类键名
+const _keyAhead =
+    r'(?=(?:[A-Za-z0-9,./←→↑↓](?![A-Za-z])|Enter|Space|Tab|Esc|Backspace|Delete))';
 
 /// 键帽上的一个键名按平台写：macOS 用 Mac 键盘符号（⌘ ⌥ ⇧ ⌃ ⏎ ⎋ ⌫……），其他平台原样。
 ///
@@ -71,6 +79,19 @@ bool _isKeyName(String key) =>
     key.runes.length == 1 || _macKeyLabels.containsKey(key.toLowerCase());
 
 const _macModifiers = ['⌃', '⌥', '⇧', '⌘'];
+
+// 文案里提到的 F 键 → Mac 上同一个动作的默认键
+final _macFunctionKeys = {
+  for (final (key, id) in [
+    ('F1', ShortcutIds.showShortcutHelp),
+    ('F5', ShortcutIds.refreshGallery),
+    ('F11', ShortcutIds.toggleFullscreen),
+  ])
+    key: platformKeysText(
+      DefaultShortcuts.macOverrides[id]!.$2.split('+'),
+      platform: TargetPlatform.macOS,
+    ),
+};
 
 // 键名（小写）→ Mac 写法。特殊键的符号见 ShortcutKey.macLabel
 final _macKeyLabels = {

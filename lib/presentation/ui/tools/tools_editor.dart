@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../gen/gen_parts.dart';
 import '../kit/ui_colors.dart';
@@ -1011,7 +1012,7 @@ class _Status extends StatelessWidget {
           ),
           Expanded(
             child: Text(
-              l.tools_statusHint,
+              platformShortcutText(l.tools_statusHint),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: style,

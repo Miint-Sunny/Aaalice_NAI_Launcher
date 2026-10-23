@@ -22,6 +22,7 @@ import '../../../core/tag_expansion/tag_expansion_providers.dart';
 import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/tag_normalizer.dart';
 import '../../../core/wiki/tag_wiki_repository.dart';
 import '../../../core/wiki/auto_tag_translation_controller.dart';
@@ -3217,7 +3218,7 @@ class _TagWikiScreenState extends ConsumerState<_TagWikiContents> {
                 _readingLanguage(refreshDialog: () => update(() {})),
                 const SizedBox(height: 13),
                 Text(
-                  context.l10n.wiki_shortcutsHint,
+                  platformShortcutText(context.l10n.wiki_shortcutsHint),
                   style: TextStyle(
                     fontSize: 11,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
