@@ -54,6 +54,10 @@ String platformShortcutLabel(String text, {TargetPlatform? platform}) {
   return listEquals(labels, keys) ? text : labels.join();
 }
 
+/// 列表里「删除」键的写法（见 isListDeleteKey）：macOS 上是 ⌘⌫，其他平台是 Del。
+String listDeleteKeyLabel({TargetPlatform? platform}) =>
+    _isMac(platform) ? '⌘⌫' : 'Del';
+
 /// 一组键写成一行（「默认是 …」这类说明里用）：macOS 上连写（⇧⌘M），其他平台用 + 连接。
 String platformKeysText(List<String> keys, {TargetPlatform? platform}) =>
     _isMac(platform)

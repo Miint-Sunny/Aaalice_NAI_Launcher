@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -571,7 +572,7 @@ List<UiMenuItem> refsEntryMenu(BuildContext context, RefsEntry e) {
     UiMenuItem(
       glyph: UiGlyphs.trash,
       label: l10n.refs_delete,
-      trailing: 'Del',
+      trailing: listDeleteKeyLabel(),
       danger: true,
       divider: true,
       onTap: () => ctrl.confirmDelete([e.key]),

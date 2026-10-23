@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'desktop_platform.dart';
@@ -20,3 +21,11 @@ class PrimaryActivator extends SingleActivator {
   @override
   bool get meta => usesMacOSConventions;
 }
+
+/// 粘贴键：Ctrl+V，Windows 上 Win+V 也算（照旧）；macOS 上只认 ⌘V，
+/// Control+V 留给文本框（Mac 文本框里是向下翻页）。
+Map<ShortcutActivator, Intent> pasteShortcuts(Intent intent) => {
+  const PrimaryActivator(LogicalKeyboardKey.keyV): intent,
+  if (!usesMacOSConventions)
+    const SingleActivator(LogicalKeyboardKey.keyV, meta: true): intent,
+};

@@ -241,6 +241,37 @@ void main() {
       expect(find.byKey(const Key('block-edit')), findsOneWidget);
     });
 
+    testWidgets('macOS：⌘⌫ 删除确认、菜单写 ⌘⌫；⌃⌘F（系统全屏）不聚焦搜索', (t) async {
+      await lib(t);
+      await key(t, LogicalKeyboardKey.arrowRight);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      expect(await t.sendKeyEvent(LogicalKeyboardKey.keyF), false);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<EditableText>(),
+        isNull,
+      );
+      await key(t, LogicalKeyboardKey.backspace);
+      expect(find.byKey(const Key('blocks-delete')), findsNothing);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await t.pumpAndSettle();
+      expect(find.byKey(const Key('blocks-delete')), findsOneWidget);
+      await tapKey(t, 'blocks-delete-cancel');
+      // 右键菜单里「复制一份」「删除」的快捷键字写 Mac 写法
+      await t.tapAt(
+        t.getCenter(find.byKey(const Key('blocks-card-cy'))),
+        buttons: 2,
+      );
+      await t.pumpAndSettle();
+      expect(find.text('⌘D'), findsOneWidget);
+      expect(find.text('⌘⌫'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('Ctrl+N 新建、/ 聚焦搜索', (t) async {
       await lib(t);
       await key(t, LogicalKeyboardKey.slash);

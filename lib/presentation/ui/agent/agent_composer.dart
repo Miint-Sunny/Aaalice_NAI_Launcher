@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/primary_activator.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_lib_controls.dart';
 import '../kit/ui_popover.dart';
@@ -422,12 +423,7 @@ class AgentComposerState extends State<AgentComposer> {
                     ),
                   ),
                 Shortcuts(
-                  shortcuts: const {
-                    SingleActivator(LogicalKeyboardKey.keyV, control: true):
-                        _PasteIntent(),
-                    SingleActivator(LogicalKeyboardKey.keyV, meta: true):
-                        _PasteIntent(),
-                  },
+                  shortcuts: pasteShortcuts(const _PasteIntent()),
                   child: Actions(
                     actions: {
                       _PasteIntent: CallbackAction<_PasteIntent>(

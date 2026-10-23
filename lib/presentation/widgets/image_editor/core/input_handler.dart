@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../core/utils/desktop_platform.dart';
 import '../../../../core/utils/keyboard_modifier_utils.dart';
 import 'editor_state.dart';
 
@@ -656,9 +655,3 @@ class InputHandler {
   /// 获取当前光标位置
   Offset? get cursorPosition => gesture.cursorPosition;
 }
-
-/// 主修饰键本身：macOS 上是 ⌘，其他平台是 Ctrl（同 [isPrimarySelectionModifierPressed]）。
-bool isPrimaryModifierKey(LogicalKeyboardKey key) => usesMacOSConventions
-    ? key == LogicalKeyboardKey.metaLeft || key == LogicalKeyboardKey.metaRight
-    : key == LogicalKeyboardKey.controlLeft ||
-          key == LogicalKeyboardKey.controlRight;
