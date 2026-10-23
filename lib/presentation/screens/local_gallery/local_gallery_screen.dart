@@ -72,6 +72,7 @@ import '../../widgets/gallery/local_gallery_toolbar.dart';
 import '../../widgets/gallery/local_image_context_menu.dart';
 import '../../widgets/gallery/timeline/gallery_timeline_view.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
+import '../../widgets/shortcuts/page_focus.dart';
 import '../../widgets/shortcuts/shortcut_aware_widget.dart';
 
 /// 本地画廊屏幕：侧栏 / 连续时间线 / 右侧详情三栏。
@@ -903,6 +904,8 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
 
   void _handleKeyEvent(KeyEvent event, BulkOperationState bulkOpState) {
     if (event is! KeyDownEvent) return;
+    // 在输入框里打字时，撤销 / 重做归输入框，不能顺带撤掉上一次批量移动、删除
+    if (isEditableTextFocused()) return;
 
     // 主修饰键：macOS 上是 ⌘（⌘Z / ⇧⌘Z），其他平台是 Ctrl
     if (!isPrimaryShortcutModifierPressed()) return;

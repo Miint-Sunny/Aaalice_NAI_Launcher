@@ -309,6 +309,74 @@ void main() {
   }
 
   testWidgets(
+    'typing in the search box keeps undo / redo in the field: bulk operations are not undone',
+    (tester) async {
+      final bulk = _RecordingBulkOperations();
+      final container = await _pumpScreen(
+        tester,
+        records: records,
+        dimensions: dimensions,
+        locale: const Locale('zh'),
+        dark: false,
+        size: const Size(1600, 1000),
+        extraOverrides: [
+          bulkOperationNotifierProvider.overrideWith(() => bulk),
+        ],
+      );
+      // 主修饰键：macOS 上是 ⌘，其他平台是 Ctrl
+      final primary = defaultTargetPlatform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+      Future<void> press(
+        List<LogicalKeyboardKey> modifiers,
+        LogicalKeyboardKey key,
+      ) async {
+        for (final m in modifiers) {
+          await tester.sendKeyDownEvent(m);
+        }
+        await tester.sendKeyEvent(key);
+        for (final m in modifiers.reversed) {
+          await tester.sendKeyUpEvent(m);
+        }
+        await _settle(tester, rounds: 4);
+      }
+
+      final search = find.byWidgetPredicate(
+        (w) => w is TextField && w.focusNode?.debugLabel == 'gallery-search',
+      );
+      await tester.tap(search);
+      await _settle(tester, rounds: 4);
+      await tester.enterText(search, 'cat');
+      await _settle(tester, rounds: 4);
+      expect(FocusManager.instance.primaryFocus?.debugLabel, 'gallery-search');
+
+      // 打字时的撤销 / 重做只管输入框里的字，不能顺带撤掉上一次批量移动、删除
+      await press([primary], LogicalKeyboardKey.keyZ);
+      await press([
+        primary,
+        LogicalKeyboardKey.shiftLeft,
+      ], LogicalKeyboardKey.keyZ);
+      await press([primary], LogicalKeyboardKey.keyY);
+      expect(bulk.calls, isEmpty);
+
+      // 离开输入框后，图库的撤销照旧
+      FocusManager.instance.primaryFocus!.unfocus();
+      await _settle(tester, rounds: 4);
+      await press([primary], LogicalKeyboardKey.keyZ);
+      expect(bulk.calls, ['undo']);
+
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      await tester.pump(const Duration(minutes: 1));
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets(
     'primary+Z undoes, primary+Shift+Z and primary+Y redo bulk operations from the page focus',
     (tester) async {
       final bulk = _RecordingBulkOperations();
