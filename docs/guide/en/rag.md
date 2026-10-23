@@ -43,5 +43,5 @@ You can pause indexing at any time; completed parts are usable immediately. New 
 - **Initial indexing is slow**: The tag database has hundreds of thousands of entries, and a gallery may have tens of thousands of images. The first run takes time; you can pause and resume.
 - **Progress does not move during preparation**: Loading models and existing indexes takes time. Please wait.
 - **Can I use it without an NVIDIA GPU?** Yes, with CPU, though it will be slower.
-- **Does it work on a Mac?** On Apple silicon, yes: with the device set to Auto it runs on the Mac's GPU, with the same results as on the CPU. Intel Macs aren't supported, because PyTorch no longer makes builds for them.
+- **Does it work on a Mac?** On Apple silicon, yes. With the device set to Auto it runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less (the GPU is faster but needs about 1.5 times the memory). Both give the same results, and you can pick CPU yourself. Intel Macs aren't supported, because PyTorch no longer makes builds for them.
 - **Will it send my images anywhere?** No. Network access is needed only to download models and the runtime.

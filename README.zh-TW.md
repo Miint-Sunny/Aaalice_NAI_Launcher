@@ -53,7 +53,7 @@ Windows 的兩個版本都支援應用程式內更新。你的設定、圖庫資
 - **更新**：應用程式內下載並校驗新版本後，會在 Finder 中選取它。按 `⌘Q` 結束舊版本，把新版本拖進「應用程式」取代即可。
 - **資料位置**：設定、資料庫和 Agent 資料在 `~/Library/Application Support/com.wof.naiStudio/`，取代 App 不會刪除它們。
 - **快速鍵**：快速鍵裡的 `Ctrl` 在 Mac 上換成 `⌘`，快速鍵列表用 `⌘/` 打開。
-- **本機語義檢索（RAG）**：需要 Apple 晶片的 Mac，執行裝置選「自動」時會使用 Mac 的 GPU。Intel 晶片的 Mac 無法使用：PyTorch 已不再提供 Intel Mac 的版本。
+- **本機語義檢索（RAG）**：需要 Apple 晶片的 Mac。執行裝置選「自動」時，記憶體 18 GB 以上的 Mac 使用 GPU，16 GB 以下使用 CPU。Intel 晶片的 Mac 無法使用：PyTorch 已不再提供 Intel Mac 的版本。
 - **暫不支援**：本機放大（Real-ESRGAN、NVIDIA RTX Video、SeedVR2）目前只有 Windows 版。NovelAI 雲端放大照常可用。
 
 ## 三步上手

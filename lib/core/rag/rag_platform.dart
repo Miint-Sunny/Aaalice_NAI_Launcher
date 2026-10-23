@@ -1,6 +1,7 @@
-import 'dart:ffi' show Abi;
+import 'dart:ffi';
 import 'dart:io' show Platform;
 
+import 'package:ffi/ffi.dart';
 import 'package:path/path.dart' as p;
 
 /// The machine the local RAG runtime is installed on and runs from.
@@ -37,4 +38,40 @@ enum RagPlatform {
   String managedPython(String root) => this == windows
       ? p.join(root, 'runtime', 'Scripts', 'python.exe')
       : p.join(root, 'runtime', 'bin', 'python3');
+}
+
+/// Total physical memory of this Mac in bytes (`hw.memsize`, read with
+/// sysctlbyname). Null on other systems or when it cannot be read.
+int? readMacPhysicalMemory() {
+  if (!Platform.isMacOS) return null;
+  try {
+    final sysctl = DynamicLibrary.process()
+        .lookupFunction<
+          Int Function(
+            Pointer<Utf8>,
+            Pointer<Void>,
+            Pointer<Size>,
+            Pointer<Void>,
+            Size,
+          ),
+          int Function(
+            Pointer<Utf8>,
+            Pointer<Void>,
+            Pointer<Size>,
+            Pointer<Void>,
+            int,
+          )
+        >('sysctlbyname');
+    return using((arena) {
+      final value = arena<Uint64>();
+      final length = arena<Size>()..value = sizeOf<Uint64>();
+      final name = 'hw.memsize'.toNativeUtf8(allocator: arena);
+      final ok = sysctl(name, value.cast(), length, nullptr, 0) == 0;
+      return ok && length.value == sizeOf<Uint64>() && value.value > 0
+          ? value.value
+          : null;
+    });
+  } catch (_) {
+    return null;
+  }
 }

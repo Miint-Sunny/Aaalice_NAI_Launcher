@@ -192,6 +192,13 @@ final ragTagSemanticsPathsProvider =
 /// The host machine; tests override it to take the Windows or macOS path.
 final ragPlatformProvider = Provider<RagPlatform>((ref) => RagPlatform.host);
 
+/// A Mac's memory decides what "auto" means there (RagSettings.deviceOn);
+/// tests override it. Null when unknown, which counts as the CPU.
+final ragPhysicalMemoryProvider = Provider<int?>(
+  (ref) =>
+      ref.watch(ragPlatformProvider).isMacOS ? readMacPhysicalMemory() : null,
+);
+
 final ragRuntimeProbeFactoryProvider = Provider<RagRuntimeProbe Function()>(
   (ref) =>
       () => RagRuntimeProbe(platform: ref.read(ragPlatformProvider)),
@@ -399,7 +406,12 @@ class RagController extends Notifier<RagStatus> {
           {
             'embedding': settings.embedding,
             'reranker': settings.reranker,
-            'device': settings.deviceOn(platform).name,
+            'device': settings
+                .deviceOn(
+                  platform,
+                  memoryBytes: ref.read(ragPhysicalMemoryProvider),
+                )
+                .name,
             'directory': p.join(root.path, 'indices'),
             'catalog': paths.catalog,
             'runtime': paths.runtime,

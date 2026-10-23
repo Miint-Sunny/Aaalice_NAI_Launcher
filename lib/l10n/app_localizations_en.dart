@@ -19330,7 +19330,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get set_rgInstallHintMac =>
-      'Downloads Python and inference packages (about 200 MB), not model weights. Needs a Mac with Apple silicon; Auto runs on the Mac\'s GPU.';
+      'Downloads Python and inference packages (about 200 MB), not model weights. Needs a Mac with Apple silicon. Auto runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less.';
 
   @override
   String get set_rgPythonSubMac =>

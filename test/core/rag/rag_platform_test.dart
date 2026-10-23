@@ -27,19 +27,50 @@ void main() {
     }
   });
 
-  test('only Windows offers CUDA; a Mac sends a saved cuda as auto', () {
+  test('Windows sends the chosen device as it is, whatever the memory', () {
     expect(RagPlatform.windows.supportsCuda, isTrue);
+    for (final device in RagDevice.values) {
+      for (final memory in [null, 8 << 30, 96 << 30]) {
+        expect(
+          RagSettings(
+            device: device,
+          ).deviceOn(RagPlatform.windows, memoryBytes: memory),
+          device,
+        );
+      }
+    }
+  });
+
+  test('a Mac runs auto on the GPU only with 18 GB of memory or more', () {
     expect(RagPlatform.macOSArm64.supportsCuda, isFalse);
     expect(RagPlatform.macOSX64.supportsCuda, isFalse);
-    const cuda = RagSettings(device: RagDevice.cuda);
-    expect(cuda.deviceOn(RagPlatform.windows), RagDevice.cuda);
-    expect(cuda.deviceOn(RagPlatform.macOSArm64), RagDevice.auto);
-    for (final device in [RagDevice.auto, RagDevice.cpu]) {
-      expect(
-        RagSettings(device: device).deviceOn(RagPlatform.macOSArm64),
-        device,
-      );
+    RagDevice on(RagDevice device, int? memory) => RagSettings(
+      device: device,
+    ).deviceOn(RagPlatform.macOSArm64, memoryBytes: memory);
+    for (final (memory, expected) in [
+      (8 << 30, RagDevice.cpu),
+      (16 << 30, RagDevice.cpu),
+      (null, RagDevice.cpu),
+      (18 << 30, RagDevice.auto),
+      (24 << 30, RagDevice.auto),
+      (96 << 30, RagDevice.auto),
+    ]) {
+      expect(on(RagDevice.auto, memory), expected, reason: '$memory');
+      // No CUDA on a Mac: a saved cuda follows the same rule as auto.
+      expect(on(RagDevice.cuda, memory), expected, reason: '$memory');
+      // A device chosen by hand is never moved.
+      expect(on(RagDevice.cpu, memory), RagDevice.cpu);
     }
+  });
+
+  test('reads the memory of this Mac and nothing elsewhere', () async {
+    final memory = readMacPhysicalMemory();
+    if (!Platform.isMacOS) {
+      expect(memory, isNull);
+      return;
+    }
+    final sysctl = await Process.run('/usr/sbin/sysctl', ['-n', 'hw.memsize']);
+    expect(memory, int.parse('${sysctl.stdout}'.trim()));
   });
 
   test('uv is pinned per platform; Intel Macs have no runtime', () {

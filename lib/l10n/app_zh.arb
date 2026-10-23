@@ -10193,7 +10193,7 @@
   "set_rgInstallHint": "下载 Python 与推理依赖，不下载模型权重。NVIDIA 显卡选 CUDA（约需数 GB）；其他选 CPU，下载较小。",
   "set_rgInstallCuda": "CUDA · NVIDIA",
   "set_rgInstallCpu": "CPU",
-  "set_rgInstallHintMac": "下载 Python 与推理依赖（约 200 MB），不下载模型权重。需要 Apple 芯片的 Mac，“自动”会用 Mac 的 GPU。",
+  "set_rgInstallHintMac": "下载 Python 与推理依赖（约 200 MB），不下载模型权重。需要 Apple 芯片的 Mac。“自动”在内存 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。",
   "set_rgPythonSubMac": "默认用自动安装的独立环境；也可以选一个已有的 python3。",
   "set_rgNeedsAppleSilicon": "需要 Apple 芯片的 Mac。PyTorch 已不再提供 Intel 芯片 Mac 的版本，这台 Mac 装不了运行环境。",
   "set_rgEnvUnsupported": "不支持",

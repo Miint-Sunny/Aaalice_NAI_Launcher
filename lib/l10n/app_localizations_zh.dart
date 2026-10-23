@@ -18529,7 +18529,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get set_rgInstallHintMac =>
-      '下载 Python 与推理依赖（约 200 MB），不下载模型权重。需要 Apple 芯片的 Mac，“自动”会用 Mac 的 GPU。';
+      '下载 Python 与推理依赖（约 200 MB），不下载模型权重。需要 Apple 芯片的 Mac。“自动”在内存 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。';
 
   @override
   String get set_rgPythonSubMac => '默认用自动安装的独立环境；也可以选一个已有的 python3。';
@@ -39552,7 +39552,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get set_rgInstallHintMac =>
-      '下載 Python 與推理依賴（約 200 MB），不下載模型權重。需要 Apple 晶片的 Mac，“自動”會用 Mac 的 GPU。';
+      '下載 Python 與推理依賴（約 200 MB），不下載模型權重。需要 Apple 晶片的 Mac。“自動”在記憶體 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。';
 
   @override
   String get set_rgPythonSubMac => '預設用自動安裝的獨立環境；也可以選一個已有的 python3。';

@@ -10193,7 +10193,7 @@
   "set_rgInstallHint": "Python と推論依存をダウンロードします（モデルの重みは含みません）。NVIDIA なら CUDA（数 GB）、それ以外は小さい CPU 版。",
   "set_rgInstallCuda": "CUDA · NVIDIA",
   "set_rgInstallCpu": "CPU",
-  "set_rgInstallHintMac": "Python と推論依存をダウンロードします（約 200 MB、モデルの重みは含みません）。Apple シリコンの Mac が必要で、「自動」では Mac の GPU を使います。",
+  "set_rgInstallHintMac": "Python と推論依存をダウンロードします（約 200 MB、モデルの重みは含みません）。Apple シリコンの Mac が必要です。「自動」は、メモリ 18 GB 以上の Mac では GPU、16 GB 以下では CPU を使います。",
   "set_rgPythonSubMac": "既定は自動インストールの独立環境。既存の python3 も選べます。",
   "set_rgNeedsAppleSilicon": "Apple シリコンの Mac が必要です。PyTorch は Intel Mac 向けの版を提供していないため、この Mac には実行環境をインストールできません。",
   "set_rgEnvUnsupported": "非対応",

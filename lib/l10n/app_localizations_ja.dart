@@ -18753,7 +18753,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get set_rgInstallHintMac =>
-      'Python と推論依存をダウンロードします（約 200 MB、モデルの重みは含みません）。Apple シリコンの Mac が必要で、「自動」では Mac の GPU を使います。';
+      'Python と推論依存をダウンロードします（約 200 MB、モデルの重みは含みません）。Apple シリコンの Mac が必要です。「自動」は、メモリ 18 GB 以上の Mac では GPU、16 GB 以下では CPU を使います。';
 
   @override
   String get set_rgPythonSubMac => '既定は自動インストールの独立環境。既存の python3 も選べます。';
