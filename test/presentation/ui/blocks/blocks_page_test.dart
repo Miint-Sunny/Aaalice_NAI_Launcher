@@ -415,6 +415,22 @@ void main() {
       expect(rec.calls, ['select:pk']);
       expect(find.byKey(const Key('blocks-selection-bar')), findsOneWidget);
     });
+
+    testWidgets('macOS：⌘ 单击进多选；Control 单击只是选中', (t) async {
+      await lib(t, data: view(v: BlocksView.list));
+      // Mac 上 Control+点击是右键的意思，按普通单击处理
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tapKey(t, 'blocks-row-sy');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      expect(rec.calls, ['select:sy']);
+      expect(find.byKey(const Key('blocks-selection-bar')), findsNothing);
+
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tapKey(t, 'blocks-row-pf');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      expect(rec.calls, ['select:sy']);
+      expect(find.byKey(const Key('blocks-selection-bar')), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   });
 
   group('编辑块', () {

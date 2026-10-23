@@ -19,6 +19,7 @@ import '../../providers/share_image_settings_provider.dart';
 import '../../providers/image_generation_provider.dart';
 import '../../themes/theme_extension.dart';
 import '../../utils/clipboard_image.dart';
+import '../../utils/selection_modifiers.dart';
 import 'pro_context_menu.dart';
 import 'image_action_menu.dart';
 import 'app_toast.dart';
@@ -1270,10 +1271,8 @@ class _SelectableImageCardState extends ConsumerState<SelectableImageCard>
     );
   }
 
-  bool get _isMultiSelectModifierPressed {
-    final keyboard = HardwareKeyboard.instance;
-    return keyboard.isControlPressed || keyboard.isMetaPressed;
-  }
+  // macOS 上只认 ⌘：Control+点击在 Mac 上是右键的意思
+  bool get _isMultiSelectModifierPressed => isSelectionModifierPressed();
 
   void _handleLegacyTap() {
     final bypassDebounce =

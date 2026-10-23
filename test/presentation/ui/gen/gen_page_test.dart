@@ -631,6 +631,21 @@ void main() {
       expect(find.text('已选 4 张'), findsOneWidget);
     });
 
+    testWidgets('macOS：⌘+点击进多选；Control+点击按普通点击切批', (t) async {
+      await pump(t);
+      // Mac 上 Control+点击是右键的意思，按普通点击处理
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tapKey(t, 'gen-batch-tile-b2');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      expect(r.last('onFocusBatch'), 'onFocusBatch(b2)');
+      expect(find.byKey(const Key('gen-history-selection')), findsNothing);
+
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tapKey(t, 'gen-batch-tile-b3');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      expect(find.text('已选 4 张'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('右键菜单：发送到图生图、移除', (t) async {
       await pump(t);
       await t.tap(

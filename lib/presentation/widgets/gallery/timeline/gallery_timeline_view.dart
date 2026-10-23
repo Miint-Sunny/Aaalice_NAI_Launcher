@@ -20,6 +20,7 @@ import '../../../providers/canvas_settings_provider.dart';
 import '../../../providers/local_gallery_focus_provider.dart';
 import '../../../providers/local_gallery_provider.dart';
 import '../../../providers/selection_mode_provider.dart';
+import '../../../utils/selection_modifiers.dart';
 import '../draggable_image_card.dart';
 import '../gallery_state_views.dart';
 import '../local_image_card.dart';
@@ -97,6 +98,7 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
   @override
   void initState() {
     super.initState();
+    PointerDownModifiers.ensureInstalled(); // 见 _handleTap
     widget.controller?._state = this;
     _scroll.addListener(_onScroll);
   }
@@ -204,9 +206,9 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
       localGallerySelectionNotifierProvider.notifier,
     );
     final focusNotifier = ref.read(localGalleryFocusNotifierProvider.notifier);
-    final keyboard = HardwareKeyboard.instance;
-    final isCtrl = keyboard.isControlPressed || keyboard.isMetaPressed;
-    final isShift = keyboard.isShiftPressed;
+    // 读按下那一刻的修饰键：点得快时 Ctrl / ⌘、Shift 会比鼠标键先松开（macOS 上多选只认 ⌘）
+    final isCtrl = PointerDownModifiers.selection;
+    final isShift = PointerDownModifiers.shift;
     _focusNode.requestFocus();
 
     if (isShift) {

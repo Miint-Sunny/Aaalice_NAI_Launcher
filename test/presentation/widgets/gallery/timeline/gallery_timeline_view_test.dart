@@ -2,6 +2,7 @@
 import 'package:irondash_message_channel/irondash_message_channel.dart';
 // ignore: implementation_imports, depend_on_referenced_packages
 import 'package:super_native_extensions/src/native/context.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -199,6 +200,63 @@ void main() {
     expect(selection().isActive, isFalse);
     await dispose(tester);
   });
+
+  testWidgets('macOS: Cmd+tap starts multi-select, Control+tap only focuses', (
+    tester,
+  ) async {
+    await pumpView(tester);
+
+    // Control+click means a right click on macOS; treat it as a plain tap.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(card(0));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(selection().isActive, isFalse);
+    expect(focused(), records[0].path);
+
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.tap(card(3));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pump();
+    expect(selection().isActive, isTrue);
+    expect(selection().selectedIds, {records[0].path, records[3].path});
+    await dispose(tester);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets(
+    'modifiers are read when the button goes down, not when it comes up',
+    (tester) async {
+      await pumpView(tester);
+      final modifier = defaultTargetPlatform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+
+      // A quick click often lets go of the modifier before the button.
+      await tester.sendKeyDownEvent(modifier);
+      final gesture = await tester.startGesture(tester.getCenter(card(2)));
+      await tester.sendKeyUpEvent(modifier);
+      await gesture.up();
+      await tester.pump();
+      expect(selection().isActive, isTrue);
+      expect(selection().selectedIds, {records[2].path});
+
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      final range = await tester.startGesture(tester.getCenter(card(4)));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await range.up();
+      await tester.pump();
+      expect(selection().selectedIds, {
+        for (var i = 2; i <= 4; i++) records[i].path,
+      });
+      await dispose(tester);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets('Shift+tap selects the range from the focused image', (
     tester,

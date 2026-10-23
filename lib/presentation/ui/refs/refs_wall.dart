@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/selection_modifiers.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -178,7 +179,7 @@ class _RefsCardState extends State<RefsCard> {
     final ctrl = scope.controller;
     final hw = HardwareKeyboard.instance;
     if (hw.isShiftPressed) return ctrl.pickRange(e.key);
-    if (hw.isControlPressed || hw.isMetaPressed || ctrl.picking) {
+    if (isSelectionModifierPressed(keyboard: hw) || ctrl.picking) {
       return ctrl.togglePick(e.key);
     }
     final now = DateTime.now();

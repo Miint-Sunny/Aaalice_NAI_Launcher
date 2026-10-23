@@ -115,6 +115,22 @@ void main() {
       expect(rec.adds.single.$2, isFalse);
     });
 
+    testWidgets('macOS：⌘+单击进多选；Control+单击按普通单击选中', (t) async {
+      await pump(t);
+      // Mac 上 Control+点击是右键的意思，按普通点击处理
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tapKey(t, 'refs-card-c13');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      expect(rec.calls, contains('select:c13'));
+      expect(key('refs-selection-bar'), findsNothing);
+
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tapKey(t, 'refs-card-c15');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      expect(key('refs-selection-bar'), findsOneWidget);
+      expect(find.text('已选 1'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('悬停条“加入生图”', (t) async {
       await pump(t);
       await hoverOver(t, key('refs-card-c13'));

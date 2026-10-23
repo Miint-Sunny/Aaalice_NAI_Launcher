@@ -462,6 +462,54 @@ void main() {
     expect(windowCalls, isNot(contains('startDragging')));
   });
 
+  testWidgets(
+    'search field: Cmd+A selects all on macOS, Control+A goes to line start',
+    (tester) async {
+      await _pumpToolbar(tester);
+      final field = find.byKey(const Key('gallery-search-field'));
+      await tester.enterText(field, 'blue hair');
+      await tester.pump();
+      final controller = tester.widget<TextField>(field).controller!;
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.pump();
+      expect(
+        controller.selection,
+        const TextSelection(baseOffset: 0, extentOffset: 9),
+      );
+
+      // On macOS Control+A is the text field's "move to line start".
+      controller.selection = const TextSelection.collapsed(offset: 9);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pump();
+      expect(controller.selection, const TextSelection.collapsed(offset: 0));
+      await tester.pump(const Duration(milliseconds: 400));
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
+
+  testWidgets('search field: Ctrl+A selects all on Windows', (tester) async {
+    await _pumpToolbar(tester);
+    final field = find.byKey(const Key('gallery-search-field'));
+    await tester.enterText(field, 'blue hair');
+    await tester.pump();
+    final controller = tester.widget<TextField>(field).controller!;
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+    expect(
+      controller.selection,
+      const TextSelection(baseOffset: 0, extentOffset: 9),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   testWidgets('Ctrl+click selects a local tag as a gallery filter chip', (
     tester,
   ) async {
