@@ -15,6 +15,7 @@
 <p align="center">
   <a href="https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest"><img src="https://img.shields.io/github/v/release/z15087716457-stack/W.O.F_NAI_Launcher?label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C&color=2f80ed" alt="다운로드"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20x64-0078D4?logo=windows11&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/macOS-12%2B%20%C2%B7%20Apple%20%EC%8B%A4%EB%A6%AC%EC%BD%98%20%2F%20Intel-000000?logo=apple&logoColor=white" alt="macOS">
   <img src="https://img.shields.io/badge/%EC%9D%B8%ED%84%B0%ED%8E%98%EC%9D%B4%EC%8A%A4%20%EC%96%B8%EC%96%B4-%E7%AE%80%E4%B8%AD%20%2F%20%E7%B9%81%E4%B8%AD%20%2F%20EN%20%2F%20%E6%97%A5%E6%9C%AC%E8%AA%9E%20%2F%20%ED%95%9C%EA%B5%AD%EC%96%B4-555" alt="5가지 인터페이스 언어">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
 </p>
@@ -23,22 +24,36 @@
   <img src="docs/images/readme/en/hero.webp" alt="W.O.F NAI Studio 이미지 생성 페이지" width="100%">
 </p>
 
-W.O.F NAI Studio는 Windows 데스크톱용 NovelAI 서드파티 클라이언트입니다. 단순히 공식 사이트를 데스크톱으로 옮긴 것이 아닙니다. 자주 쓰는 프롬프트를 **블록**으로 저장해 반복 사용하고, **화풍 유전**으로 작가 조합을 세대별로 골라낼 수 있습니다. 이해하기 어려운 태그는 **번역, 태그 백과, 로컬 시맨틱 검색**으로 알아볼 수 있으며, 생성·정리·이미지 편집 같은 자잘한 작업은 내장 **NAI Agent**에 맡길 수 있습니다.
+W.O.F NAI Studio는 Windows와 macOS 데스크톱용 NovelAI 서드파티 클라이언트입니다. 단순히 공식 사이트를 데스크톱으로 옮긴 것이 아닙니다. 자주 쓰는 프롬프트를 **블록**으로 저장해 반복 사용하고, **화풍 유전**으로 작가 조합을 세대별로 골라낼 수 있습니다. 이해하기 어려운 태그는 **번역, 태그 백과, 로컬 시맨틱 검색**으로 알아볼 수 있으며, 생성·정리·이미지 편집 같은 자잘한 작업은 내장 **NAI Agent**에 맡길 수 있습니다.
 
 > NovelAI와 무관한 비공식 프로젝트입니다. 본인의 NovelAI 계정을 사용하고 NovelAI 이용약관을 준수하십시오.
 
 ## 다운로드
 
-[Releases](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest)에서 최신 버전을 다운로드합니다. 다음 두 가지 중 하나를 선택합니다.
+[Releases](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest)에서 최신 버전을 다운로드합니다. Windows에서는 위의 두 가지 중 하나를, Mac에서는 macOS 패키지를 선택합니다.
 
 | 파일 | 권장 대상 |
 | --- | --- |
-| `WOF_NAI_Studio_Windows_<버전>_Setup.exe` | **대부분은 이 버전을 선택하면 됩니다.** 현재 사용자 폴더에 설치하며 관리자 권한이 필요하지 않습니다. 시작 메뉴와 바탕 화면 바로 가기를 만듭니다. |
+| `WOF_NAI_Studio_Windows_<버전>_Setup.exe` | **대부분의 Windows 사용자는 이 버전을 선택하면 됩니다.** 현재 사용자 폴더에 설치하며 관리자 권한이 필요하지 않습니다. 시작 메뉴와 바탕 화면 바로 가기를 만듭니다. |
 | `WOF_NAI_Studio_Windows_<버전>_Portable.zip` | 원하는 폴더나 USB에 넣거나 여러 PC 사이에서 가지고 다닐 때 사용합니다. 압축을 푼 뒤 `nai_launcher.exe`를 실행합니다. |
+| `WOF_NAI_Studio_macOS_<버전>_Portable.zip` | **Mac용입니다.** macOS 12 이상, Apple 실리콘과 Intel Mac 모두에서 사용할 수 있습니다. Finder에서 압축을 푼 뒤 `W.O.F NAI Studio`를 “응용 프로그램” 폴더로 드래그합니다. |
 
-두 버전 모두 앱 내 업데이트를 지원합니다. 설정, 갤러리 데이터베이스, Agent 데이터는 프로그램 옆의 `user-data/`와 `agent-data/`에 저장하며, 업그레이드하거나 제거해도 삭제하지 않습니다.
+Windows의 두 버전 모두 앱 내 업데이트를 지원합니다. 설정, 갤러리 데이터베이스, Agent 데이터는 프로그램 옆의 `user-data/`와 `agent-data/`에 저장하며, 업그레이드하거나 제거해도 삭제하지 않습니다.
 
 > 설치 파일에는 아직 코드 서명이 없습니다. 처음 실행할 때 Windows에서 “Windows의 PC 보호”가 표시되면 “추가 정보 → 실행”을 클릭합니다. 각 버전에 SHA-256 체크섬이 함께 제공됩니다.
+
+### macOS
+
+- **처음 열기**: Mac 버전은 Apple의 공증을 받지 않았기 때문에 처음 열 때 시스템이 막습니다. Finder에서 Control 키를 누른 채 앱을 클릭(또는 오른쪽 클릭)하고 “열기”를 선택한 다음, 다시 “열기”를 클릭합니다. macOS 15부터는 앱을 한 번 연 뒤 “시스템 설정 → 개인정보 보호 및 보안” 아래쪽에서 “그래도 열기”를 클릭합니다. “손상되었기 때문에 열 수 없습니다”라고 나오면 “터미널”에서 다음 줄을 실행한 뒤 평소처럼 엽니다.
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/W.O.F NAI Studio.app"
+  ```
+
+- **업데이트**: 앱에서 새 버전을 다운로드하고 확인하면 Finder에서 새 버전이 선택됩니다. `⌘Q`로 이전 버전을 종료하고, 새 버전을 “응용 프로그램”으로 드래그해 바꾸면 됩니다.
+- **데이터 위치**: 설정, 데이터베이스, Agent 데이터는 `~/Library/Application Support/com.wof.naiStudio/`에 있으며, 앱을 바꿔도 삭제되지 않습니다.
+- **단축키**: 단축키의 `Ctrl`은 Mac에서 `⌘`가 되고, 단축키 목록은 `⌘/`로 엽니다.
+- **아직 지원하지 않는 기능**: 로컬 업스케일(Real-ESRGAN, NVIDIA RTX Video, SeedVR2)과 로컬 시맨틱 검색(RAG)은 현재 Windows 버전에서만 사용할 수 있습니다. NovelAI 클라우드 업스케일은 평소처럼 사용할 수 있습니다.
 
 ## 세 단계로 시작하기
 
@@ -152,13 +167,13 @@ W.O.F NAI Studio는 Windows 데스크톱용 NovelAI 서드파티 클라이언트
 
 - **NovelAI 전체 모델**: V1부터 V4.5, V5(Full / Curated), 여러 캐릭터 입력란과 위치 지정, 투명 배경, Anlas 실시간 예상 비용, 높은 비용 경고를 지원합니다.
 - **통계**: 창작 달력, 모델별 생성량, Anlas 소비를 확인하고 차트를 클릭해 해당 날짜의 이미지로 바로 이동합니다.
-- **로컬 브리지**: 외부 스크립트나 AI 도구가 포함된 `studio-bridge.exe`를 통해 파라미터를 읽고 쓸 수 있습니다. 생성 전에는 마찬가지로 견적 승인이 필요합니다. Krita 플러그인 연동도 지원합니다.
-- **단축키**: `F1`로 전체 단축키를 확인하며 모두 사용자 지정할 수 있습니다.
+- **로컬 브리지**: 외부 스크립트나 AI 도구가 포함된 `studio-bridge`(Windows에서는 `studio-bridge.exe`)를 통해 파라미터를 읽고 쓸 수 있습니다. 생성 전에는 마찬가지로 견적 승인이 필요합니다. Krita 플러그인 연동도 지원합니다.
+- **단축키**: `F1`(Mac에서는 `⌘/`)로 전체 단축키를 확인하며 모두 사용자 지정할 수 있습니다.
 - **5가지 인터페이스 언어, 밝은 테마와 어두운 테마**.
 
 ## 개인정보와 네트워크
 
-- 계정 Token과 각 서비스의 API 키는 Windows 시스템 보안 저장소에 저장하며 이 PC에서만 사용합니다.
+- 계정 Token과 각 서비스의 API 키는 시스템 보안 저장소(Windows 보안 저장소, macOS 키체인)에 저장하며 이 컴퓨터에서만 사용합니다.
 - 네트워크는 다음 경우에만 사용합니다. NovelAI API 호출, 직접 설정한 번역 또는 Agent 모델 서비스 사용, 온라인 갤러리 탐색, 업데이트 확인, 직접 다운로드를 선택한 선택 구성요소(시맨틱 검색 모델, 업스케일 모델 등) 설치입니다.
 - 시맨틱 검색, 로컬 업스케일, 갤러리 정리는 모두 PC에서 처리합니다.
 - 자동 번역은 기본적으로 꺼져 있습니다. Danbooru 온라인 관련 태그에는 해당 태그만 보내며 전체 프롬프트는 보내지 않습니다.
@@ -184,7 +199,7 @@ W.O.F NAI Studio는 Windows 데스크톱용 NovelAI 서드파티 클라이언트
 <details>
 <summary><b>소스에서 빌드</b></summary>
 
-Windows 10/11 x64, Flutter 3.47.7(`tool/flutter-sdk.json` 참고), Visual Studio 2022의 “C++를 사용한 데스크톱 개발”, Git LFS, NuGet CLI가 필요합니다.
+두 플랫폼 모두 Flutter 3.47.7(`tool/flutter-sdk.json` 참고)과 Git LFS가 필요합니다.
 
 ```bash
 git clone https://github.com/z15087716457-stack/W.O.F_NAI_Launcher.git
@@ -193,10 +208,26 @@ git lfs install && git lfs pull
 flutter pub get
 dart run tool/generate.dart
 flutter gen-l10n
+```
+
+**Windows**: Windows 10/11 x64, Visual Studio 2022의 “C++를 사용한 데스크톱 개발”, NuGet CLI가 필요합니다.
+
+```bash
 flutter build windows --release --no-tree-shake-icons
 ```
 
-설치형과 포터블 패키지는 `scripts/package_windows_release.ps1`로 만듭니다. 개발 규칙은 [DEVELOPMENT.md](DEVELOPMENT.md), 버전 기록은 [CHANGELOG.md](CHANGELOG.md)를 참고합니다.
+설치형과 포터블 패키지는 `scripts/package_windows_release.ps1`로 만듭니다.
+
+**macOS**: macOS 12 이상, Xcode 전체(명령줄 도구만으로는 부족합니다), CocoaPods, rustup(드래그 앤 드롭과 클립보드에 쓰는 `super_native_extensions`가 Rust를 컴파일합니다)이 필요합니다. 릴리스 빌드는 Rosetta(`softwareupdate --install-rosetta`)를 설치한 Apple 실리콘 Mac에서 합니다. `studio-bridge`의 Intel 버전을 x64 Dart SDK로 컴파일하기 때문입니다.
+
+```bash
+scripts/build_macos.sh --release
+scripts/package_macos_release.sh
+```
+
+`build_macos.sh`는 유니버설 앱을 빌드하고 NAI Agent용 Node 런타임, Pi, `studio-bridge`를 넣습니다. `package_macos_release.sh`는 이를 검사한 뒤 `dist/WOF_NAI_Studio_macOS_<버전>_Portable.zip`으로 묶습니다. 기본 서명은 ad-hoc이며, Apple 개발자 인증서가 있으면 환경 변수 `CODESIGN_IDENTITY`로 지정합니다. `tool/branding/wof_icon.svg`를 바꾼 뒤에는 `tool/branding/generate_macos_icons.sh`로 Mac 아이콘을 다시 만듭니다(Homebrew librsvg의 `rsvg-convert`가 필요합니다).
+
+개발 규칙은 [DEVELOPMENT.md](DEVELOPMENT.md), 버전 기록은 [CHANGELOG.md](CHANGELOG.md)를 참고합니다.
 
 </details>
 

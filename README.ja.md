@@ -15,6 +15,7 @@
 <p align="center">
   <a href="https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest"><img src="https://img.shields.io/github/v/release/z15087716457-stack/W.O.F_NAI_Launcher?label=%E3%83%80%E3%82%A6%E3%83%B3%E3%83%AD%E3%83%BC%E3%83%89&color=2f80ed" alt="ダウンロード"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20x64-0078D4?logo=windows11&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/macOS-12%2B%20%C2%B7%20Apple%20%E3%82%B7%E3%83%AA%E3%82%B3%E3%83%B3%20%2F%20Intel-000000?logo=apple&logoColor=white" alt="macOS">
   <img src="https://img.shields.io/badge/%E8%A1%A8%E7%A4%BA%E8%A8%80%E8%AA%9E-%E7%AE%80%E4%B8%AD%20%2F%20%E7%B9%81%E4%B8%AD%20%2F%20EN%20%2F%20%E6%97%A5%E6%9C%AC%E8%AA%9E%20%2F%20%ED%95%9C%EA%B5%AD%EC%96%B4-555" alt="5 つの表示言語">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
 </p>
@@ -23,22 +24,36 @@
   <img src="docs/images/readme/en/hero.webp" alt="W.O.F NAI Studio の画像生成ページ" width="100%">
 </p>
 
-W.O.F NAI Studio は、Windows デスクトップ向けの非公式 NovelAI クライアントです。公式サイトをデスクトップに移しただけではありません。よく使うプロンプトは**ブロック**として保存して再利用し、絵師の組み合わせは**画風の遺伝**で世代ごとに選別できます。わからないタグは**翻訳・タグ百科・ローカルのセマンティック検索**で調べられます。生成、整理、画像編集の細かな作業は、内蔵の **NAI Agent** に任せることもできます。
+W.O.F NAI Studio は、Windows と macOS のデスクトップ向けの非公式 NovelAI クライアントです。公式サイトをデスクトップに移しただけではありません。よく使うプロンプトは**ブロック**として保存して再利用し、絵師の組み合わせは**画風の遺伝**で世代ごとに選別できます。わからないタグは**翻訳・タグ百科・ローカルのセマンティック検索**で調べられます。生成、整理、画像編集の細かな作業は、内蔵の **NAI Agent** に任せることもできます。
 
 > 非公式プロジェクトであり、NovelAI とは関係ありません。ご自身の NovelAI アカウントを使用し、NovelAI の利用規約を守ってください。
 
 ## ダウンロード
 
-[Releases](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest) から最新版をダウンロードします。次のどちらかを選んでください。
+[Releases](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest) から最新版をダウンロードします。Windows では上の 2 つのどちらかを、Mac では macOS 版を選んでください。
 
 | ファイル | おすすめの用途 |
 | --- | --- |
-| `WOF_NAI_Studio_Windows_<バージョン>_Setup.exe` | **通常はこちらを選んでください。** 現在のユーザーのフォルダーにインストールします。管理者権限は不要で、スタートメニューとデスクトップにショートカットを作成します。 |
+| `WOF_NAI_Studio_Windows_<バージョン>_Setup.exe` | **Windows では通常こちらを選んでください。** 現在のユーザーのフォルダーにインストールします。管理者権限は不要で、スタートメニューとデスクトップにショートカットを作成します。 |
 | `WOF_NAI_Studio_Windows_<バージョン>_Portable.zip` | 好きなフォルダーや USB メモリに置いたり、複数の PC 間で持ち運んだりする場合に使います。展開後、`nai_launcher.exe` を実行します。 |
+| `WOF_NAI_Studio_macOS_<バージョン>_Portable.zip` | **Mac 用です。** macOS 12 以降、Apple シリコンと Intel のどちらの Mac でも使えます。Finder で展開し、`W.O.F NAI Studio` を「アプリケーション」フォルダにドラッグします。 |
 
-どちらもアプリ内更新に対応しています。設定、ギャラリーデータベース、Agent のデータはプログラムの隣の `user-data/` と `agent-data/` に保存され、アップグレードやアンインストールでも削除されません。
+Windows 版はどちらもアプリ内更新に対応しています。設定、ギャラリーデータベース、Agent のデータはプログラムの隣の `user-data/` と `agent-data/` に保存され、アップグレードやアンインストールでも削除されません。
 
 > インストーラーにはまだコード署名がありません。初回実行時に Windows が「Windows によって PC が保護されました」と表示する場合は、「詳細情報 → 実行」をクリックしてください。各リリースには SHA-256 チェックサムを添付しています。
+
+### macOS
+
+- **初回起動**：Mac 版は Apple の公証を受けていないため、初回はシステムに止められます。Finder で Control キーを押しながらアプリをクリック（または右クリック）し、「開く」を選んでから、もう一度「開く」をクリックします。macOS 15 以降は、一度アプリを開いてから「システム設定 → プライバシーとセキュリティ」の下の方にある「このまま開く」をクリックします。「壊れているため開けません」と表示された場合は、「ターミナル」で次の行を実行してから、いつも通り開いてください。
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/W.O.F NAI Studio.app"
+  ```
+
+- **更新**：アプリ内で新しいバージョンをダウンロードして検証すると、Finder でそれが選択されます。`⌘Q` で古いバージョンを終了し、新しいバージョンを「アプリケーション」にドラッグして置き換えます。
+- **データの場所**：設定、データベース、Agent のデータは `~/Library/Application Support/com.wof.naiStudio/` にあり、アプリを置き換えても削除されません。
+- **ショートカット**：ショートカットの `Ctrl` は Mac では `⌘` になります。ショートカット一覧は `⌘/` で開きます。
+- **未対応の機能**：ローカルアップスケール（Real-ESRGAN、NVIDIA RTX Video、SeedVR2）とローカルのセマンティック検索（RAG）は、今のところ Windows 版のみです。NovelAI のクラウドアップスケールは通常どおり使えます。
 
 ## 3 ステップで始める
 
@@ -152,13 +167,13 @@ W.O.F NAI Studio は、Windows デスクトップ向けの非公式 NovelAI ク�
 
 - **NovelAI の全モデル**：V1 から V4.5、V5（Full / Curated）、複数キャラクターの入力欄と位置指定、透明背景、Anlas のリアルタイム見積もり、高消費時の警告に対応しています。
 - **統計**：制作カレンダー、モデル別の生成量、Anlas 消費を確認し、グラフからその日の画像へ直接移動できます。
-- **ローカルブリッジ**：外部スクリプトや AI ツールが、付属の `studio-bridge.exe` でパラメータを読み書きできます。生成前には同じく見積もり確認が必要です。Krita プラグイン連携にも対応しています。
-- **ショートカット**：`F1` ですべて確認でき、どれもカスタマイズできます。
+- **ローカルブリッジ**：外部スクリプトや AI ツールが、付属の `studio-bridge`（Windows では `studio-bridge.exe`）でパラメータを読み書きできます。生成前には同じく見積もり確認が必要です。Krita プラグイン連携にも対応しています。
+- **ショートカット**：`F1`（Mac では `⌘/`）ですべて確認でき、どれもカスタマイズできます。
 - **5 つの表示言語、ライトテーマとダークテーマ**。
 
 ## プライバシーと通信
 
-- アカウントの Token や各サービスの API キーは Windows のシステムセキュアストレージに保存し、この PC 上でのみ使用します。
+- アカウントの Token や各サービスの API キーはシステムのセキュアストレージ（Windows のセキュアストレージ、macOS のキーチェーン）に保存し、このコンピューター上でのみ使用します。
 - 通信するのは、NovelAI API の呼び出し、ご自身が設定した翻訳・Agent モデルサービスの利用、オンラインギャラリーの閲覧、更新確認、自分でダウンロードを選んだオプションコンポーネント（セマンティック検索モデル、拡大モデルなど）の取得時だけです。
 - セマンティック検索、ローカル拡大、ギャラリー整理はすべて PC 上で処理します。
 - 自動翻訳は初期状態ではオフです。Danbooru のオンライン関連タグには関連するタグだけを送り、プロンプト全体は送りません。
@@ -184,7 +199,7 @@ W.O.F NAI Studio は、Windows デスクトップ向けの非公式 NovelAI ク�
 <details>
 <summary><b>ソースからビルド</b></summary>
 
-Windows 10/11 x64、Flutter 3.47.7（`tool/flutter-sdk.json` 参照）、Visual Studio 2022 の「C++ によるデスクトップ開発」、Git LFS、NuGet CLI が必要です。
+どちらのプラットフォームでも Flutter 3.47.7（`tool/flutter-sdk.json` 参照）と Git LFS が必要です。
 
 ```bash
 git clone https://github.com/z15087716457-stack/W.O.F_NAI_Launcher.git
@@ -193,10 +208,26 @@ git lfs install && git lfs pull
 flutter pub get
 dart run tool/generate.dart
 flutter gen-l10n
+```
+
+**Windows**：Windows 10/11 x64、Visual Studio 2022 の「C++ によるデスクトップ開発」、NuGet CLI が必要です。
+
+```bash
 flutter build windows --release --no-tree-shake-icons
 ```
 
-インストーラー版とポータブル版のパッケージ作成には `scripts/package_windows_release.ps1` を使います。開発ルールは [DEVELOPMENT.md](DEVELOPMENT.md)、変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
+インストーラー版とポータブル版のパッケージ作成には `scripts/package_windows_release.ps1` を使います。
+
+**macOS**：macOS 12 以降、Xcode 本体（コマンドラインツールだけでは足りません）、CocoaPods、rustup（ドラッグ＆ドロップとクリップボードに使う `super_native_extensions` が Rust をコンパイルします）が必要です。リリースビルドは Apple シリコンの Mac で、Rosetta（`softwareupdate --install-rosetta`）を入れた状態で行います。`studio-bridge` の Intel 版は x64 の Dart SDK でコンパイルするためです。
+
+```bash
+scripts/build_macos.sh --release
+scripts/package_macos_release.sh
+```
+
+`build_macos.sh` はユニバーサルのアプリをビルドし、NAI Agent 用の Node ランタイム、Pi、`studio-bridge` を入れます。`package_macos_release.sh` はそれを検査して `dist/WOF_NAI_Studio_macOS_<バージョン>_Portable.zip` にまとめます。署名は既定で ad-hoc です。Apple の開発者証明書があれば環境変数 `CODESIGN_IDENTITY` で指定します。`tool/branding/wof_icon.svg` を変えたら、`tool/branding/generate_macos_icons.sh` で Mac のアイコンを作り直します（Homebrew の librsvg に含まれる `rsvg-convert` が必要です）。
+
+開発ルールは [DEVELOPMENT.md](DEVELOPMENT.md)、変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 </details>
 

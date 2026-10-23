@@ -15,6 +15,7 @@
 <p align="center">
   <a href="https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest"><img src="https://img.shields.io/github/v/release/z15087716457-stack/W.O.F_NAI_Launcher?label=Download&color=2f80ed" alt="Download"></a>
   <img src="https://img.shields.io/badge/Windows-10%20%2F%2011%20x64-0078D4?logo=windows11&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/macOS-12%2B%20%C2%B7%20Apple%20silicon%20%2F%20Intel-000000?logo=apple&logoColor=white" alt="macOS">
   <img src="https://img.shields.io/badge/Interface%20languages-%E7%AE%80%E4%B8%AD%20%2F%20%E7%B9%81%E4%B8%AD%20%2F%20EN%20%2F%20%E6%97%A5%E6%9C%AC%E8%AA%9E%20%2F%20%ED%95%9C%EA%B5%AD%EC%96%B4-555" alt="Five interface languages">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
 </p>
@@ -23,22 +24,36 @@
   <img src="docs/images/readme/en/hero.webp" alt="W.O.F NAI Studio generation page" width="100%">
 </p>
 
-W.O.F NAI Studio is a third-party NovelAI desktop client for Windows. It does more than put the website on your desktop: save frequently used prompts as reusable **blocks**, let **style evolution** narrow down artist combinations over generations, and use **translation, Tag Wiki and local semantic search** to understand unfamiliar tags. The built-in **NAI Agent** can also help with the routine work of generating, organizing and editing images.
+W.O.F NAI Studio is a third-party NovelAI desktop client for Windows and macOS. It does more than put the website on your desktop: save frequently used prompts as reusable **blocks**, let **style evolution** narrow down artist combinations over generations, and use **translation, Tag Wiki and local semantic search** to understand unfamiliar tags. The built-in **NAI Agent** can also help with the routine work of generating, organizing and editing images.
 
 > This is an unofficial project and is not affiliated with NovelAI. Use your own NovelAI account and follow NovelAI's Terms of Service.
 
 ## Download
 
-Get the latest version from [Releases](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest). Choose one:
+Get the latest version from [Releases](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/latest). On Windows, choose one of the first two; on a Mac, use the macOS package:
 
 | File | Who it's for |
 | --- | --- |
-| `WOF_NAI_Studio_Windows_<version>_Setup.exe` | **The choice for most people.** Installs to your user directory without administrator rights, with Start menu and desktop shortcuts. |
+| `WOF_NAI_Studio_Windows_<version>_Setup.exe` | **The choice for most Windows users.** Installs to your user directory without administrator rights, with Start menu and desktop shortcuts. |
 | `WOF_NAI_Studio_Windows_<version>_Portable.zip` | For keeping the app in a folder of your choice, on a USB drive, or taking it between computers. Extract it and run `nai_launcher.exe`. |
+| `WOF_NAI_Studio_macOS_<version>_Portable.zip` | **For Macs.** macOS 12 or later, on Apple silicon or Intel. Unzip it in Finder and drag `W.O.F NAI Studio` into the Applications folder. |
 
-Both versions support in-app updates. Your settings, gallery database and Agent data live in `user-data/` and `agent-data/` beside the program. Updates and uninstallation leave them intact.
+Both Windows versions support in-app updates. Your settings, gallery database and Agent data live in `user-data/` and `agent-data/` beside the program. Updates and uninstallation leave them intact.
 
 > The installer is not code-signed yet. On first launch, Windows may say “Windows protected your PC.” Click “More info → Run anyway.” Each release includes SHA-256 checksums.
+
+### macOS
+
+- **First launch**: The Mac app is not notarized by Apple, so macOS blocks it the first time. In Finder, Control-click (or right-click) the app, choose “Open”, then click “Open” again. On macOS 15 and later, open the app once, then go to “System Settings → Privacy & Security” and click “Open Anyway” near the bottom. If macOS says the app “is damaged and can't be opened”, run this line in Terminal and open it as usual:
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/W.O.F NAI Studio.app"
+  ```
+
+- **Updates**: The app downloads and verifies the new version, then selects it in Finder. Quit the old version with `⌘Q` and drag the new one into Applications to replace it.
+- **Data location**: Settings, databases and Agent data are in `~/Library/Application Support/com.wof.naiStudio/`. Replacing the app leaves them intact.
+- **Shortcuts**: `Ctrl` in shortcuts becomes `⌘` on a Mac; `⌘/` shows the shortcut list.
+- **Not available yet**: Local upscaling (Real-ESRGAN, NVIDIA RTX Video, SeedVR2) and local semantic search (RAG) are Windows-only for now. NovelAI cloud upscaling works as usual.
 
 ## Get started in three steps
 
@@ -152,13 +167,13 @@ Generated images appear in batches on an infinitely pannable canvas. Use the whe
 
 - **All NovelAI models**: V1 through V4.5 and V5 (Full / Curated), multiple character prompt fields and positioning, transparent backgrounds, live Anlas estimates and high-cost warnings.
 - **Statistics**: A creation calendar, model usage and output counts, and Anlas spending. Click a chart to jump to that day's images.
-- **Local bridge**: External scripts or AI tools can read and write settings through the included `studio-bridge.exe`. Generation still requires a price quote and confirmation. Krita plugin integration is also supported.
-- **Shortcuts**: Press `F1` to see all shortcuts; all are customizable.
+- **Local bridge**: External scripts or AI tools can read and write settings through the included `studio-bridge` (`studio-bridge.exe` on Windows). Generation still requires a price quote and confirmation. Krita plugin integration is also supported.
+- **Shortcuts**: Press `F1` (`⌘/` on a Mac) to see all shortcuts; all are customizable.
 - **Five interface languages, light and dark themes.**
 
 ## Privacy and network access
 
-- Account tokens and API keys are kept in Windows secure storage and used only on your computer.
+- Account tokens and API keys are kept in the system's secure storage (Windows secure storage, the macOS keychain) and used only on your computer.
 - Network access is used only for: NovelAI API calls; translation or Agent model services you configure; Online Gallery; update checks; and optional components you explicitly choose to download, such as semantic search and upscaling models.
 - Semantic search, local upscaling and gallery organization all run locally.
 - Automatic translation is off by default. Danbooru's online related-tag lookup sends only the relevant tags, not your full prompt.
@@ -184,7 +199,7 @@ See [FAQ](docs/guide/en/faq.md) for more answers.
 <details>
 <summary><b>Build from source</b></summary>
 
-Requires Windows 10/11 x64, Flutter 3.47.7 (see `tool/flutter-sdk.json`), Visual Studio 2022 with “Desktop development with C++,” Git LFS and NuGet CLI.
+Both platforms need Flutter 3.47.7 (see `tool/flutter-sdk.json`) and Git LFS:
 
 ```bash
 git clone https://github.com/z15087716457-stack/W.O.F_NAI_Launcher.git
@@ -193,10 +208,26 @@ git lfs install && git lfs pull
 flutter pub get
 dart run tool/generate.dart
 flutter gen-l10n
+```
+
+**Windows**: Requires Windows 10/11 x64, Visual Studio 2022 with “Desktop development with C++,” and NuGet CLI.
+
+```bash
 flutter build windows --release --no-tree-shake-icons
 ```
 
-Use `scripts/package_windows_release.ps1` to package the installer and portable versions. See [DEVELOPMENT.md](DEVELOPMENT.md) for development guidelines and [CHANGELOG.md](CHANGELOG.md) for version history.
+Use `scripts/package_windows_release.ps1` to package the installer and portable versions.
+
+**macOS**: Requires macOS 12 or later, the full Xcode (the command line tools alone are not enough), CocoaPods and rustup (`super_native_extensions`, used for drag and drop and the clipboard, compiles Rust). Build releases on an Apple silicon Mac with Rosetta installed (`softwareupdate --install-rosetta`): the Intel slice of `studio-bridge` is compiled with the x64 Dart SDK.
+
+```bash
+scripts/build_macos.sh --release
+scripts/package_macos_release.sh
+```
+
+`build_macos.sh` builds the universal app bundle and adds the Node runtime for NAI Agent, Pi and `studio-bridge`; `package_macos_release.sh` checks it and packs it into `dist/WOF_NAI_Studio_macOS_<version>_Portable.zip`. The app is ad-hoc signed by default; set `CODESIGN_IDENTITY` to sign with your Apple developer certificate. After changing `tool/branding/wof_icon.svg`, regenerate the Mac icons with `tool/branding/generate_macos_icons.sh` (requires `rsvg-convert` from Homebrew's librsvg).
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for development guidelines and [CHANGELOG.md](CHANGELOG.md) for version history.
 
 </details>
 
