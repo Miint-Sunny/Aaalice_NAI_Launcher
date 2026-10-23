@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'default_shortcuts.dart';
 
@@ -24,6 +25,7 @@ class ShortcutBinding with _$ShortcutBinding {
   /// 获取当前有效的快捷键（优先使用自定义，否则使用默认）
   String? get effectiveShortcut {
     if (!enabled) return null;
+    // 空串表示没设键（2.0 用它标「默认键让给了用户自定义的」；Mac 版有几项默认不设键也是空串）
     return customShortcut ?? defaultShortcut;
   }
 
@@ -442,7 +444,30 @@ class ShortcutParser {
 
     if (key == null) return null;
 
-    return ParsedShortcut(modifiers: modifiers, key: key, raw: shortcut);
+    return ParsedShortcut(
+      modifiers: _platformPrimary(modifiers),
+      key: key,
+      raw: shortcut,
+    );
+  }
+
+  // macOS 按规范用 ⌘ 当主修饰键。配置里的 ctrl 表示「主修饰键」：Windows / Linux 上是 Ctrl，macOS 上是 ⌘；
+  // macOS 键盘上真正的 Control 键记成 meta。存储格式跨平台不变，只在解析和序列化这一处对调（对调两次等于没调）。
+  static bool get primaryIsCommand =>
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  static Set<ShortcutModifier> _platformPrimary(
+    Set<ShortcutModifier> modifiers,
+  ) {
+    if (!primaryIsCommand) return modifiers;
+    return {
+      for (final m in modifiers)
+        switch (m) {
+          ShortcutModifier.control => ShortcutModifier.meta,
+          ShortcutModifier.meta => ShortcutModifier.control,
+          _ => m,
+        },
+    };
   }
 
   /// 尝试解析别名
@@ -462,11 +487,12 @@ class ShortcutParser {
 
   /// 将ParsedShortcut转换回字符串
   static String serialize(ParsedShortcut shortcut) {
+    final modifiers = _platformPrimary(shortcut.modifiers);
     final parts = <String>[
-      if (shortcut.modifiers.contains(ShortcutModifier.control)) 'ctrl',
-      if (shortcut.modifiers.contains(ShortcutModifier.alt)) 'alt',
-      if (shortcut.modifiers.contains(ShortcutModifier.shift)) 'shift',
-      if (shortcut.modifiers.contains(ShortcutModifier.meta)) 'meta',
+      if (modifiers.contains(ShortcutModifier.control)) 'ctrl',
+      if (modifiers.contains(ShortcutModifier.alt)) 'alt',
+      if (modifiers.contains(ShortcutModifier.shift)) 'shift',
+      if (modifiers.contains(ShortcutModifier.meta)) 'meta',
       shortcut.key.logicalKey,
     ];
 

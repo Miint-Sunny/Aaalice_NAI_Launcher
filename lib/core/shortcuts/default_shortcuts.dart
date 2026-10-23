@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// 默认快捷键定义
 /// 包含所有快捷键的ID常量和默认配置
 class ShortcutIds {
@@ -104,7 +106,7 @@ class DefaultShortcuts {
 
   /// 获取所有默认快捷键配置
   /// 格式: Map<快捷键ID, 默认快捷键字符串>
-  static Map<String, String> get all => {
+  static Map<String, String> get all => _forPlatform({
     // 页面导航
     ...navigation,
 
@@ -165,7 +167,37 @@ class DefaultShortcuts {
     ShortcutIds.vibeDetailToggleFavorite: 'f',
     ShortcutIds.vibeDetailPrevSubVibe: 'arrowleft',
     ShortcutIds.vibeDetailNextSubVibe: 'arrowright',
+  });
+
+  // macOS 上按不到或被系统占用的默认键，换成 Mac 的习惯键：(W.O.F 原值, Mac 值)，
+  // Mac 值为空表示 Mac 上默认不设键。配置里的 ctrl 在 Mac 上是 ⌘、meta 是 Control（见 ShortcutParser）。
+  // 读配置时会把存下来的默认值刷新成当前的（ShortcutConfig.withCurrentDefaults），不用另外迁移。
+  static const macOverrides = <String, (String, String)>{
+    // Mac 键盘上的「删除」是 ⌫；不用单独的 ⌫，免得在输入框里删字时被截走。⌘⌫ 同访达「移到废纸篓」
+    ShortcutIds.deleteImage: ('delete', 'ctrl+backspace'),
+    ShortcutIds.vibeDetailDelete: ('delete', 'ctrl+backspace'),
+    // 窗口键交给系统菜单：⌘M 最小化到程序坞、⌘Q 退出、⌘W 关窗口、⌘H 隐藏、⌃⌘F 全屏。
+    // 「隐藏到菜单栏」「退出应用」Mac 上默认不设键（⌘H、⌘Q 就是）；F11 被系统「显示桌面」占用，
+    // 查看器的「全屏」其实是关掉查看器、关查看器用 Esc，生成页的全屏预览也不设键；
+    // 生成页「切换正/负面」让出 ⌘M，改 ⇧⌘M（「隐藏到托盘」的默认是它，macOS 上空出来了）
+    ShortcutIds.minimizeToTray: ('ctrl+shift+m', ''),
+    ShortcutIds.quitApp: ('ctrl+q', ''),
+    ShortcutIds.toggleFullscreen: ('f11', ''),
+    ShortcutIds.fullscreenPreview: ('f11', ''),
+    ShortcutIds.togglePromptMode: ('ctrl+m', 'ctrl+shift+m'),
+    // F 键在 Mac 上要按 fn：刷新用 ⌘R，快捷键帮助用 ⌘/
+    ShortcutIds.refreshGallery: ('f5', 'ctrl+r'),
+    ShortcutIds.showShortcutHelp: ('f1', 'ctrl+slash'),
   };
+
+  static Map<String, String> _forPlatform(Map<String, String> defaults) {
+    if (defaultTargetPlatform != TargetPlatform.macOS) return defaults;
+    return {
+      ...defaults,
+      for (final MapEntry(key: id, value: (_, mac)) in macOverrides.entries)
+        id: mac,
+    };
+  }
 
   /// 获取快捷键的上下文
   static ShortcutContext getContext(String shortcutId) {
