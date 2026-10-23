@@ -54,6 +54,7 @@ scripts/package_macos_release.sh [--version <版本>] [--dist-dir <目录>]
 - 只有 Windows 版的功能：本地放大（含高级组件）、RAG 运行时。它们的 Windows 资源（`assets/local_upscale/windows/`、`assets/rag/windows/`，约 6.5 MB）仍会打进 Mac 包：`LocalUpscaleModelManager` 在所有平台上都会从资源包里释放引擎文件，直接剔除会让放大设置在 Mac 上报错，所以暂不剔除。
 - 测试：在 Mac 上跑 `flutter test` 时，一批按 Windows 窗口写的组件测试（集成标题栏、页头拖动、窗口外框等）本来就不过，结果以 Windows CI 为准，比对时看有没有新增失败。测平台分支用 `debugDefaultTargetPlatformOverride` 或给服务注入平台，不依赖跑测试的机器。
 - 发布：`Release` workflow 的 `build-macos`（macos-15）构建并打包，和 Windows 包传到同一个 Release；`generate_release_metadata.ps1` 把 Mac 包登记进 `release_manifest.json`（`type: macos-portable`），应用内更新按它挑包。PR 校验的 `macos-validation` 只构建和打包，不上传。
+- 首次启动复制旧版数据（`lib/core/services/mac_legacy_data_import.dart`）：来源默认是 bundle id `com.aaalice.naiLauncher`（W.O.F 1.x 和上游 NAI Launcher）。本地试用包可以用 `--dart-define=MAC_LEGACY_BUNDLE_ID=<bundle id>` 指向别的应用，用 `--dart-define=MAC_LEGACY_APP_NAME=<程序坞里的名字>` 改提示里的名字；`MAC_LEGACY_BUNDLE_ID` 设为空就不复制。`flutter test` 下不运行，测试用临时目录注入新旧目录。
 
 ## 当前 Glass 包交付
 

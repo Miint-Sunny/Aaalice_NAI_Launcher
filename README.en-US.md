@@ -52,6 +52,7 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 
 - **Updates**: The app downloads and verifies the new version, then selects it in Finder. Quit the old version with `⌘Q` and drag the new one into Applications to replace it.
 - **Data location**: Settings, databases and Agent data are in `~/Library/Application Support/com.wof.naiStudio/`. Replacing the app leaves them intact.
+- **Upgrading from 1.x**: The first time it opens, the app copies the settings, history, libraries and favorites of the previous version (Aaalice NAI Launcher) and leaves the old data as it was. If the old version is still open, you are asked to quit it first. Sign-ins are not copied, so sign in again. Images, Vibes and other files in Documents are already shared by both versions.
 - **Shortcuts**: `Ctrl` in shortcuts becomes `⌘` on a Mac; `⌘/` shows the shortcut list.
 - **Not available yet**: Local upscaling (Real-ESRGAN, NVIDIA RTX Video, SeedVR2) and local semantic search (RAG) are Windows-only for now. NovelAI cloud upscaling works as usual.
 

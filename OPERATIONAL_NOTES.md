@@ -239,6 +239,8 @@
 
 - macOS 的设置、数据库和 Agent 数据在「应用支持」目录（bundle id `com.wof.naiStudio`），应用包里只放随包工具、不写数据。应用内更新只挑 `macos-portable` 资产（Release 没有 Mac 包时退回 Release 页面，不挑 Windows 包），下载、续传、大小与 SHA-256 校验同 Windows；之后用 ditto 解压到更新目录的 `macos-<版本>/`，`open -R` 在访达中选中新版本，由用户退出后拖进「应用程序」替换。不静默覆盖、不重启应用，因此也不等生成任务；新版本启动后清掉更新包和解压出的应用。
 
+- macOS 首次启动：新目录为空且没有 `.studio-data-location.json` 时，在 Hive／SQLite 打开前把旧版 `com.aaalice.naiLauncher` 的「应用支持」目录快照、复制到同级临时目录并逐文件 SHA-256 校验，再核对旧目录没变，才整体改名成新目录并写入标记；旧目录只读、原样保留，不建兼容链接，也不另做备份。旧版还在运行（`hive/*.lock` 被别的进程锁着）时，窗口里请用户先退出，退出后自动继续，也可以跳过；复制失败不留半套数据，可以重试或跳过。新目录已有数据时不复制、不覆盖。旧版 SharedPreferences（`~/Library/Preferences/<bundle id>.plist`）只补新版没有的 `flutter.*` 键，Danbooru 旧凭据除外。钥匙串一律不读（读别的应用的条目会弹钥匙串密码框），登录信息不迁，用户重新登录。
+
 - 正常覆盖构建需目标文件未被运行实例锁定；用户要求自行核验时，不自动关闭程序，可使用独立 CMake 产物目录。Flutter 位于 `C:/flutter`，NuGet 位于 `C:/tools/nuget`，下载和 git 使用本机代理 `http://127.0.0.1:7897`。NSIS 3.12 已装于默认位置（makensis 在 PATH/Program Files (x86)），安装器打包与 `scripts/validate_windows_installer_process_handling.ps1` 依赖它。
 - 安装器（`installer/windows/nai_launcher.nsi`）进程检测自 2026-09-09 起为「软化 fail-closed」语义：进程枚举/查询失败时不再直接阻断，改为以 `CreateFileW(GENERIC_WRITE, share=0)` 探 `$INSTDIR\nai_launcher.exe` 文件锁——文件可写打开或不存在（全新安装）则放行，共享冲突/拒绝访问（文件真被占用）或其他未知错误仍阻断（静默退出码 3 不变）。每次检查失败会把失败阶段、GetLastError、疑似 PID、探锁结果追加写入 `$INSTDIR\install_diagnostics.log`（UTF-16，随卸载删除）。验证脚本已覆盖四场景：目标在跑阻断 / 他目录实例放行 / 查询失败+无锁放行+落诊断 / 全新目录放行。
 - 远程布局（2026-09-11 整理）：origin=本分叉仓库（z15087716457-stack/W.O.F_NAI_Launcher）；上游 Aaalice233 不再常驻远程——需要观察上游改动时临时 `git remote add upstream https://github.com/Aaalice233/Aaalice_NAI_Launcher.git` 并 fetch，看完 `git remote remove upstream`。自行实现有价值的改动，不直接 merge 或 cherry-pick 上游提交。
