@@ -479,6 +479,12 @@ void main() {
         },
       );
 
+      // macOS 在访达中选中（open -R），其他平台走资源管理器
+      if (Platform.isMacOS) {
+        expect(executable, 'open');
+        expect(arguments, ['-R', file.absolute.path]);
+        return;
+      }
       final absolutePath = FileExplorerUtils.normalizeWindowsExplorerPath(
         file.absolute.path,
       );
@@ -488,6 +494,36 @@ void main() {
         arguments,
         FileExplorerUtils.windowsRevealFileArguments(absolutePath),
       );
+    });
+
+    test('opens existing folders through the shared launcher path', () async {
+      final tempDir = await Directory.systemTemp.createTemp('nai_open_test_');
+      addTearDown(() async {
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      String? executable;
+      List<String>? arguments;
+
+      await FileExplorerUtils.openDirectory(
+        tempDir.path,
+        startProcess: (exe, args) async {
+          executable = exe;
+          arguments = List<String>.of(args);
+        },
+      );
+
+      if (Platform.isMacOS) {
+        expect(executable, 'open');
+        expect(arguments, [tempDir.absolute.path]);
+        return;
+      }
+      expect(executable, 'explorer.exe');
+      expect(arguments, [
+        FileExplorerUtils.normalizeWindowsExplorerPath(tempDir.absolute.path),
+      ]);
     });
   });
 
