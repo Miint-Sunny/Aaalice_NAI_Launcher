@@ -53,7 +53,8 @@ Windows의 두 버전 모두 앱 내 업데이트를 지원합니다. 설정, �
 - **업데이트**: 앱에서 새 버전을 다운로드하고 확인하면 Finder에서 새 버전이 선택됩니다. `⌘Q`로 이전 버전을 종료하고, 새 버전을 “응용 프로그램”으로 드래그해 바꾸면 됩니다.
 - **데이터 위치**: 설정, 데이터베이스, Agent 데이터는 `~/Library/Application Support/com.wof.naiStudio/`에 있으며, 앱을 바꿔도 삭제되지 않습니다.
 - **단축키**: 단축키의 `Ctrl`은 Mac에서 `⌘`가 되고, 단축키 목록은 `⌘/`로 엽니다.
-- **아직 지원하지 않는 기능**: 로컬 업스케일(Real-ESRGAN, NVIDIA RTX Video, SeedVR2)과 로컬 시맨틱 검색(RAG)은 현재 Windows 버전에서만 사용할 수 있습니다. NovelAI 클라우드 업스케일은 평소처럼 사용할 수 있습니다.
+- **로컬 시맨틱 검색(RAG)**: Apple 실리콘 Mac이 필요하며, 실행 장치가 자동이면 Mac의 GPU를 사용합니다. Intel Mac에서는 사용할 수 없습니다. PyTorch가 Intel Mac용 빌드를 더 이상 제공하지 않기 때문입니다.
+- **아직 지원하지 않는 기능**: 로컬 업스케일(Real-ESRGAN, NVIDIA RTX Video, SeedVR2)은 현재 Windows 버전에서만 사용할 수 있습니다. NovelAI 클라우드 업스케일은 평소처럼 사용할 수 있습니다.
 
 ## 세 단계로 시작하기
 

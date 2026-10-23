@@ -53,7 +53,8 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 - **Updates**: The app downloads and verifies the new version, then selects it in Finder. Quit the old version with `⌘Q` and drag the new one into Applications to replace it.
 - **Data location**: Settings, databases and Agent data are in `~/Library/Application Support/com.wof.naiStudio/`. Replacing the app leaves them intact.
 - **Shortcuts**: `Ctrl` in shortcuts becomes `⌘` on a Mac; `⌘/` shows the shortcut list.
-- **Not available yet**: Local upscaling (Real-ESRGAN, NVIDIA RTX Video, SeedVR2) and local semantic search (RAG) are Windows-only for now. NovelAI cloud upscaling works as usual.
+- **Local semantic search (RAG)**: Needs a Mac with Apple silicon; with the device set to Auto it runs on the Mac's GPU. Intel Macs can't use it: PyTorch no longer makes builds for them.
+- **Not available yet**: Local upscaling (Real-ESRGAN, NVIDIA RTX Video, SeedVR2) is Windows-only for now. NovelAI cloud upscaling works as usual.
 
 ## Get started in three steps
 
