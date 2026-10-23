@@ -60,6 +60,9 @@ void main() {
       expect(rec.calls, isEmpty);
       await tap(t, 'rag-install-cpu');
       expect(rec.calls, ['ragInstall:false']);
+      expect(find.text(l.set_rgNeedsAppleSilicon), findsNothing);
+      await tap(t, 'rag-download-btn-embedder');
+      expect(rec.calls.last, 'ragDownload:embedder');
       expect(t.takeException(), isNull);
     }
   });
@@ -68,6 +71,7 @@ void main() {
     final (rec, l) = await pumpRag(t, const SettingsRagData());
     expect(inside('seg-ragDevice', find.text('CUDA')), findsOneWidget);
     expect(find.text(l.set_rgPythonSub), findsOneWidget);
+    expect(find.text(l.set_rgNeedsAppleSilicon), findsNothing);
     await tap(t, 'rag-install');
     expect(find.text(l.set_rgInstallHint), findsOneWidget);
     expect(inside('rag-install-cpu', find.text(l.set_rgInstallCpu)), findsOne);
@@ -103,6 +107,14 @@ void main() {
       );
       await tap(t, 'rag-install');
       expect(find.byKey(const Key('rag-install-choice')), findsNothing);
+      // The models cannot run there either: same reason, no download.
+      for (final (row, model) in [
+        ('setting-ragEmbedPath', 'embedder'),
+        ('setting-ragRerankPath', 'reranker'),
+      ]) {
+        expect(inside(row, find.text(l.set_rgNeedsAppleSilicon)), findsOne);
+        await tap(t, 'rag-download-btn-$model');
+      }
       expect(rec.calls, isEmpty);
       expect(t.takeException(), isNull);
     }

@@ -2048,6 +2048,8 @@ class _RagModelRow extends StatelessWidget {
       title: model == SettingsRagModel.embedder
           ? l.set_rgEmbedPath
           : l.set_rgRerankPath,
+      // Intel Macs: the models cannot run there, so do not offer the download.
+      subtitle: rg.runtimeSupported ? null : l.set_rgNeedsAppleSilicon,
       below: dl == null
           ? null
           : Row(
@@ -2102,7 +2104,9 @@ class _RagModelRow extends StatelessWidget {
               tone: s.data.values.text(key) == null
                   ? SettingsBtnTone.normal
                   : SettingsBtnTone.ghost,
-              onTap: rg.busy ? null : () => a.onRagDownload(model),
+              onTap: rg.busy || !rg.runtimeSupported
+                  ? null
+                  : () => a.onRagDownload(model),
             ),
           SetPath(key, width: 280, open: false),
         ],
