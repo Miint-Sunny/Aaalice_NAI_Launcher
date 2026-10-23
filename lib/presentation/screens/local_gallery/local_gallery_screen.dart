@@ -984,7 +984,7 @@ class _LocalGalleryScreenState extends ConsumerState<_LocalGalleryContents> {
         return;
       }
 
-      await Process.start('explorer', [rootPath]);
+      await FileExplorerUtils.openDirectory(rootPath);
     } catch (e) {
       if (mounted) {
         AppToast.error(

@@ -22,6 +22,7 @@ import '../../providers/local_gallery_provider.dart';
 import '../../providers/selection_mode_provider.dart';
 import '../../providers/tips_provider.dart';
 import '../../utils/gallery_category_label.dart';
+import '../../utils/selection_modifiers.dart';
 import '../shortcuts/shortcut_tooltip.dart';
 import '../navigation/window_chrome_layout.dart';
 import '../tag_expansion/tag_expansion_wrapper.dart';
@@ -133,7 +134,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
     if (event.logicalKey != LogicalKeyboardKey.keyA) {
       return KeyEventResult.ignored;
     }
-    if (!keyboard.isControlPressed && !keyboard.isMetaPressed) {
+    // macOS 上只认 ⌘A：⌃A 在 Mac 输入框里是「移到行首」
+    if (!isSelectionModifierPressed(keyboard: keyboard)) {
       return KeyEventResult.ignored;
     }
     _searchController.selection = TextSelection(

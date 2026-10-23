@@ -3655,6 +3655,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shortcut_action_minimize_to_tray => 'トレイに最小化';
 
   @override
+  String get shortcut_action_hide_to_menu_bar => 'メニューバーに隠す';
+
+  @override
   String get shortcut_action_quit_app => 'アプリケーションを終了します';
 
   @override
@@ -5389,6 +5392,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get common_swap => '入れ替え';
+
+  @override
+  String get common_showInFinder => 'Finder で表示';
 
   @override
   String get addToLibrary_displayNameHint => 'この項目を識別する名前を入力';
@@ -8701,7 +8707,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => 'ブロックを中クリック';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + ブロックをクリック';
+
+  @override
   String get promptTranslation_guideMiddleText => '原文と訳文を切り替え';
+
+  @override
+  String get promptTranslation_toggleFace => '原文 / 訳文を切り替え';
 
   @override
   String get promptTranslation_guideSourceTitle => '原文を左クリック';
@@ -13275,6 +13287,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get imageViewer_missingHint => 'エクスプローラーで移動・名前変更・削除された可能性があります';
 
   @override
+  String get imageViewer_missingHintFinder => 'Finder で移動・名前変更・削除された可能性があります';
+
+  @override
   String get imageViewer_openFolder => 'フォルダーを開く';
 
   @override
@@ -17390,6 +17405,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get set_apSystemSub => 'Windows の設定に合わせる';
+
+  @override
+  String get set_apSystemSubMac => 'macOS の設定に合わせる';
 
   @override
   String get set_apText => '文字';

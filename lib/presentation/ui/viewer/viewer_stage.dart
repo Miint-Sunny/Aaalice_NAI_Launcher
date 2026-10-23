@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/platform_labels.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
@@ -356,6 +357,9 @@ class _ViewState extends State<_View> {
   Offset? _tapAt;
   var _dragging = false;
 
+  /// 触控板捏合上一帧的累计缩放；触控板不发滚轮事件，捏合走平移缩放手势。
+  double? _pinchScale;
+
   @override
   Widget build(BuildContext context) {
     final scope = ViewerPageScope.of(context);
@@ -416,6 +420,14 @@ class _ViewState extends State<_View> {
                   );
                 }
               },
+              onPointerPanZoomStart: (_) => _pinchScale = 1,
+              onPointerPanZoomUpdate: (e) {
+                final last = _pinchScale;
+                if (last == null || item.missing || e.scale == last) return;
+                _pinchScale = e.scale;
+                z.zoomBy(e.scale / last, focal: e.localPosition);
+              },
+              onPointerPanZoomEnd: (_) => _pinchScale = null,
               child: ClipRect(
                 child: Stack(
                   children: [
@@ -655,7 +667,7 @@ class _Missing extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: Text(
-              [?item.path, l10n.imageViewer_missingHint].join('\n'),
+              [?item.path, imageMissingHintLabel(l10n)].join('\n'),
               textAlign: TextAlign.center,
               style: UiText.sans(
                 12,

@@ -17,6 +17,7 @@ import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
 import '../kit/ui_text.dart';
+import '../../utils/platform_labels.dart';
 import 'settings_contract.dart';
 import 'settings_controls.dart';
 import 'settings_format.dart';
@@ -540,7 +541,7 @@ class SettingsAppearancePage extends StatelessWidget {
                         description: switch (k) {
                           'light' => 'Geist Light',
                           'dark' => 'Geist Dark',
-                          _ => l.set_apSystemSub,
+                          _ => followSystemAppearanceLabel(l),
                         },
                         onTap: () =>
                             s.actions.onChanged(SettingKey.themeMode, k),

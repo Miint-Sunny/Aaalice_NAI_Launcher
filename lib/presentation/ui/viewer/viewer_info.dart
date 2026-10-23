@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/platform_labels.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/common/translation_icon.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
@@ -123,7 +124,10 @@ class _Header extends StatelessWidget {
                   key: const Key('viewer-info-folder'),
                   glyph: UiGlyphs.folder,
                   glyphSize: 16,
-                  tooltip: l10n.imageViewer_showInFolder,
+                  tooltip: showInFileManagerLabel(
+                    l10n,
+                    l10n.imageViewer_showInFolder,
+                  ),
                   onTap: () => scope.actions.onAction(
                     item.key,
                     ViewerAction.showInFolder,

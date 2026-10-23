@@ -1,4 +1,5 @@
 // 块系统交互测试：每个按钮 / 快捷键 / 拖放都回调到契约，接线方照着这些回调接 provider。
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -446,6 +447,15 @@ void main() {
       expect(rec.calls, ['select:pk']);
       expect(find.byKey(const Key('blocks-selection-bar')), findsOneWidget);
     });
+
+    testWidgets('macOS：⌘ 单击进多选', (t) async {
+      await lib(t, data: view(v: BlocksView.list));
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tapKey(t, 'blocks-row-pf');
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      expect(rec.calls, isEmpty);
+      expect(find.byKey(const Key('blocks-selection-bar')), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   });
 
   group('编辑块', () {
@@ -534,6 +544,19 @@ void main() {
       expect(d.text, '1girl, (solo:1.2)');
       expect(d.thumbToken, 'c12');
       expect(d.params, BlocksFixture.y99Params);
+    });
+
+    testWidgets('预览图裁剪：触控板双指捏合缩放（触控板不发滚轮事件）', (t) async {
+      await open(t);
+      final center = t.getCenter(find.byKey(const Key('block-edit-crop')));
+      final trackpad = TestPointer(1, PointerDeviceKind.trackpad);
+      await t.sendEventToBinding(trackpad.panZoomStart(center));
+      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 1.5));
+      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 2.0));
+      await t.sendEventToBinding(trackpad.panZoomEnd());
+      await t.pumpAndSettle();
+      await tapKey(t, 'block-edit-save');
+      expect(rec.drafts.single.thumb!.scale, closeTo(2.0, 1e-9));
     });
 
     testWidgets('新建块：没内容时保存不可点，有内容后 onCreate', (t) async {

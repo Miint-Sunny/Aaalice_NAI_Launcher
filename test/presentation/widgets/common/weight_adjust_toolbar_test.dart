@@ -555,10 +555,10 @@ void main() {
     );
   });
 
-  test('exclusive prompt physics is enabled on Windows only', () {
+  test('exclusive prompt physics is desktop-only', () {
     expect(supportsPromptWeightScrollPhysics(TargetPlatform.windows), isTrue);
-    expect(supportsPromptWeightScrollPhysics(TargetPlatform.macOS), isFalse);
-    expect(supportsPromptWeightScrollPhysics(TargetPlatform.linux), isFalse);
+    expect(supportsPromptWeightScrollPhysics(TargetPlatform.macOS), isTrue);
+    expect(supportsPromptWeightScrollPhysics(TargetPlatform.linux), isTrue);
     expect(supportsPromptWeightScrollPhysics(TargetPlatform.android), isFalse);
     expect(supportsPromptWeightScrollPhysics(TargetPlatform.iOS), isFalse);
     expect(supportsPromptWeightScrollPhysics(TargetPlatform.fuchsia), isFalse);

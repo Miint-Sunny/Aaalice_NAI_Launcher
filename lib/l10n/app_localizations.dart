@@ -6725,6 +6725,12 @@ abstract class AppLocalizations {
   /// **'Minimize to Tray'**
   String get shortcut_action_minimize_to_tray;
 
+  /// No description provided for @shortcut_action_hide_to_menu_bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide to Menu Bar'**
+  String get shortcut_action_hide_to_menu_bar;
+
   /// No description provided for @shortcut_action_quit_app.
   ///
   /// In en, this message translates to:
@@ -9730,6 +9736,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Swap'**
   String get common_swap;
+
+  /// No description provided for @common_showInFinder.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in Finder'**
+  String get common_showInFinder;
 
   /// No description provided for @addToLibrary_displayNameHint.
   ///
@@ -15638,11 +15650,23 @@ abstract class AppLocalizations {
   /// **'Middle-click a block'**
   String get promptTranslation_guideMiddleTitle;
 
+  /// No description provided for @promptTranslation_guideCommandClickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'⌘ + click a block'**
+  String get promptTranslation_guideCommandClickTitle;
+
   /// No description provided for @promptTranslation_guideMiddleText.
   ///
   /// In en, this message translates to:
   /// **'Switch original and translation'**
   String get promptTranslation_guideMiddleText;
+
+  /// No description provided for @promptTranslation_toggleFace.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch original / translation'**
+  String get promptTranslation_toggleFace;
 
   /// No description provided for @promptTranslation_guideSourceTitle.
   ///
@@ -23749,6 +23773,12 @@ abstract class AppLocalizations {
   /// **'It may have been moved, renamed or deleted in Explorer'**
   String get imageViewer_missingHint;
 
+  /// No description provided for @imageViewer_missingHintFinder.
+  ///
+  /// In en, this message translates to:
+  /// **'It may have been moved, renamed or deleted in Finder'**
+  String get imageViewer_missingHintFinder;
+
   /// No description provided for @imageViewer_openFolder.
   ///
   /// In en, this message translates to:
@@ -31203,6 +31233,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Follows the Windows setting'**
   String get set_apSystemSub;
+
+  /// No description provided for @set_apSystemSubMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Follows the macOS setting'**
+  String get set_apSystemSubMac;
 
   /// No description provided for @set_apText.
   ///

@@ -1,4 +1,5 @@
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../core/utils/platform_shortcut_text.dart';
 
@@ -35,9 +36,12 @@ class PromptTranslationGuide extends StatelessWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // macOS 上用 ⌘+点击切换（触控板没有中键）
               _GuideRow(
-                icon: const MouseGestureIcon(middle: true),
-                title: context.l10n.promptTranslation_guideMiddleTitle,
+                icon: MouseGestureIcon(middle: !usesMacOSConventions),
+                title: usesMacOSConventions
+                    ? context.l10n.promptTranslation_guideCommandClickTitle
+                    : context.l10n.promptTranslation_guideMiddleTitle,
                 text: context.l10n.promptTranslation_guideMiddleText,
               ),
               _GuideRow(

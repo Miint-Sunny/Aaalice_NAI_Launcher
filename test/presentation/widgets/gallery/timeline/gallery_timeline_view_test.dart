@@ -228,6 +228,40 @@ void main() {
     await dispose(tester);
   });
 
+  testWidgets(
+    'modifiers are read when the button goes down, not when it comes up',
+    (tester) async {
+      await pumpView(tester);
+      final modifier = defaultTargetPlatform == TargetPlatform.macOS
+          ? LogicalKeyboardKey.metaLeft
+          : LogicalKeyboardKey.controlLeft;
+
+      // A quick click often lets go of the modifier before the button.
+      await tester.sendKeyDownEvent(modifier);
+      final gesture = await tester.startGesture(tester.getCenter(card(2)));
+      await tester.sendKeyUpEvent(modifier);
+      await gesture.up();
+      await tester.pump();
+      expect(selection().isActive, isTrue);
+      expect(selection().selectedIds, {records[2].path});
+
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      final range = await tester.startGesture(tester.getCenter(card(4)));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await range.up();
+      await tester.pump();
+      expect(selection().selectedIds, {
+        for (var i = 2; i <= 4; i++) records[i].path,
+      });
+      await dispose(tester);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
+
   testWidgets('Shift+tap selects the range from the focused image', (
     tester,
   ) async {

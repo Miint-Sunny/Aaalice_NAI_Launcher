@@ -278,6 +278,27 @@ void main() {
     await done(t);
   });
 
+  testWidgets('触控板双指捏合以指针处缩放（触控板不发滚轮事件）', (t) async {
+    await pump(t, ViewerFixture.gallery(zoomHintSeen: true));
+    await key(t, LogicalKeyboardKey.digit1);
+    expect(zoomLabel(t), '100%');
+    final center = t.getCenter(find.byKey(const Key('viewer-view')));
+    final trackpad = TestPointer(1, PointerDeviceKind.trackpad);
+    await t.sendEventToBinding(trackpad.panZoomStart(center));
+    await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 1.5));
+    await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 2));
+    await t.sendEventToBinding(trackpad.panZoomEnd());
+    await t.pumpAndSettle();
+    expect(zoomLabel(t), '200%');
+
+    await t.sendEventToBinding(trackpad.panZoomStart(center));
+    await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: .5));
+    await t.sendEventToBinding(trackpad.panZoomEnd());
+    await t.pumpAndSettle();
+    expect(zoomLabel(t), '100%');
+    await done(t);
+  });
+
   testWidgets('复用参数：Ctrl R / 主按钮；没有元数据时灰掉', (t) async {
     await pump(t, ViewerFixture.gallery());
     await key(t, LogicalKeyboardKey.keyR, ctrl: true);
@@ -643,6 +664,18 @@ void main() {
     ]);
     await done(t);
   });
+
+  testWidgets('macOS：找不到图时说访达，信息栏按钮叫在访达中显示', (t) async {
+    await pump(t, ViewerFixture.gallery(current: '16', missing: true));
+    expect(find.textContaining('可能已经在访达里被移动、改名或删除'), findsOneWidget);
+    expect(find.textContaining('资源管理器'), findsNothing);
+    await done(t);
+
+    await pump(t, ViewerFixture.gallery());
+    expect(find.byTooltip('在访达中显示'), findsOneWidget);
+    expect(find.byTooltip('在文件夹中显示'), findsNothing);
+    await done(t);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('Vibe：存入 Vibe 库', (t) async {
     await pump(t, ViewerFixture.generation(current: '41'));
