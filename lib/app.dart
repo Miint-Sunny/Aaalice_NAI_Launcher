@@ -16,6 +16,7 @@ import 'presentation/router/app_router.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/widgets/common/workspace_typography_scope.dart';
 import 'presentation/widgets/common/numpad_editing_shortcuts.dart';
+import 'presentation/widgets/common/mac_text_editing_shortcuts.dart';
 import 'presentation/providers/locale_provider.dart';
 import 'presentation/providers/background_refresh_provider.dart';
 import 'presentation/providers/krita/krita_bridge_notifier.dart';
@@ -217,7 +218,9 @@ class NAILauncherApp extends ConsumerWidget {
                     onToggleTheme: () =>
                         ref.read(themeNotifierProvider.notifier).nextTheme(),
                     child: NumpadEditingShortcuts(
-                      child: child ?? const SizedBox.shrink(),
+                      child: MacTextEditingShortcuts(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 ),

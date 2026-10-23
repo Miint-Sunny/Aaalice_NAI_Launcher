@@ -309,7 +309,7 @@ void main() {
   }
 
   testWidgets(
-    'primary+Z / primary+Shift+Z undo and redo bulk operations from the page focus',
+    'primary+Z undoes, primary+Shift+Z and primary+Y redo bulk operations from the page focus',
     (tester) async {
       final bulk = _RecordingBulkOperations();
       final container = await _pumpScreen(
@@ -349,9 +349,12 @@ void main() {
         LogicalKeyboardKey.shiftLeft,
       ], LogicalKeyboardKey.keyZ);
       expect(bulk.calls, ['undo', 'redo']);
+      // 两种重做键都认：⌘Y / Ctrl+Y
+      await press([primary], LogicalKeyboardKey.keyY);
+      expect(bulk.calls, ['undo', 'redo', 'redo']);
       if (mac) {
         await press([LogicalKeyboardKey.controlLeft], LogicalKeyboardKey.keyZ);
-        expect(bulk.calls, ['undo', 'redo']);
+        expect(bulk.calls, ['undo', 'redo', 'redo']);
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
