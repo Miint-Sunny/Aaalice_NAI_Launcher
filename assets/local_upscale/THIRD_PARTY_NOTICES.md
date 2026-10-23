@@ -31,9 +31,14 @@ Studio launches an unmodified, short-lived Real-ESRGAN NCNN/Vulkan executable.
 Engine release: v0.2.0 (2022-04-24), source revision 37026f4.
 https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases/tag/v0.2.0
 
-The engine and default Real-ESRGAN x4plus Anime model are MIT licensed by
-Xintao Wang. The original engine license, including realsr-ncnn-vulkan's
-MIT notice (nihui), is reproduced in windows/LICENSE.
+The engine is MIT licensed by Xintao Wang. The original engine license,
+including realsr-ncnn-vulkan's MIT notice (nihui), is reproduced in
+windows/LICENSE.
+https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan
+
+The bundled default Real-ESRGAN x4plus Anime model and the optional models
+are Real-ESRGAN weights in NCNN format. Real-ESRGAN is BSD 3-Clause licensed
+by Xintao Wang; the full license is reproduced in REAL-ESRGAN-LICENSE.txt.
 https://github.com/xinntao/Real-ESRGAN
 
 Optional models are taken from the upstream v0.2.5.0 model archive
