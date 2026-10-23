@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/shortcuts/shortcut_config.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../providers/shortcuts_provider.dart';
 import 'page_focus.dart';
 
@@ -119,7 +120,11 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
       if (keys.isEmpty) continue;
 
       // 创建唯一的 Intent
-      final intent = _ShortcutIntent(shortcutId, entry.value);
+      final intent = _ShortcutIntent(
+        shortcutId,
+        entry.value,
+        yieldsToTextField: _yieldsToTextField(keys),
+      );
       shortcutsMap[LogicalKeySet.fromSet(keys)] = intent;
     }
 
@@ -130,14 +135,9 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
 
     // 构建 Actions Map - 只需要注册一次 _ShortcutIntent 的处理
     final actionsMap = <Type, Action<Intent>>{
-      _ShortcutIntent: CallbackAction<_ShortcutIntent>(
-        onInvoke: (intent) {
-          // Nested Actions share this intent type. Dispatch to the callback
-          // that created the binding, rather than swallowing ancestor actions.
-          intent.callback();
-          return null;
-        },
-      ),
+      // Nested Actions share this intent type. Dispatch to the callback
+      // that created the binding, rather than swallowing ancestor actions.
+      _ShortcutIntent: _ShortcutAction(),
     };
 
     // 使用 Shortcuts + Actions + Focus 确保快捷键在整个子树中都能工作
@@ -219,7 +219,11 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
       if (keys.isEmpty) continue;
 
       // 创建唯一的 Intent
-      final intent = _ShortcutIntent(shortcutId, entry.value);
+      final intent = _ShortcutIntent(
+        shortcutId,
+        entry.value,
+        yieldsToTextField: _yieldsToTextField(keys),
+      );
       shortcutsMap[LogicalKeySet.fromSet(keys)] = intent;
     }
 
@@ -230,12 +234,7 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
 
     // 构建 Actions Map - 只需要注册一次 _ShortcutIntent 的处理
     final actionsMap = <Type, Action<Intent>>{
-      _ShortcutIntent: CallbackAction<_ShortcutIntent>(
-        onInvoke: (intent) {
-          intent.callback();
-          return null;
-        },
-      ),
+      _ShortcutIntent: _ShortcutAction(),
     };
 
     // 使用 Shortcuts + Actions + Focus 确保快捷键在整个子树中都能工作
@@ -413,12 +412,28 @@ class _ShortcutAwareWidgetState extends ConsumerState<ShortcutAwareWidget> {
   }
 }
 
+/// macOS 上输入框自己要用的组合键：焦点在可编辑文本里时，页面快捷键把它让给输入框。
+/// 只有 ⌘A（全选文字）；⌘T、⌘G、⌘B、⌘I 这类输入框不用的组合照常触发页面功能。
+/// 其他平台照旧是页面快捷键优先。
+bool _yieldsToTextField(Set<LogicalKeyboardKey> keys) =>
+    usesMacOSConventions &&
+    keys.length == 2 &&
+    keys.contains(LogicalKeyboardKey.meta) &&
+    keys.contains(LogicalKeyboardKey.keyA);
+
 /// 内部 Intent 类，用于标识快捷键动作
 class _ShortcutIntent extends Intent {
   final String shortcutId;
   final VoidCallback callback;
 
-  const _ShortcutIntent(this.shortcutId, this.callback);
+  /// 焦点在可编辑文本里时让给输入框（见 [_yieldsToTextField]）
+  final bool yieldsToTextField;
+
+  const _ShortcutIntent(
+    this.shortcutId,
+    this.callback, {
+    this.yieldsToTextField = false,
+  });
 
   @override
   bool operator ==(Object other) {
@@ -428,6 +443,20 @@ class _ShortcutIntent extends Intent {
 
   @override
   int get hashCode => shortcutId.hashCode;
+}
+
+/// 执行快捷键的回调。让给输入框的快捷键，焦点落在可编辑文本里时不启用：
+/// 按键接着往上传，由输入框自己处理（⌘A 全选）。
+class _ShortcutAction extends Action<_ShortcutIntent> {
+  @override
+  bool isEnabled(_ShortcutIntent intent) =>
+      !intent.yieldsToTextField || !isEditableTextFocused();
+
+  @override
+  Object? invoke(_ShortcutIntent intent) {
+    intent.callback();
+    return null;
+  }
 }
 
 /// 全局快捷键包装器
