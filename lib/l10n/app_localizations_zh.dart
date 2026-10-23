@@ -8512,7 +8512,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => '中键点块';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + 点击块';
+
+  @override
   String get promptTranslation_guideMiddleText => '切换原文与译文';
+
+  @override
+  String get promptTranslation_toggleFace => '切换原文 / 译文';
 
   @override
   String get promptTranslation_guideSourceTitle => '左键点原文';
@@ -29493,7 +29499,13 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get promptTranslation_guideMiddleTitle => '中鍵點塊';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + 點選塊';
+
+  @override
   String get promptTranslation_guideMiddleText => '切換原文與譯文';
+
+  @override
+  String get promptTranslation_toggleFace => '切換原文 / 譯文';
 
   @override
   String get promptTranslation_guideSourceTitle => '左鍵點原文';

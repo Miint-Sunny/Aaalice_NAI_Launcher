@@ -421,7 +421,14 @@ class WeightAdjustScrollPhysics extends ScrollPhysics {
 }
 
 bool supportsPromptWeightScrollPhysics(TargetPlatform platform) {
-  return platform == TargetPlatform.windows;
+  return switch (platform) {
+    TargetPlatform.windows ||
+    TargetPlatform.macOS ||
+    TargetPlatform.linux => true,
+    TargetPlatform.android ||
+    TargetPlatform.iOS ||
+    TargetPlatform.fuchsia => false,
+  };
 }
 
 /// 权重调整工具条

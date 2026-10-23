@@ -15602,11 +15602,23 @@ abstract class AppLocalizations {
   /// **'Middle-click a block'**
   String get promptTranslation_guideMiddleTitle;
 
+  /// No description provided for @promptTranslation_guideCommandClickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'⌘ + click a block'**
+  String get promptTranslation_guideCommandClickTitle;
+
   /// No description provided for @promptTranslation_guideMiddleText.
   ///
   /// In en, this message translates to:
   /// **'Switch original and translation'**
   String get promptTranslation_guideMiddleText;
+
+  /// No description provided for @promptTranslation_toggleFace.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch original / translation'**
+  String get promptTranslation_toggleFace;
 
   /// No description provided for @promptTranslation_guideSourceTitle.
   ///

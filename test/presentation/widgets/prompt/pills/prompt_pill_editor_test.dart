@@ -769,6 +769,85 @@ void main() {
   );
 
   testWidgets(
+    'macOS: Cmd+click toggles a translation pill without opening the editor',
+    (tester) async {
+      final container = await _pump(
+        tester,
+        libraryState: PromptBlockLibraryState(blocks: [], folders: []),
+      );
+      container
+          .read(pillWorkspaceNotifierProvider.notifier)
+          .insertTranslationAt(offset: 0, source: 'blue eyes', zh: '蓝眼睛');
+      await tester.pump();
+      bool showOriginal() => container
+          .read(pillWorkspaceNotifierProvider)
+          .document
+          .instances
+          .values
+          .single
+          .translation!
+          .showOriginal;
+
+      final pill = find.byType(TranslationPillView);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.tap(pill);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.idle();
+      await tester.pump();
+      expect(showOriginal(), isTrue);
+      expect(
+        find.byKey(const Key('translation-pill-editor-popover')),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('tag-expansion-popup')), findsNothing);
+
+      // The original face is an editable field; Cmd+click flips it back.
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await tester.tap(find.byKey(const Key('translation-pill-source-input')));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await tester.idle();
+      await tester.pump();
+      expect(showOriginal(), isFalse);
+      expect(find.byKey(const Key('tag-expansion-popup')), findsNothing);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+  );
+
+  testWidgets('translation pill context menu switches original / translation', (
+    tester,
+  ) async {
+    final container = await _pump(
+      tester,
+      libraryState: PromptBlockLibraryState(blocks: [], folders: []),
+    );
+    container
+        .read(pillWorkspaceNotifierProvider.notifier)
+        .insertTranslationAt(offset: 0, source: 'blue eyes', zh: '蓝眼睛');
+    await tester.pump();
+
+    await tester.tap(
+      find.byType(TranslationPillView),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('切换原文 / 译文'));
+    await tester.pumpAndSettle();
+    expect(
+      container
+          .read(pillWorkspaceNotifierProvider)
+          .document
+          .instances
+          .values
+          .single
+          .translation!
+          .showOriginal,
+      isTrue,
+    );
+    expect(find.text('blue eyes'), findsOneWidget);
+  });
+
+  testWidgets(
     'original translation edits at the clicked caret and retains IME composition',
     (tester) async {
       final emissions = <String>[];

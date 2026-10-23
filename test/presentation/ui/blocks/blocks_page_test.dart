@@ -1,4 +1,5 @@
 // 块系统交互测试：每个按钮 / 快捷键 / 拖放都回调到契约，接线方照着这些回调接 provider。
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -482,6 +483,19 @@ void main() {
       await tapKey(t, 'block-edit-delete');
       await tapKey(t, 'block-edit-delete-yes');
       expect(rec.calls.last, 'delete:y99');
+    });
+
+    testWidgets('预览图裁剪：触控板双指捏合缩放（触控板不发滚轮事件）', (t) async {
+      await open(t);
+      final center = t.getCenter(find.byKey(const Key('block-edit-crop')));
+      final trackpad = TestPointer(1, PointerDeviceKind.trackpad);
+      await t.sendEventToBinding(trackpad.panZoomStart(center));
+      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 1.5));
+      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 2.0));
+      await t.sendEventToBinding(trackpad.panZoomEnd());
+      await t.pumpAndSettle();
+      await tapKey(t, 'block-edit-save');
+      expect(rec.drafts.single.thumb!.scale, closeTo(2.0, 1e-9));
     });
 
     testWidgets('纯文本页原样保存；换图 / 清除预览图；参数从当前读取', (t) async {

@@ -8955,8 +8955,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => 'Middle-click a block';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + click a block';
+
+  @override
   String get promptTranslation_guideMiddleText =>
       'Switch original and translation';
+
+  @override
+  String get promptTranslation_toggleFace => 'Switch original / translation';
 
   @override
   String get promptTranslation_guideSourceTitle => 'Left-click the original';

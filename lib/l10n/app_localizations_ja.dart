@@ -8678,7 +8678,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => 'ブロックを中クリック';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + ブロックをクリック';
+
+  @override
   String get promptTranslation_guideMiddleText => '原文と訳文を切り替え';
+
+  @override
+  String get promptTranslation_toggleFace => '原文 / 訳文を切り替え';
 
   @override
   String get promptTranslation_guideSourceTitle => '原文を左クリック';

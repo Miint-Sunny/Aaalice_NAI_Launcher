@@ -8699,7 +8699,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get promptTranslation_guideMiddleTitle => '블록 가운데 버튼 클릭';
 
   @override
+  String get promptTranslation_guideCommandClickTitle => '⌘ + 블록 클릭';
+
+  @override
   String get promptTranslation_guideMiddleText => '원문과 번역문 전환';
+
+  @override
+  String get promptTranslation_toggleFace => '원문 / 번역문 전환';
 
   @override
   String get promptTranslation_guideSourceTitle => '원문 왼쪽 클릭';

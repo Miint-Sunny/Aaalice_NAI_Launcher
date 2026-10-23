@@ -101,6 +101,13 @@ class TagExpansionWrapper extends ConsumerStatefulWidget {
   final ValueChanged<String>? onApplied;
   final ValueChanged<bool>? onActiveChanged;
 
+  /// 包在里面的组件在按下时认领这一下点击，相关 tag 就不处理它。
+  ///
+  /// 例如 macOS 上 ⌘+点击翻译块是切换原文 / 译文，不是查相关 tag。里面的组件比这一层先收到
+  /// 按下事件，在它的 onPointerDown 里调用即可。
+  static void claimPointer(int pointer) => _claimedPointer = pointer;
+  static int? _claimedPointer;
+
   @override
   ConsumerState<TagExpansionWrapper> createState() =>
       _TagExpansionWrapperState();
@@ -228,6 +235,7 @@ class _TagExpansionWrapperState extends ConsumerState<TagExpansionWrapper>
   }
 
   void _onPointerDown(PointerDownEvent event) {
+    if (event.pointer == TagExpansionWrapper._claimedPointer) return;
     if (_pointerId != null || event.buttons & kPrimaryMouseButton == 0) {
       return;
     }
