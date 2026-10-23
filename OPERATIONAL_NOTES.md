@@ -5,7 +5,8 @@
 
 ## 本地图片超分
 
-- 本地超分不读取 ComfyUI 启用状态、模型列表或端口，也不调用 NAI 生成/放大接口。当前原生组件支持 Windows / Vulkan，SeedVR2 与 RTX SDK 是后续阶段。
+- 本地超分不读取 ComfyUI 启用状态、模型列表或端口，也不调用 NAI 生成/放大接口。Real-ESRGAN 在 Windows 和 macOS 上都用 Vulkan，同一版引擎、同一套模型和参数；SeedVR2 与 RTX 组件只支持 Windows。
+- Windows 每次运行前从资源包释放引擎并按清单核对哈希。macOS 的引擎随应用包签名放在 `Contents/Resources/tools/local-upscale/`，不从资源包释放、也不读 `assets/local_upscale/windows/`（Mac 包里已剔除）；旧 Mac 构建释放到「应用支持」目录的 `windows/` 会被清掉。界面按 `localUpscalePlatformProvider` 判断哪种放大方式能用，服务按真实系统再拒一次。Mac 版引擎找不到模型文件时会去读 `/proc/self/exe` 然后段错误（上游 issue #48 的原因），所以 `-m` 必须是绝对路径、文件在启动前确认存在（`resolve` 每次核对哈希）；Mac 上模型路径按 UTF-8 字节数算 256 字节的上限。
 - 任务冻结来源、模型和倍率，原始模型输出上限 6400 万像素；推理后用 Pica Lanczos3 精确调整尺寸并保留透明度。
 - 只继承源图实际元数据，保存及画布登记不能补写当前无关草稿。来源或手动选择改变过时保护最新状态；正常成功定位新结果而不抢提示词输入焦点。
 - 取消与托盘退出必须结束并等待自有工作进程/isolate 清理，不能在子进程仍运行时释放任务或模型锁。引擎、模型和清单的原始字节必须保留，不能由 Git 自动换行转换破坏哈希。

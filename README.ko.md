@@ -53,7 +53,8 @@ Windows의 두 버전 모두 앱 내 업데이트를 지원합니다. 설정, �
 - **업데이트**: 앱에서 새 버전을 다운로드하고 확인하면 Finder에서 새 버전이 선택됩니다. `⌘Q`로 이전 버전을 종료하고, 새 버전을 “응용 프로그램”으로 드래그해 바꾸면 됩니다.
 - **데이터 위치**: 설정, 데이터베이스, Agent 데이터는 `~/Library/Application Support/com.wof.naiStudio/`에 있으며, 앱을 바꿔도 삭제되지 않습니다.
 - **단축키**: 단축키의 `Ctrl`은 Mac에서 `⌘`가 되고, 단축키 목록은 `⌘/`로 엽니다.
-- **아직 지원하지 않는 기능**: 로컬 업스케일(Real-ESRGAN, NVIDIA RTX Video, SeedVR2)과 로컬 시맨틱 검색(RAG)은 현재 Windows 버전에서만 사용할 수 있습니다. NovelAI 클라우드 업스케일은 평소처럼 사용할 수 있습니다.
+- **로컬 업스케일**: Real-ESRGAN을 사용할 수 있습니다. 엔진과 모델은 Windows 버전과 같으며 Mac의 GPU(Metal)에서 실행됩니다. NVIDIA RTX Video와 SeedVR2는 NVIDIA GPU가 필요해 현재 Windows 버전에서만 사용할 수 있습니다.
+- **아직 지원하지 않는 기능**: 로컬 시맨틱 검색(RAG)은 현재 Windows 버전에서만 사용할 수 있습니다.
 
 ## 세 단계로 시작하기
 
@@ -225,7 +226,7 @@ scripts/build_macos.sh --release
 scripts/package_macos_release.sh
 ```
 
-`build_macos.sh`는 유니버설 앱을 빌드하고 NAI Agent용 Node 런타임, Pi, `studio-bridge`를 넣습니다. `package_macos_release.sh`는 이를 검사한 뒤 `dist/WOF_NAI_Studio_macOS_<버전>_Portable.zip`으로 묶습니다. 기본 서명은 ad-hoc이며, Apple 개발자 인증서가 있으면 환경 변수 `CODESIGN_IDENTITY`로 지정합니다. `tool/branding/wof_icon.svg`를 바꾼 뒤에는 `tool/branding/generate_macos_icons.sh`로 Mac 아이콘을 다시 만듭니다(Homebrew librsvg의 `rsvg-convert`가 필요합니다).
+`build_macos.sh`는 유니버설 앱을 빌드하고 NAI Agent용 Node 런타임, Pi, `studio-bridge`와 로컬 업스케일용 Real-ESRGAN을 넣습니다. `package_macos_release.sh`는 이를 검사한 뒤 `dist/WOF_NAI_Studio_macOS_<버전>_Portable.zip`으로 묶습니다. 기본 서명은 ad-hoc이며, Apple 개발자 인증서가 있으면 환경 변수 `CODESIGN_IDENTITY`로 지정합니다. `tool/branding/wof_icon.svg`를 바꾼 뒤에는 `tool/branding/generate_macos_icons.sh`로 Mac 아이콘을 다시 만듭니다(Homebrew librsvg의 `rsvg-convert`가 필요합니다).
 
 개발 규칙은 [DEVELOPMENT.md](DEVELOPMENT.md), 버전 기록은 [CHANGELOG.md](CHANGELOG.md)를 참고합니다.
 

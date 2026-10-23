@@ -41,17 +41,18 @@ Pi 本地回归在 `tool/nai_agent/` 执行 `npm test`，使用本地合成服�
 
 ```bash
 scripts/build_macos.sh                       # debug，本机架构
-scripts/build_macos.sh tools <应用包>         # flutter run 之后补进 Node、Pi 和 studio-bridge
+scripts/build_macos.sh tools <应用包>         # flutter run 之后补进 Node、Pi、studio-bridge 和放大引擎
 scripts/build_macos.sh --release             # 通用应用包（arm64 + x86_64）
 scripts/package_macos_release.sh [--version <版本>] [--dist-dir <目录>]
 ```
 
 - Node 和 Windows 包同一版本（v24.18.0），官方 darwin-arm64 / darwin-x64 两个包校验后用 `lipo` 合成；Pi 依赖用同版本的 npm 执行 `npm ci`。下载缓存在 `build/macos-runtime-cache/`。
 - `--release` 的 `studio-bridge` 也是通用二进制：Intel 那一份用官方 macOS x64 Dart SDK（版本同 Flutter 自带的 Dart，校验 `.sha256sum`）在 Rosetta 下编，所以发布构建要在装了 Rosetta 的 Apple 芯片 Mac 上做（`softwareupdate --install-rosetta`）。没有 Rosetta 时只编本机架构并给出警告，打包脚本默认拒收；只给自己用的本地包可以设 `ALLOW_HOST_ONLY_BRIDGE=1`。
-- `package_macos_release.sh` 先把应用包复制到 `build/release-stage/`（不改 Flutter 产物），由 `scripts/macos_release_payload.py` 检查：Release 构建、`Info.plist` 版本号和 `--version` 一致、没有开发机上的用户数据（`user-data`、`agent-data`、`.runs` 等）和指向包外的符号链接、数据库是真 SQLite 而不是 LFS 指针、Pi 1.3.0 / Node v24.18.0、每个 Mach-O 都有 arm64 和 x86_64。然后写 `Contents/Resources/package-info.json`（`platform: macos-universal`）和许可文件，重签，用 `ditto -c -k --keepParent --norsrc` 打成 `WOF_NAI_Studio_macOS_<版本>_Portable.zip` 和 `.sha256`，最后解压一遍核对签名和符号链接。`--norsrc` 不能省：系统给每个文件打的 `com.apple.provenance` 会在 zip 里变成上万个 `._` 文件，用别的工具解压时落进应用包，签名一坏，系统就说应用“已损坏”。
+- 本地放大：Real-ESRGAN NCNN/Vulkan 用官方 v0.2.0 Release 里的 macOS 包（`realesrgan-ncnn-vulkan-v0.2.0-macos.zip`，和 Windows 包出自同一个 Release、同一份源码 37026f4）。它本身就是 arm64 + x86_64 的通用二进制，静态链接 MoltenVK 1.1.1（走 Metal）和 LLVM OpenMP，只依赖系统框架。`build_macos.sh` 按固定的 sha256 校验 zip 和程序，连同上游 LICENSE 和 `tool/local_upscale/macos/` 里 MoltenVK、cereal、LLVM OpenMP 的许可放进 `Contents/Resources/tools/local-upscale/`，签名后再重签整个包；固定的版本和 `assets/local_upscale/manifest.json` 的 `engine_version` 对不上时构建直接失败。模型照旧从 flutter_assets 释放到「应用支持」目录，下载的可选模型也和 Windows 共用同一个官方模型包。Mac 上不用 `studio_upscale_worker`：它只给 SeedVR2 / RTX 组件管进程（Windows Job Object）和调 RTX Video SDK（Direct3D 11），常规放大在 Windows 上也是直接启动引擎。真机审计：`RUN_LOCAL_UPSCALE_AUDIT=1 LOCAL_UPSCALE_MAC_TOOLS=<应用包>/Contents/Resources/tools flutter test test/data/services/local_upscale_service_test.dart`。
+- `package_macos_release.sh` 先把应用包复制到 `build/release-stage/`（不改 Flutter 产物），由 `scripts/macos_release_payload.py` 检查：Release 构建、`Info.plist` 版本号和 `--version` 一致、没有开发机上的用户数据（`user-data`、`agent-data`、`.runs` 等）和指向包外的符号链接、数据库是真 SQLite 而不是 LFS 指针、Pi 1.3.0 / Node v24.18.0、放大引擎和许可在 `tools/local-upscale` 而 flutter_assets 里没有 Windows 放大程序、每个 Mach-O 都有 arm64 和 x86_64。然后写 `Contents/Resources/package-info.json`（`platform: macos-universal`）和许可文件，重签，用 `ditto -c -k --keepParent --norsrc` 打成 `WOF_NAI_Studio_macOS_<版本>_Portable.zip` 和 `.sha256`，最后解压一遍核对签名和符号链接。`--norsrc` 不能省：系统给每个文件打的 `com.apple.provenance` 会在 zip 里变成上万个 `._` 文件，用别的工具解压时落进应用包，签名一坏，系统就说应用“已损坏”。
 - 签名：没有证书时用 ad-hoc，用户第一次打开会被 Gatekeeper 拦，打开方法写在 README。有 Developer ID 证书时，两个脚本都用 `CODESIGN_IDENTITY` 指定；要公证还得加 hardened runtime（Node 需要 JIT 相关的 entitlements）、时间戳和 `notarytool`，目前没做。
 - 应用内更新：Mac 包和 Windows 一样下载、校验大小和 SHA-256，然后解压到更新目录、在访达中选中新版本，由用户退出后拖进「应用程序」替换；不在退出后自动覆盖（ad-hoc 包静默替换既要「应用程序」的写权限，也绕过了用户确认）。新版本运行后清掉更新包和解压出来的应用。
-- 只有 Windows 版的功能：本地放大（含高级组件）、RAG 运行时。它们的 Windows 资源（`assets/local_upscale/windows/`、`assets/rag/windows/`，约 6.5 MB）仍会打进 Mac 包：`LocalUpscaleModelManager` 在所有平台上都会从资源包里释放引擎文件，直接剔除会让放大设置在 Mac 上报错，所以暂不剔除。
+- 只有 Windows 版的功能：本地放大的 SeedVR2 和 RTX Video 组件（要 CUDA、RTX Video SDK 和 Direct3D 11，界面上写明“目前只支持 Windows”，安装按钮不可点）、RAG 运行时。`assets/local_upscale/windows/`（Windows 引擎、worker、vcomp140.dll）在 `build_macos.sh` 签名前从 flutter_assets 里剔掉，Mac 的代码路径不读它们；`assets/rag/windows/` 仍会打进 Mac 包。
 - 测试：在 Mac 上跑 `flutter test` 时，一批按 Windows 窗口写的组件测试（集成标题栏、页头拖动、窗口外框等）本来就不过，结果以 Windows CI 为准，比对时看有没有新增失败。测平台分支用 `debugDefaultTargetPlatformOverride` 或给服务注入平台，不依赖跑测试的机器。
 - 发布：`Release` workflow 的 `build-macos`（macos-15）构建并打包，和 Windows 包传到同一个 Release；`generate_release_metadata.ps1` 把 Mac 包登记进 `release_manifest.json`（`type: macos-portable`），应用内更新按它挑包。PR 校验的 `macos-validation` 只构建和打包，不上传。
 
