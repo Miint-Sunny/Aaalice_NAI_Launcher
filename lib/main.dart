@@ -34,6 +34,7 @@ import 'core/utils/app_logger.dart';
 import 'core/utils/hive_startup_box_opener.dart';
 import 'core/utils/hive_storage_helper.dart';
 import 'core/utils/app_support_directory.dart';
+import 'presentation/screens/splash/legacy_data_import_gate.dart';
 import 'core/utils/window_focus_tracker.dart';
 import 'core/utils/window_state_coercion.dart';
 import 'core/utils/window_state_persistence.dart';
@@ -339,6 +340,9 @@ Future<void> _bootstrapApplication() async {
   AppLogger.i('Application starting', 'Main');
 
   // Finish storage migration before Hive, SQLite or background services open.
+  // On macOS the first launch copies the previous version's data and shows
+  // it in the window (only when there is something to copy or decide).
+  LegacyDataImportGate.install();
   await getApplicationSupportDirectory();
   // macOS 的 Agent 数据等放「应用支持」目录，先解析好供同步取用
   await AppBundlePaths.init();

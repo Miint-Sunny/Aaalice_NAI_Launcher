@@ -5,6 +5,44 @@
   "brand_entryTagline": "A place for your imagination.",
   "brand_switchToLight": "Switch to light mode",
   "brand_switchToDark": "Switch to dark mode",
+  "legacyImport_copyingTitle": "Copying your data from {app}",
+  "@legacyImport_copyingTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_copyingBody": "Settings, history, libraries and favorites are copied once, the first time this version starts. You will need to sign in again. {app} keeps its own data unchanged.",
+  "@legacyImport_copyingBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningTitle": "Quit {app} to bring your data over",
+  "@legacyImport_runningTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningBody": "The first time it starts, this version copies the previous version's settings, history, libraries and favorites. Quit it completely, including its menu bar icon, and copying starts by itself.",
+  "legacyImport_waiting": "Waiting for {app} to quit…",
+  "@legacyImport_waiting": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedTitle": "Can't copy your data from {app}",
+  "@legacyImport_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedBody": "Nothing was changed: {app} keeps its data, and no partial copy was left behind. Make sure the disk has enough free space, then try again.",
+  "@legacyImport_failedBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_startWithout": "Start Without Copying",
   "app_subtitle": "NovelAI Third-party Client",
   "common_cancel": "Cancel",
   "common_confirm": "Confirm",

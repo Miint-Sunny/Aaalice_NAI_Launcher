@@ -133,6 +133,54 @@ abstract class AppLocalizations {
   /// **'Switch to dark mode'**
   String get brand_switchToDark;
 
+  /// No description provided for @legacyImport_copyingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copying your data from {app}'**
+  String legacyImport_copyingTitle(Object app);
+
+  /// No description provided for @legacyImport_copyingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings, history, libraries and favorites are copied once, the first time this version starts. You will need to sign in again. {app} keeps its own data unchanged.'**
+  String legacyImport_copyingBody(Object app);
+
+  /// No description provided for @legacyImport_runningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit {app} to bring your data over'**
+  String legacyImport_runningTitle(Object app);
+
+  /// No description provided for @legacyImport_runningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The first time it starts, this version copies the previous version\'s settings, history, libraries and favorites. Quit it completely, including its menu bar icon, and copying starts by itself.'**
+  String get legacyImport_runningBody;
+
+  /// No description provided for @legacyImport_waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {app} to quit…'**
+  String legacyImport_waiting(Object app);
+
+  /// No description provided for @legacyImport_failedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t copy your data from {app}'**
+  String legacyImport_failedTitle(Object app);
+
+  /// No description provided for @legacyImport_failedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was changed: {app} keeps its data, and no partial copy was left behind. Make sure the disk has enough free space, then try again.'**
+  String legacyImport_failedBody(Object app);
+
+  /// No description provided for @legacyImport_startWithout.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Without Copying'**
+  String get legacyImport_startWithout;
+
   /// No description provided for @app_subtitle.
   ///
   /// In en, this message translates to:

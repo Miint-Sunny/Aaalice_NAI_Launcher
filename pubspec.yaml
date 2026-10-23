@@ -33,6 +33,8 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   shared_preferences: ^2.2.3
+  # macOS 首次启动读旧版（另一个 bundle id）的偏好设置，要用它的 suiteName 选项
+  shared_preferences_foundation: any
 
   # SQLite数据库（画廊索引）
   sqflite_common_ffi: ^2.3.4

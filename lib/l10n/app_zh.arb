@@ -5,6 +5,44 @@
   "brand_entryTagline": "给想象，一个发生的地方。",
   "brand_switchToLight": "切换到浅色",
   "brand_switchToDark": "切换到深色",
+  "legacyImport_copyingTitle": "正在从 {app} 复制数据",
+  "@legacyImport_copyingTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_copyingBody": "设置、历史记录、各类库和收藏只在首次启动时复制一次，账号需要重新登录。{app} 自己的数据保持原样。",
+  "@legacyImport_copyingBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningTitle": "请先退出 {app}",
+  "@legacyImport_runningTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningBody": "首次启动时要复制旧版的设置、历史记录、各类库和收藏。请完全退出旧版（包括菜单栏里的图标），退出后会自动开始复制。",
+  "legacyImport_waiting": "正在等待 {app} 退出…",
+  "@legacyImport_waiting": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedTitle": "无法从 {app} 复制数据",
+  "@legacyImport_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedBody": "没有改动任何数据：{app} 的数据保持原样，也没有留下复制了一半的文件。请确认磁盘空间足够，然后重试。",
+  "@legacyImport_failedBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_startWithout": "跳过复制并启动",
   "app_subtitle": "NovelAI 第三方客户端",
   "common_cancel": "取消",
   "common_confirm": "确定",

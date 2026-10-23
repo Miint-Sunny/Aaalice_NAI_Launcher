@@ -5,6 +5,44 @@
   "brand_entryTagline": "想像が、かたちになる場所。",
   "brand_switchToLight": "ライトモードに切り替え",
   "brand_switchToDark": "ダークモードに切り替え",
+  "legacyImport_copyingTitle": "{app} からデータをコピーしています",
+  "@legacyImport_copyingTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_copyingBody": "設定、履歴、各種ライブラリとお気に入りは、初回起動時に一度だけコピーされます。アカウントにはもう一度ログインしてください。{app} のデータはそのまま残ります。",
+  "@legacyImport_copyingBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningTitle": "{app} を終了してください",
+  "@legacyImport_runningTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningBody": "初回起動時に、旧版の設定、履歴、各種ライブラリとお気に入りをコピーします。メニューバーのアイコンも含めて旧版を完全に終了すると、自動的にコピーが始まります。",
+  "legacyImport_waiting": "{app} の終了を待っています…",
+  "@legacyImport_waiting": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedTitle": "{app} からデータをコピーできません",
+  "@legacyImport_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedBody": "データは何も変更されていません。{app} のデータはそのまま残り、途中までのコピーも残っていません。ディスクの空き容量を確認してから、もう一度お試しください。",
+  "@legacyImport_failedBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_startWithout": "コピーせずに起動",
   "app_subtitle": "NovelAI サードパーティ クライアント",
   "common_cancel": "キャンセル",
   "common_confirm": "確認",

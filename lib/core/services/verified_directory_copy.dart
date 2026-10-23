@@ -49,11 +49,13 @@ class DataSnapshotEntry {
 /// Root-relative path to entry. Never follows links: a directory link is
 /// recorded as an alias and may only point inside [root] (or inside
 /// [originalRoot], for a copy whose aliases still point at the original).
-/// Links to files or outside the root are rejected so no external data is
-/// pulled into a copy.
+/// Links outside the root are rejected so no external data is pulled into a
+/// copy. Links to files are rejected too unless [fileLinks] is set (macOS:
+/// Python environments link their interpreter files).
 Future<Map<String, DataSnapshotEntry>> snapshotDirectory(
   Directory root, {
   Directory? originalRoot,
+  bool fileLinks = false,
 }) async {
   final result = <String, DataSnapshotEntry>{};
   final physicalRoot = await root.resolveSymbolicLinks();
@@ -75,8 +77,9 @@ Future<Map<String, DataSnapshotEntry>> snapshotDirectory(
           entry.path,
         );
       }
-      if (await FileSystemEntity.type(entry.path) !=
-          FileSystemEntityType.directory) {
+      final targetType = await FileSystemEntity.type(entry.path);
+      if (targetType != FileSystemEntityType.directory &&
+          !(fileLinks && targetType == FileSystemEntityType.file)) {
         throw FileSystemException(
           'Application data contains a file link',
           entry.path,
@@ -153,8 +156,13 @@ Future<void> verifySnapshot(
   Directory root,
   Map<String, DataSnapshotEntry> expected, {
   Directory? originalRoot,
+  bool fileLinks = false,
 }) async {
-  final current = await snapshotDirectory(root, originalRoot: originalRoot);
+  final current = await snapshotDirectory(
+    root,
+    originalRoot: originalRoot,
+    fileLinks: fileLinks,
+  );
   if (current.length != expected.length ||
       expected.entries.any((entry) => current[entry.key] != entry.value)) {
     throw const ApplicationDataChangedException();
@@ -167,11 +175,9 @@ class ApplicationDataChangedException extends FileSystemException {
     : super('Application data changed during migration; originals preserved');
 }
 
-/// Relative symbolic link, so an alias keeps working after its root moves.
-Future<void> createRelativeDirectoryLink(
-  Directory link,
-  Directory target,
-) async {
+/// Relative symbolic link (to a folder or a file), so an alias keeps working
+/// after its root moves.
+Future<void> createRelativeLink(Directory link, Directory target) async {
   await Link(
     link.path,
   ).create(p.relative(target.path, from: p.dirname(link.path)));
