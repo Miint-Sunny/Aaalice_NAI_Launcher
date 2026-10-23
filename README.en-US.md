@@ -53,7 +53,8 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 - **Updates**: The app downloads and verifies the new version, then selects it in Finder. Quit the old version with `⌘Q` and drag the new one into Applications to replace it.
 - **Data location**: Settings, databases and Agent data are in `~/Library/Application Support/com.wof.naiStudio/`. Replacing the app leaves them intact.
 - **Shortcuts**: `Ctrl` in shortcuts becomes `⌘` on a Mac; `⌘/` shows the shortcut list.
-- **Not available yet**: Local upscaling (Real-ESRGAN, NVIDIA RTX Video, SeedVR2) and local semantic search (RAG) are Windows-only for now. NovelAI cloud upscaling works as usual.
+- **Local upscaling**: Real-ESRGAN works, with the same engine and models as on Windows, running on the Mac's GPU (Metal). NVIDIA RTX Video and SeedVR2 need an NVIDIA GPU and are Windows-only for now.
+- **Not available yet**: Local semantic search (RAG) is Windows-only for now.
 
 ## Get started in three steps
 
@@ -225,7 +226,7 @@ scripts/build_macos.sh --release
 scripts/package_macos_release.sh
 ```
 
-`build_macos.sh` builds the universal app bundle and adds the Node runtime for NAI Agent, Pi and `studio-bridge`; `package_macos_release.sh` checks it and packs it into `dist/WOF_NAI_Studio_macOS_<version>_Portable.zip`. The app is ad-hoc signed by default; set `CODESIGN_IDENTITY` to sign with your Apple developer certificate. After changing `tool/branding/wof_icon.svg`, regenerate the Mac icons with `tool/branding/generate_macos_icons.sh` (requires `rsvg-convert` from Homebrew's librsvg).
+`build_macos.sh` builds the universal app bundle and adds the Node runtime for NAI Agent, Pi, `studio-bridge` and the Real-ESRGAN engine for local upscaling; `package_macos_release.sh` checks it and packs it into `dist/WOF_NAI_Studio_macOS_<version>_Portable.zip`. The app is ad-hoc signed by default; set `CODESIGN_IDENTITY` to sign with your Apple developer certificate. After changing `tool/branding/wof_icon.svg`, regenerate the Mac icons with `tool/branding/generate_macos_icons.sh` (requires `rsvg-convert` from Homebrew's librsvg).
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for development guidelines and [CHANGELOG.md](CHANGELOG.md) for version history.
 

@@ -5319,7 +5319,7 @@
   "localUpscale_resizing": "Finishing image…",
   "localUpscale_complete": "Upscale complete",
   "localUpscale_cancelling": "Cancelling…",
-  "localUpscale_unsupportedPlatform": "Local upscaling currently supports Windows.",
+  "localUpscale_unsupportedPlatform": "This upscaling method is currently available on Windows only.",
   "localUpscale_engineMissing": "Local engine unavailable. Reinstall the complete Studio package.",
   "localUpscale_integrity": "File verification failed. Reinstall the affected model or Studio package.",
   "localUpscale_modelMissing": "Model unavailable. Choose an installed model or check the model folder path length.",

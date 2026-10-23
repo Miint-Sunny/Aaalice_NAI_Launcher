@@ -53,7 +53,8 @@ Windows 的两个版本都支持应用内更新。你的设置、图库数据库
 - **更新**：应用内下载并校验新版本后，会在访达中选中它。按 `⌘Q` 退出旧版本，把新版本拖进“应用程序”替换即可。
 - **数据位置**：设置、数据库和 Agent 数据在 `~/Library/Application Support/com.wof.naiStudio/`，替换应用不会删除它们。
 - **快捷键**：快捷键里的 `Ctrl` 在 Mac 上换成 `⌘`，快捷键列表用 `⌘/` 打开。
-- **暂不支持**：本地放大（Real-ESRGAN、NVIDIA RTX Video、SeedVR2）和本地语义检索（RAG）目前只有 Windows 版。NovelAI 云端放大照常可用。
+- **本地放大**：Real-ESRGAN 可以用，引擎和模型与 Windows 版相同，用 Mac 的显卡（Metal）运行。NVIDIA RTX Video 和 SeedVR2 需要 NVIDIA 显卡，目前只有 Windows 版。
+- **暂不支持**：本地语义检索（RAG）目前只有 Windows 版。
 
 ## 三步上手
 
@@ -225,7 +226,7 @@ scripts/build_macos.sh --release
 scripts/package_macos_release.sh
 ```
 
-`build_macos.sh` 构建通用应用包，并放进 NAI Agent 的 Node 运行时、Pi 和 `studio-bridge`；`package_macos_release.sh` 检查后打成 `dist/WOF_NAI_Studio_macOS_<版本>_Portable.zip`。默认 ad-hoc 签名，有 Apple 开发者证书时用环境变量 `CODESIGN_IDENTITY` 指定。改了 `tool/branding/wof_icon.svg` 后，用 `tool/branding/generate_macos_icons.sh` 重新生成 Mac 图标（需要 `rsvg-convert`，即 Homebrew 的 librsvg）。
+`build_macos.sh` 构建通用应用包，并放进 NAI Agent 的 Node 运行时、Pi、`studio-bridge` 和本地放大用的 Real-ESRGAN；`package_macos_release.sh` 检查后打成 `dist/WOF_NAI_Studio_macOS_<版本>_Portable.zip`。默认 ad-hoc 签名，有 Apple 开发者证书时用环境变量 `CODESIGN_IDENTITY` 指定。改了 `tool/branding/wof_icon.svg` 后，用 `tool/branding/generate_macos_icons.sh` 重新生成 Mac 图标（需要 `rsvg-convert`，即 Homebrew 的 librsvg）。
 
 开发约定见 [DEVELOPMENT.md](DEVELOPMENT.md)，版本记录见 [CHANGELOG.md](CHANGELOG.md)。
 

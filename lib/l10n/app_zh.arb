@@ -5301,7 +5301,7 @@
   "localUpscale_resizing": "正在完成图片处理…",
   "localUpscale_complete": "超分完成",
   "localUpscale_cancelling": "正在取消…",
-  "localUpscale_unsupportedPlatform": "本地超分目前支持 Windows。",
+  "localUpscale_unsupportedPlatform": "这种放大方式目前只支持 Windows。",
   "localUpscale_engineMissing": "本地引擎不可用，请重新安装完整 Studio 运行包。",
   "localUpscale_integrity": "文件校验失败，请重新安装对应模型或 Studio 运行包。",
   "localUpscale_modelMissing": "模型不可用，请选择已安装的模型，或检查模型目录路径是否过长。",

@@ -1678,10 +1678,14 @@ class SettingsUpscaleData {
     this.seed = const [],
     this.rtx,
     this.seedOffloadMaxBlocks = 32,
+    this.seedAvailable = true,
+    this.rtxAvailable = true,
   });
 
-  /// 显卡检测（新增）；null = 没检测到独显。
+  /// 显卡检测（新增）；null = 没检测到独显。Apple 芯片的 Mac 上是芯片名（如 Apple M2 Max）。
   final String? gpuName;
+
+  /// 独立显存；0 = 没有单独的显存（Apple 芯片），卡片只显示名字。
   final int vramGb;
   final Set<SettingsGpuCap> caps;
   final String cudaVersion;
@@ -1692,6 +1696,11 @@ class SettingsUpscaleData {
   /// Upper bound of the currently edited SeedVR2 model: 3B = 32, 7B = 36.
   /// Wiring supplies Seedvr2Options.maxBlocks for the selected model.
   final int seedOffloadMaxBlocks;
+
+  /// Whether SeedVR2 / RTX Video can be installed on this platform (Windows
+  /// only). When false the install buttons are disabled and the section says so.
+  final bool seedAvailable;
+  final bool rtxAvailable;
 }
 
 // ── 桥接与集成

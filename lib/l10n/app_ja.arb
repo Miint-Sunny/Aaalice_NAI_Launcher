@@ -5301,7 +5301,7 @@
   "localUpscale_resizing": "画像を仕上げ中…",
   "localUpscale_complete": "超解像完了",
   "localUpscale_cancelling": "キャンセル中…",
-  "localUpscale_unsupportedPlatform": "ローカル超解像は現在 Windows に対応しています。",
+  "localUpscale_unsupportedPlatform": "この拡大方式は現在 Windows のみ対応しています。",
   "localUpscale_engineMissing": "ローカルエンジンを利用できません。Studio の完全なパッケージを再インストールしてください。",
   "localUpscale_integrity": "ファイル検証に失敗しました。モデルまたは Studio を再インストールしてください。",
   "localUpscale_modelMissing": "モデルを利用できません。インストール済みのモデルを選ぶか、フォルダーのパス長を確認してください。",

@@ -9692,7 +9692,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get localUpscale_cancelling => '취소 중…';
 
   @override
-  String get localUpscale_unsupportedPlatform => '로컬 업스케일은 현재 Windows를 지원합니다.';
+  String get localUpscale_unsupportedPlatform =>
+      '이 업스케일 방식은 현재 Windows에서만 지원됩니다.';
 
   @override
   String get localUpscale_engineMissing =>
