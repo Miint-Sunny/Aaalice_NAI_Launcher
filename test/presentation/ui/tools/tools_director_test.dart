@@ -98,6 +98,20 @@ void main() {
     expect(r.calls, ['onRun', 'onPaste', 'onBack']);
   });
 
+  testWidgets('快捷键 macOS：⌘↩ 运行、⌘V 粘贴（在这里接住，不传到全局导入），Control 不触发', (t) async {
+    final r = ToolsRecorder();
+    await pumpToolsDirector(t, data: ToolsFixture.director(), r: r);
+    await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(await t.sendKeyEvent(LogicalKeyboardKey.keyV), true);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.enter);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyV);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(r.calls, ['onRun', 'onPaste']);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('表情修复运行前：16 个表情 + 更多 8 个、强度、补充提示词；结果操作不可点', (t) async {
     final r = ToolsRecorder();
     await pumpToolsDirector(t, data: ToolsFixture.emotion(), r: r);

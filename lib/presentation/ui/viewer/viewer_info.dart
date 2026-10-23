@@ -168,7 +168,7 @@ class _Header extends StatelessWidget {
 
 String _keyText(ViewerViewData data, ViewerCommand c) {
   final a = data.keys[c]?.firstOrNull ?? ViewerKeys.defaults[c]?.firstOrNull;
-  return a == null ? '' : viewerKeyLabels(a).join(' ');
+  return a == null ? '' : viewerKeyText(a);
 }
 
 class _Body extends StatefulWidget {
@@ -1085,7 +1085,7 @@ class _Footer extends StatelessWidget {
             )
           else
             const Spacer(),
-          if (meta) _BrandKey(viewerKeyLabels(reuseKeys).join(' ')),
+          if (meta) _BrandKey(viewerKeyText(reuseKeys)),
         ],
       );
     }

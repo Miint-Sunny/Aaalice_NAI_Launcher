@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/shortcuts/default_shortcuts.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../data/models/gallery/gallery_category.dart';
 import '../../../data/services/gallery/gallery_column_width_store.dart';
 import '../../../data/services/gallery/gallery_sort.dart';
@@ -606,7 +608,7 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
                 Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: Text(
-                    shortcut,
+                    platformShortcutLabel(shortcut),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -639,7 +641,8 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
             StudioIcons.galleryRedo,
             l10n.common_redo,
             enabled: widget.onRedo != null,
-            shortcut: 'Ctrl+Y',
+            // macOS 上重做按习惯写 ⇧⌘Z（⌘Y 也能用）
+            shortcut: usesMacOSConventions ? 'Ctrl+Shift+Z' : 'Ctrl+Y',
           ),
           const PopupMenuDivider(),
           item(
@@ -863,7 +866,7 @@ class _KeyHint extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        label,
+        platformShortcutLabel(label),
         style: theme.textTheme.labelSmall?.copyWith(
           fontFamily: 'Geist Mono',
           height: 0,

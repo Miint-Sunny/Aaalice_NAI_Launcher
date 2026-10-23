@@ -234,6 +234,24 @@ void main() {
       expect(key('refs-delete'), findsOneWidget);
     });
 
+    testWidgets('macOS：⌘⌫ 删除，单按 ⌫ 不删；⌃⌘F（系统全屏）不当收藏', (t) async {
+      await pump(t);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      expect(await t.sendKeyEvent(LogicalKeyboardKey.keyF), false);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      expect(rec.favorites, isEmpty);
+      await t.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await t.pumpAndSettle();
+      expect(key('refs-delete'), findsNothing);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await t.pumpAndSettle();
+      expect(key('refs-delete'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('方向键换选中', (t) async {
       await pump(t);
       await t.sendKeyEvent(LogicalKeyboardKey.arrowRight);

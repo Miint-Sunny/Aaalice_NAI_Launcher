@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
+import '../../../core/utils/primary_activator.dart';
 import '../../widgets/common/upscale_brand_logo.dart';
 import '../agent/agent_glyphs.dart';
 import '../kit/ui_colors.dart';
@@ -693,7 +695,7 @@ class _SettingsAgentPageState extends State<SettingsAgentPage> {
         SettingKeyRow(
           SettingKey.agentEnterToSend,
           title: l.set_agEnter,
-          subtitle: l.set_agEnterSub,
+          subtitle: platformShortcutText(l.set_agEnterSub),
           control: const SetSwitch(SettingKey.agentEnterToSend),
         ),
         SettingKeyRow(
@@ -1053,7 +1055,7 @@ class _SettingsAgentPageState extends State<SettingsAgentPage> {
                     style: UiText.sans(12.5, color: c.tipInk),
                   ),
                   Text(
-                    'Ctrl+S',
+                    platformShortcutLabel('Ctrl+S'),
                     style: UiText.mono(
                       10.5,
                       weight: FontWeight.w500,
@@ -1271,8 +1273,7 @@ class _TextAreaState extends State<_TextArea> {
     );
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true):
-            widget.onSave,
+        const PrimaryActivator(LogicalKeyboardKey.keyS): widget.onSave,
       },
       child: GestureDetector(
         // 点文本框下方的空白也能聚焦。

@@ -857,7 +857,7 @@ class _ZoomHint extends StatelessWidget {
     final keys = ViewerPageScope.of(context).data.keys;
     String key(ViewerCommand c, String fallback) {
       final a = keys[c]?.firstOrNull ?? ViewerKeys.defaults[c]?.firstOrNull;
-      return a == null ? fallback : viewerKeyLabels(a).join(' ');
+      return a == null ? fallback : viewerKeyText(a);
     }
 
     return ViewerGlass(
@@ -956,7 +956,7 @@ class _UndoToast extends StatelessWidget {
                       color: ViewerInk.toastInk,
                     ),
                   ),
-                  _LightKey(viewerKeyLabels(keys).join(' ')),
+                  _LightKey(viewerKeyText(keys)),
                 ],
               ),
             ),

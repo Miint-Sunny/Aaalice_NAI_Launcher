@@ -1,7 +1,9 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nai_launcher/presentation/ui/kit/ui_keycap.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_contract.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_fixture.dart';
 
@@ -551,6 +553,35 @@ void main() {
       expect(find.byKey(const Key('gen-bar-top')), findsNothing);
       expect(find.byKey(const Key('gen-history-empty')), findsOneWidget);
     });
+
+    testWidgets(
+      '空画布的生成快捷键：macOS 写 ⌘⏎，Windows 写 Ctrl Enter',
+      (t) async {
+        await pump(t, GenFixture.empty());
+        final keys = [
+          for (final w in t.widgetList<Text>(
+            find.descendant(
+              of: find.byKey(const Key('gen-canvas-empty')),
+              matching: find.descendant(
+                of: find.byType(UiKeycaps),
+                matching: find.byType(Text),
+              ),
+            ),
+          ))
+            w.data,
+        ];
+        expect(
+          keys,
+          defaultTargetPlatform == TargetPlatform.macOS
+              ? ['⌘', '⏎']
+              : ['Ctrl', 'Enter'],
+        );
+      },
+      variant: const TargetPlatformVariant({
+        TargetPlatform.macOS,
+        TargetPlatform.windows,
+      }),
+    );
 
     testWidgets('失败卡：重试、关闭', (t) async {
       await pump(t, GenFixture.failed());

@@ -176,15 +176,20 @@ class DefaultShortcuts {
     // Mac 键盘上的「删除」是 ⌫；不用单独的 ⌫，免得在输入框里删字时被截走。⌘⌫ 同访达「移到废纸篓」
     ShortcutIds.deleteImage: ('delete', 'ctrl+backspace'),
     ShortcutIds.vibeDetailDelete: ('delete', 'ctrl+backspace'),
-    // 窗口键交给系统菜单：⌘M 最小化到程序坞、⌘Q 退出、⌘W 关窗口、⌘H 隐藏、⌃⌘F 全屏。
-    // 「隐藏到菜单栏」「退出应用」Mac 上默认不设键（⌘H、⌘Q 就是）；F11 被系统「显示桌面」占用，
-    // 查看器的「全屏」其实是关掉查看器、关查看器用 Esc，生成页的全屏预览也不设键；
+    // 窗口键交给系统菜单：⌘M 最小化到程序坞、⌘Q 退出、⌘W 关窗口、⌘H 隐藏。
+    // 「隐藏到菜单栏」「退出应用」Mac 上默认不设键（⌘H、⌘Q 就是）；
     // 生成页「切换正/负面」让出 ⌘M，改 ⇧⌘M（「隐藏到托盘」的默认是它，macOS 上空出来了）
     ShortcutIds.minimizeToTray: ('ctrl+shift+m', ''),
     ShortcutIds.quitApp: ('ctrl+q', ''),
-    ShortcutIds.toggleFullscreen: ('f11', ''),
-    ShortcutIds.fullscreenPreview: ('f11', ''),
     ShortcutIds.togglePromptMode: ('ctrl+m', 'ctrl+shift+m'),
+    // F11 被系统「显示桌面」占用：查看器全屏、生成页全屏预览用 Mac 的全屏键 ⌃⌘F（同系统菜单「进入全屏」）。
+    // 两者在不同页面，不算冲突；别的页面里 ⌃⌘F 照样交给系统菜单
+    ShortcutIds.toggleFullscreen: ('f11', 'ctrl+meta+f'),
+    ShortcutIds.fullscreenPreview: ('f11', 'ctrl+meta+f'),
+    // ⌥ 加字母在 Mac 上用来打特殊字符（⌥P 是 π、⌥H 是 ˙），快捷键组件不给输入框让路，
+    // 在提示词里打这些字符会被截走：参数面板、历史面板改 ⌃⌘P、⌃⌘H
+    ShortcutIds.openParamsPanel: ('alt+p', 'ctrl+meta+p'),
+    ShortcutIds.openHistoryPanel: ('alt+h', 'ctrl+meta+h'),
     // F 键在 Mac 上要按 fn：刷新用 ⌘R，快捷键帮助用 ⌘/
     ShortcutIds.refreshGallery: ('f5', 'ctrl+r'),
     ShortcutIds.showShortcutHelp: ('f1', 'ctrl+slash'),

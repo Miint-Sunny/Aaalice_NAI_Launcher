@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/cache/thumbnail_cache_service.dart';
+import '../../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/gallery/local_image_record.dart';
 import '../../../../data/services/gallery/gallery_group_mode.dart';
@@ -304,7 +305,8 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
       widget.onOpenViewer(current);
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.delete) {
+    // 删除：Delete，macOS 上还有 ⌘⌫
+    if (isListDeleteKey(event)) {
       if (widget.onDeleteRequested == null) return KeyEventResult.ignored;
       widget.onDeleteRequested!();
       return KeyEventResult.handled;

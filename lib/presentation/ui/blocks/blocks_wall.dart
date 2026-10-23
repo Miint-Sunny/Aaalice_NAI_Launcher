@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_block_pill.dart';
@@ -270,7 +271,7 @@ class BlocksToolbar extends StatelessWidget {
                 UiBtn(
                   key: const Key('blocks-create'),
                   tone: UiBtnTone.primary,
-                  tooltip: l10n.blocks_newBlockTip,
+                  tooltip: platformShortcutText(l10n.blocks_newBlockTip),
                   onTap: () => ctrl.openEdit(null),
                   children: [
                     const UiGlyph(UiGlyphs.plus, size: 14, strokeWidth: 2.2),

@@ -78,6 +78,26 @@ void main() {
     );
   }
 
+  testWidgets(
+    'the Ctrl wheel modifier is Cmd on macOS (Control+scroll is the macOS zoom gesture)',
+    (tester) async {
+      Future<bool> captured(LogicalKeyboardKey key) async {
+        await tester.sendKeyDownEvent(key);
+        final value = PromptWeightScrollModifier.ctrl.isWheelCaptured;
+        await tester.sendKeyUpEvent(key);
+        return value;
+      }
+
+      final mac = defaultTargetPlatform == TargetPlatform.macOS;
+      expect(await captured(LogicalKeyboardKey.metaLeft), mac);
+      expect(await captured(LogicalKeyboardKey.controlLeft), !mac);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
+
   testWidgets('selected prompt adjusts weight without scrolling the page', (
     tester,
   ) async {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/platform_shortcut_text.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -289,7 +290,7 @@ List<UiMenuItem> exploreCandidateMenu(
       glyph: UiGlyphs.trash,
       danger: true,
       divider: true,
-      trailing: 'Del',
+      trailing: listDeleteKeyLabel(),
       onTap: () => ctrl.delete(keys),
     ),
   ];

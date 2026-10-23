@@ -30,27 +30,80 @@ void main() {
     expect(_label(ShortcutIds.togglePromptMode), '⇧⌘M');
   });
 
+  test('macOS：参数面板 ⌃⌘P、历史面板 ⌃⌘H，两个全屏用系统的全屏键 ⌃⌘F', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    expect(_label(ShortcutIds.openParamsPanel), '⌃⌘P');
+    expect(_label(ShortcutIds.openHistoryPanel), '⌃⌘H');
+    expect(_label(ShortcutIds.toggleFullscreen), '⌃⌘F');
+    expect(_label(ShortcutIds.fullscreenPreview), '⌃⌘F');
+  });
+
+  test('macOS：默认键不用 ⌥ 加字母（Mac 上用来打特殊字符）', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    for (final MapEntry(key: id, value: shortcut)
+        in DefaultShortcuts.all.entries) {
+      final parsed = ShortcutParser.parse(shortcut);
+      if (parsed == null) continue;
+      final letter = parsed.key.name.startsWith('key');
+      final onlyAlt =
+          parsed.hasModifier(ShortcutModifier.alt) &&
+          !parsed.hasModifier(ShortcutModifier.control) &&
+          !parsed.hasModifier(ShortcutModifier.meta);
+      expect(letter && onlyAlt, isFalse, reason: id);
+    }
+  });
+
+  test('macOS：默认键都能解析（或不设键），同一页面里没有冲突', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    final config = ShortcutConfig.createDefault();
+    for (final binding in config.bindings.values) {
+      final shortcut = binding.effectiveShortcut!;
+      if (shortcut.isEmpty) continue;
+      expect(ShortcutParser.parse(shortcut), isNotNull, reason: binding.id);
+      expect(
+        config.findConflicts(
+          shortcut,
+          context: binding.context,
+          excludeId: binding.id,
+        ),
+        isEmpty,
+        reason: binding.id,
+      );
+    }
+  });
+
   test('macOS：窗口键交给系统菜单，占用它们的几项默认不设键', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     final config = ShortcutConfig.createDefault();
-    for (final id in [
-      ShortcutIds.minimizeToTray,
-      ShortcutIds.quitApp,
-      ShortcutIds.toggleFullscreen,
-      ShortcutIds.fullscreenPreview,
-    ]) {
+    for (final id in [ShortcutIds.minimizeToTray, ShortcutIds.quitApp]) {
       expect(config.getEffectiveShortcut(id) ?? '', isEmpty, reason: id);
     }
-    // 没有哪一项默认占着 ⌘M ⌘Q ⌘W ⌘H ⌃⌘F
-    final taken = {
-      for (final id in DefaultShortcuts.all.keys)
-        if (config.getEffectiveShortcut(id) case final shortcut?
-            when shortcut.isNotEmpty)
-          AppShortcutManager.getDisplayLabel(shortcut),
-    };
-    for (final systemKey in ['⌘M', '⌘Q', '⌘W', '⌘H', '⌃⌘F']) {
+    // 没有哪一项默认占着 ⌘M ⌘Q ⌘W ⌘H；⌃⌘F 只给查看器全屏和生成页全屏预览（都是全屏，同系统菜单「进入全屏」）
+    final taken = <String, List<String>>{};
+    for (final id in DefaultShortcuts.all.keys) {
+      if (config.getEffectiveShortcut(id) case final shortcut?
+          when shortcut.isNotEmpty) {
+        (taken[AppShortcutManager.getDisplayLabel(shortcut)] ??= []).add(id);
+      }
+    }
+    for (final systemKey in ['⌘M', '⌘Q', '⌘W', '⌘H']) {
       expect(taken, isNot(contains(systemKey)), reason: systemKey);
     }
+    expect(
+      taken['⌃⌘F'],
+      unorderedEquals([
+        ShortcutIds.toggleFullscreen,
+        ShortcutIds.fullscreenPreview,
+      ]),
+    );
+    expect(
+      config.findConflicts(
+        config.getEffectiveShortcut(ShortcutIds.toggleFullscreen)!,
+        context: ShortcutContext.viewer,
+        excludeId: ShortcutIds.toggleFullscreen,
+      ),
+      isEmpty,
+    );
   });
 
   test('Windows：沿用 W.O.F 原值', () {

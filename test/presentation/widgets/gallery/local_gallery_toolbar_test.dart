@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -270,6 +271,23 @@ void main() {
       }
     }
   }
+
+  testWidgets(
+    'shortcut hints follow the platform: Ctrl F / Ctrl+Z / Ctrl+Y, macOS ⌘F / ⌘Z / ⇧⌘Z',
+    (tester) async {
+      await _pumpToolbar(tester);
+      final mac = defaultTargetPlatform == TargetPlatform.macOS;
+      expect(find.text(mac ? '⌘F' : 'Ctrl F'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('gallery-toolbar-more')));
+      await tester.pumpAndSettle();
+      expect(find.text(mac ? '⌘Z' : 'Ctrl+Z'), findsOneWidget);
+      expect(find.text(mac ? '⇧⌘Z' : 'Ctrl+Y'), findsOneWidget);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets('breadcrumb shows the folder path and the result count', (
     tester,

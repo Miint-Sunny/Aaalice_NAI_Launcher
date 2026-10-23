@@ -48,6 +48,37 @@ void main() {
     expect(AppShortcutManager.getDisplayLabel('escape'), '⎋');
   });
 
+  test('macOS：键帽按 Mac 菜单的写法和顺序拆开', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    List<String> keys(String shortcut) =>
+        ShortcutParser.parse(shortcut)!.keyLabels;
+    expect(keys('ctrl+1'), ['⌘', '1']);
+    expect(keys('ctrl+shift+t'), ['⇧', '⌘', 'T']);
+    expect(keys('ctrl+meta+f'), ['⌃', '⌘', 'F']);
+    expect(keys('alt+arrowup'), ['⌥', '↑']);
+    expect(keys('ctrl+comma'), ['⌘', ',']);
+    expect(keys('escape'), ['⎋']);
+    // ⇱ ⇲ 自带字体里没有，照旧写字
+    expect(keys('home'), ['Home']);
+    expect(AppShortcutManager.getDisplayLabel('ctrl+end'), '⌘End');
+  });
+
+  test('录快捷键：按键转回 ShortcutKey，用不了的键返回 null', () {
+    expect(
+      AppShortcutManager.shortcutKeyOf(LogicalKeyboardKey.comma),
+      ShortcutKey.comma,
+    );
+    expect(
+      AppShortcutManager.shortcutKeyOf(LogicalKeyboardKey.arrowUp),
+      ShortcutKey.arrowup,
+    );
+    expect(
+      AppShortcutManager.shortcutKeyOf(LogicalKeyboardKey.keyK),
+      ShortcutKey.keyK,
+    );
+    expect(AppShortcutManager.shortcutKeyOf(LogicalKeyboardKey.capsLock), null);
+  });
+
   test('Windows：照旧是 Ctrl', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     final parsed = ShortcutParser.parse('ctrl+1')!;
@@ -57,5 +88,10 @@ void main() {
         AppShortcutManager.parseActivator('ctrl+1')! as LogicalKeySet;
     expect(activator.keys, contains(LogicalKeyboardKey.control));
     expect(AppShortcutManager.getDisplayLabel('ctrl+1'), 'Ctrl+1');
+    expect(ShortcutParser.parse('ctrl+shift+t')!.keyLabels, [
+      'Ctrl',
+      'Shift',
+      'T',
+    ]);
   });
 }
