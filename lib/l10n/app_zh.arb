@@ -2566,7 +2566,14 @@
       "version": {}
     }
   },
+  "updateDownloadedFinderHint": "新版本 v{version} 已下载并通过校验。点“在访达中显示”后，按 ⌘Q 退出本应用，再把新版本拖进“应用程序”文件夹，替换旧版本。",
+  "@updateDownloadedFinderHint": {
+    "placeholders": {
+      "version": {}
+    }
+  },
   "updateInstallAndRestart": "安装并重启",
+  "updateShowInFinder": "在访达中显示",
   "updateInstallNow": "立即安装",
   "updateInstallLater": "稍后安装",
   "updateDownload": "下载更新",
@@ -2574,6 +2581,8 @@
   "updateDownloadFailed": "下载更新失败",
   "updateInstallFailed": "安装更新失败",
   "updateInstallingHint": "安装程序已启动，应用即将关闭并自动完成更新。",
+  "updatePreparingApp": "正在准备新版本...",
+  "updatePreparingAppHint": "正在解压更新包，完成后会在访达中选中新版本。",
   "remindMeLater": "4 小时后提醒",
   "updateNoticeAvailable": "新版本 v{version} 可用",
   "@updateNoticeAvailable": {
@@ -2583,6 +2592,7 @@
   },
   "updateNoticeAvailableSubtitle": "可在应用内下载并自动完成更新",
   "updateNoticeManualSubtitle": "当前平台需要前往 Release 页面手动更新",
+  "updateNoticeFinderSubtitle": "可在应用内下载并校验，再到访达中替换旧版本",
   "updateNoticeReady": "新版本 v{version} 已准备好",
   "@updateNoticeReady": {
     "placeholders": {
@@ -2590,6 +2600,7 @@
     }
   },
   "updateNoticeReadySubtitle": "更新包已校验，重启即可安装",
+  "updateNoticeReadyFinderSubtitle": "更新包已校验，在访达中替换旧版本即可",
   "updateNoticeFailed": "上次更新没有完成",
   "updateViewDetails": "查看更新",
   "updateSettingsAvailable": "发现 v{version}，点击查看更新内容",
@@ -4912,6 +4923,13 @@
   "update_errorPackageRemoved": "更新包已被清理，请重新下载",
   "update_errorPackageCorrupted": "更新包已损坏，请重新下载",
   "update_errorLaunchFailed": "启动更新程序失败",
+  "update_errorExtractFailed": "解压更新包失败",
+  "update_errorRevealFailed": "无法在访达中显示新版本，它在：{path}",
+  "@update_errorRevealFailed": {
+    "placeholders": {
+      "path": {}
+    }
+  },
   "update_errorCheckFailed": "检查更新失败",
   "update_errorCheckUnknown": "检查更新时发生未知错误",
   "update_errorLogPath": "日志：{path}",

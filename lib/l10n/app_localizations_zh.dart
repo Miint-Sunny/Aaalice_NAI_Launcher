@@ -5020,7 +5020,15 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String updateDownloadedFinderHint(Object version) {
+    return '新版本 v$version 已下载并通过校验。点“在访达中显示”后，按 ⌘Q 退出本应用，再把新版本拖进“应用程序”文件夹，替换旧版本。';
+  }
+
+  @override
   String get updateInstallAndRestart => '安装并重启';
+
+  @override
+  String get updateShowInFinder => '在访达中显示';
 
   @override
   String get updateInstallNow => '立即安装';
@@ -5044,6 +5052,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateInstallingHint => '安装程序已启动，应用即将关闭并自动完成更新。';
 
   @override
+  String get updatePreparingApp => '正在准备新版本...';
+
+  @override
+  String get updatePreparingAppHint => '正在解压更新包，完成后会在访达中选中新版本。';
+
+  @override
   String get remindMeLater => '4 小时后提醒';
 
   @override
@@ -5058,12 +5072,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateNoticeManualSubtitle => '当前平台需要前往 Release 页面手动更新';
 
   @override
+  String get updateNoticeFinderSubtitle => '可在应用内下载并校验，再到访达中替换旧版本';
+
+  @override
   String updateNoticeReady(Object version) {
     return '新版本 v$version 已准备好';
   }
 
   @override
   String get updateNoticeReadySubtitle => '更新包已校验，重启即可安装';
+
+  @override
+  String get updateNoticeReadyFinderSubtitle => '更新包已校验，在访达中替换旧版本即可';
 
   @override
   String get updateNoticeFailed => '上次更新没有完成';
@@ -8750,6 +8770,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get update_errorLaunchFailed => '启动更新程序失败';
+
+  @override
+  String get update_errorExtractFailed => '解压更新包失败';
+
+  @override
+  String update_errorRevealFailed(Object path) {
+    return '无法在访达中显示新版本，它在：$path';
+  }
 
   @override
   String get update_errorCheckFailed => '检查更新失败';
@@ -26001,7 +26029,15 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   }
 
   @override
+  String updateDownloadedFinderHint(Object version) {
+    return '新版本 v$version 已下載並通過校驗。點“在 Finder 中顯示”後，按 ⌘Q 退出本應用，再把新版本拖進“應用程式”資料夾，替換舊版本。';
+  }
+
+  @override
   String get updateInstallAndRestart => '安裝並重啟';
+
+  @override
+  String get updateShowInFinder => '在 Finder 中顯示';
 
   @override
   String get updateInstallNow => '立即安裝';
@@ -26025,6 +26061,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get updateInstallingHint => '安裝程式已啟動，應用即將關閉並自動完成更新。';
 
   @override
+  String get updatePreparingApp => '正在準備新版本...';
+
+  @override
+  String get updatePreparingAppHint => '正在解壓更新包，完成後會在 Finder 中選中新版本。';
+
+  @override
   String get remindMeLater => '4 小時後提醒';
 
   @override
@@ -26039,12 +26081,18 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get updateNoticeManualSubtitle => '當前平臺需要前往 Release 頁面手動更新';
 
   @override
+  String get updateNoticeFinderSubtitle => '可在應用內下載並校驗，再到 Finder 中替換舊版本';
+
+  @override
   String updateNoticeReady(Object version) {
     return '新版本 v$version 已準備好';
   }
 
   @override
   String get updateNoticeReadySubtitle => '更新包已校驗，重啟即可安裝';
+
+  @override
+  String get updateNoticeReadyFinderSubtitle => '更新包已校驗，在 Finder 中替換舊版本即可';
 
   @override
   String get updateNoticeFailed => '上次更新沒有完成';
@@ -29731,6 +29779,14 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get update_errorLaunchFailed => '啟動更新程式失敗';
+
+  @override
+  String get update_errorExtractFailed => '解壓更新包失敗';
+
+  @override
+  String update_errorRevealFailed(Object path) {
+    return '無法在 Finder 中顯示新版本，它在：$path';
+  }
 
   @override
   String get update_errorCheckFailed => '檢查更新失敗';

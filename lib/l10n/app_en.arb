@@ -2651,7 +2651,14 @@
       "version": {}
     }
   },
+  "updateDownloadedFinderHint": "v{version} has been downloaded and verified. Choose “Show in Finder”, quit this app with ⌘Q, then drag the new version into the Applications folder to replace the old one.",
+  "@updateDownloadedFinderHint": {
+    "placeholders": {
+      "version": {}
+    }
+  },
   "updateInstallAndRestart": "Install and Restart",
+  "updateShowInFinder": "Show in Finder",
   "updateInstallNow": "Install Now",
   "updateInstallLater": "Install Later",
   "updateDownload": "Download Update",
@@ -2659,6 +2666,8 @@
   "updateDownloadFailed": "Failed to download the update",
   "updateInstallFailed": "Failed to install the update",
   "updateInstallingHint": "The installer has started. The app will close and finish updating automatically.",
+  "updatePreparingApp": "Preparing the new version...",
+  "updatePreparingAppHint": "Unpacking the update. The new version will be selected in Finder.",
   "remindMeLater": "Remind Me in 4 Hours",
   "updateNoticeAvailable": "Version v{version} is available",
   "@updateNoticeAvailable": {
@@ -2668,6 +2677,7 @@
   },
   "updateNoticeAvailableSubtitle": "Download and finish the update automatically in the app",
   "updateNoticeManualSubtitle": "This platform must be updated manually from the Release page",
+  "updateNoticeFinderSubtitle": "Download and verify in the app, then replace the old version in Finder",
   "updateNoticeReady": "Version v{version} is ready",
   "@updateNoticeReady": {
     "placeholders": {
@@ -2675,6 +2685,7 @@
     }
   },
   "updateNoticeReadySubtitle": "The package is verified and ready to install on restart",
+  "updateNoticeReadyFinderSubtitle": "The package is verified; replace the old version in Finder to finish",
   "updateNoticeFailed": "The previous update did not finish",
   "updateViewDetails": "View Update",
   "updateSettingsAvailable": "v{version} is available; select to view details",
@@ -4912,6 +4923,13 @@
   "update_errorPackageRemoved": "The update package was cleaned up; download it again",
   "update_errorPackageCorrupted": "The update package is corrupted; download it again",
   "update_errorLaunchFailed": "Failed to start the updater",
+  "update_errorExtractFailed": "Failed to unpack the update package",
+  "update_errorRevealFailed": "Failed to show the new version in Finder; it is at {path}",
+  "@update_errorRevealFailed": {
+    "placeholders": {
+      "path": {}
+    }
+  },
   "update_errorCheckFailed": "Failed to check for updates",
   "update_errorCheckUnknown": "An unknown error occurred while checking for updates",
   "update_errorLogPath": "Log: {path}",

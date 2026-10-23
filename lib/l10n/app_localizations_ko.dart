@@ -5100,7 +5100,15 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String updateDownloadedFinderHint(Object version) {
+    return 'v$version을(를) 다운로드하고 확인했습니다. \"Finder에서 보기\"를 누른 뒤 ⌘Q로 이 앱을 종료하고, 새 버전을 \"응용 프로그램\" 폴더로 드래그해 이전 버전을 바꾸세요.';
+  }
+
+  @override
   String get updateInstallAndRestart => '설치 후 다시 시작';
+
+  @override
+  String get updateShowInFinder => 'Finder에서 보기';
 
   @override
   String get updateInstallNow => '지금 설치';
@@ -5125,6 +5133,13 @@ class AppLocalizationsKo extends AppLocalizations {
       '설치 프로그램이 시작되었습니다. 앱이 닫히고 업데이트가 자동으로 완료됩니다.';
 
   @override
+  String get updatePreparingApp => '새 버전 준비 중...';
+
+  @override
+  String get updatePreparingAppHint =>
+      '업데이트 패키지의 압축을 푸는 중입니다. 완료되면 Finder에서 새 버전이 선택됩니다.';
+
+  @override
   String get remindMeLater => '4시간 후에 알림';
 
   @override
@@ -5139,12 +5154,20 @@ class AppLocalizationsKo extends AppLocalizations {
   String get updateNoticeManualSubtitle => '이 플랫폼은 Release 페이지에서 직접 업데이트해야 합니다';
 
   @override
+  String get updateNoticeFinderSubtitle =>
+      '앱에서 다운로드하고 확인한 뒤 Finder에서 이전 버전을 바꿉니다';
+
+  @override
   String updateNoticeReady(Object version) {
     return 'v$version 버전이 준비되었습니다';
   }
 
   @override
   String get updateNoticeReadySubtitle => '패키지를 확인했으며 다시 시작하면 설치할 수 있습니다';
+
+  @override
+  String get updateNoticeReadyFinderSubtitle =>
+      '패키지를 확인했습니다. Finder에서 이전 버전을 바꾸면 끝납니다';
 
   @override
   String get updateNoticeFailed => '이전 업데이트가 끝나지 않았습니다';
@@ -8946,6 +8969,14 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get update_errorLaunchFailed => '업데이트 프로그램을 시작하지 못했습니다';
+
+  @override
+  String get update_errorExtractFailed => '업데이트 패키지의 압축을 풀지 못했습니다';
+
+  @override
+  String update_errorRevealFailed(Object path) {
+    return 'Finder에서 새 버전을 표시하지 못했습니다. 위치: $path';
+  }
 
   @override
   String get update_errorCheckFailed => '업데이트를 확인하지 못했습니다';

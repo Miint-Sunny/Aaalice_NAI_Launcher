@@ -5221,7 +5221,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String updateDownloadedFinderHint(Object version) {
+    return 'v$version has been downloaded and verified. Choose “Show in Finder”, quit this app with ⌘Q, then drag the new version into the Applications folder to replace the old one.';
+  }
+
+  @override
   String get updateInstallAndRestart => 'Install and Restart';
+
+  @override
+  String get updateShowInFinder => 'Show in Finder';
 
   @override
   String get updateInstallNow => 'Install Now';
@@ -5247,6 +5255,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'The installer has started. The app will close and finish updating automatically.';
 
   @override
+  String get updatePreparingApp => 'Preparing the new version...';
+
+  @override
+  String get updatePreparingAppHint =>
+      'Unpacking the update. The new version will be selected in Finder.';
+
+  @override
   String get remindMeLater => 'Remind Me in 4 Hours';
 
   @override
@@ -5263,6 +5278,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This platform must be updated manually from the Release page';
 
   @override
+  String get updateNoticeFinderSubtitle =>
+      'Download and verify in the app, then replace the old version in Finder';
+
+  @override
   String updateNoticeReady(Object version) {
     return 'Version v$version is ready';
   }
@@ -5270,6 +5289,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get updateNoticeReadySubtitle =>
       'The package is verified and ready to install on restart';
+
+  @override
+  String get updateNoticeReadyFinderSubtitle =>
+      'The package is verified; replace the old version in Finder to finish';
 
   @override
   String get updateNoticeFailed => 'The previous update did not finish';
@@ -9231,6 +9254,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get update_errorLaunchFailed => 'Failed to start the updater';
+
+  @override
+  String get update_errorExtractFailed => 'Failed to unpack the update package';
+
+  @override
+  String update_errorRevealFailed(Object path) {
+    return 'Failed to show the new version in Finder; it is at $path';
+  }
 
   @override
   String get update_errorCheckFailed => 'Failed to check for updates';

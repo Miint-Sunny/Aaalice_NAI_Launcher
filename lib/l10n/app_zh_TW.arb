@@ -2566,7 +2566,14 @@
       "version": {}
     }
   },
+  "updateDownloadedFinderHint": "新版本 v{version} 已下載並通過校驗。點“在 Finder 中顯示”後，按 ⌘Q 退出本應用，再把新版本拖進“應用程式”資料夾，替換舊版本。",
+  "@updateDownloadedFinderHint": {
+    "placeholders": {
+      "version": {}
+    }
+  },
   "updateInstallAndRestart": "安裝並重啟",
+  "updateShowInFinder": "在 Finder 中顯示",
   "updateInstallNow": "立即安裝",
   "updateInstallLater": "稍後安裝",
   "updateDownload": "下載更新",
@@ -2574,6 +2581,8 @@
   "updateDownloadFailed": "下載更新失敗",
   "updateInstallFailed": "安裝更新失敗",
   "updateInstallingHint": "安裝程式已啟動，應用即將關閉並自動完成更新。",
+  "updatePreparingApp": "正在準備新版本...",
+  "updatePreparingAppHint": "正在解壓更新包，完成後會在 Finder 中選中新版本。",
   "remindMeLater": "4 小時後提醒",
   "updateNoticeAvailable": "新版本 v{version} 可用",
   "@updateNoticeAvailable": {
@@ -2583,6 +2592,7 @@
   },
   "updateNoticeAvailableSubtitle": "可在應用內下載並自動完成更新",
   "updateNoticeManualSubtitle": "當前平臺需要前往 Release 頁面手動更新",
+  "updateNoticeFinderSubtitle": "可在應用內下載並校驗，再到 Finder 中替換舊版本",
   "updateNoticeReady": "新版本 v{version} 已準備好",
   "@updateNoticeReady": {
     "placeholders": {
@@ -2590,6 +2600,7 @@
     }
   },
   "updateNoticeReadySubtitle": "更新包已校驗，重啟即可安裝",
+  "updateNoticeReadyFinderSubtitle": "更新包已校驗，在 Finder 中替換舊版本即可",
   "updateNoticeFailed": "上次更新沒有完成",
   "updateViewDetails": "檢視更新",
   "updateSettingsAvailable": "發現 v{version}，點選檢視更新內容",
@@ -4912,6 +4923,13 @@
   "update_errorPackageRemoved": "更新包已被清理，請重新下載",
   "update_errorPackageCorrupted": "更新包已損壞，請重新下載",
   "update_errorLaunchFailed": "啟動更新程式失敗",
+  "update_errorExtractFailed": "解壓更新包失敗",
+  "update_errorRevealFailed": "無法在 Finder 中顯示新版本，它在：{path}",
+  "@update_errorRevealFailed": {
+    "placeholders": {
+      "path": {}
+    }
+  },
   "update_errorCheckFailed": "檢查更新失敗",
   "update_errorCheckUnknown": "檢查更新時發生未知錯誤",
   "update_errorLogPath": "日誌：{path}",

@@ -2640,6 +2640,7 @@
   },
   "updateNoticeAvailableSubtitle": "アプリ内でダウンロードして自動的に更新できます",
   "updateNoticeManualSubtitle": "このプラットフォームでは Release ページから手動で更新してください",
+  "updateNoticeFinderSubtitle": "アプリ内でダウンロードと検証を行い、Finder で古いバージョンと置き換えます",
   "updateNoticeReady": "バージョン v{version} の準備ができました",
   "@updateNoticeReady": {
     "placeholders": {
@@ -2647,6 +2648,7 @@
     }
   },
   "updateNoticeReadySubtitle": "パッケージは検証済みです。再起動してインストールできます",
+  "updateNoticeReadyFinderSubtitle": "パッケージは検証済みです。Finder で古いバージョンと置き換えてください",
   "updateNoticeFailed": "前回の更新は完了しませんでした",
   "updateViewDetails": "更新を表示",
   "updateSettingsAvailable": "v{version} が利用可能です。選択して詳細を表示",
@@ -2684,12 +2686,21 @@
       "version": {}
     }
   },
+  "updateDownloadedFinderHint": "v{version} をダウンロードし、検証が完了しました。「Finder に表示」を押したあと、⌘Q でこのアプリを終了し、新しいバージョンを「アプリケーション」フォルダにドラッグして古いバージョンと置き換えてください。",
+  "@updateDownloadedFinderHint": {
+    "placeholders": {
+      "version": {}
+    }
+  },
   "updateInstallAndRestart": "インストールして再起動",
+  "updateShowInFinder": "Finder に表示",
   "updateInstallLater": "後でインストール",
   "updateDownloadCancelled": "ダウンロードをキャンセルしました。後で再開できます",
   "updateDownloadFailed": "更新のダウンロードに失敗しました",
   "updateInstalling": "インストーラーを起動しています...",
   "updateInstallingHint": "インストーラーが起動しました。アプリは終了し、自動的に更新が完了します。",
+  "updatePreparingApp": "新しいバージョンを準備しています...",
+  "updatePreparingAppHint": "更新パッケージを展開しています。完了すると Finder で新しいバージョンが選択されます。",
   "cannotOpenUrl": "リンクを開けません",
   "model3d_editorTitle": "3Dモデルレイヤー",
   "model3d_modeTransform": "変換",
@@ -4912,6 +4923,13 @@
   "update_errorPackageRemoved": "更新パッケージが削除されました。もう一度ダウンロードしてください",
   "update_errorPackageCorrupted": "更新パッケージが破損しています。もう一度ダウンロードしてください",
   "update_errorLaunchFailed": "更新プログラムの起動に失敗しました",
+  "update_errorExtractFailed": "更新パッケージの展開に失敗しました",
+  "update_errorRevealFailed": "新しいバージョンを Finder に表示できませんでした。場所：{path}",
+  "@update_errorRevealFailed": {
+    "placeholders": {
+      "path": {}
+    }
+  },
   "update_errorCheckFailed": "更新の確認に失敗しました",
   "update_errorCheckUnknown": "更新の確認中に不明なエラーが発生しました",
   "update_errorLogPath": "ログ：{path}",

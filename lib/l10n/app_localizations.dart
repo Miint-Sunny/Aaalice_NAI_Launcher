@@ -9251,11 +9251,23 @@ abstract class AppLocalizations {
   /// **'v{version} has been downloaded and verified. Installing will close the app and restart it automatically.'**
   String updateDownloadedHint(Object version);
 
+  /// No description provided for @updateDownloadedFinderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'v{version} has been downloaded and verified. Choose “Show in Finder”, quit this app with ⌘Q, then drag the new version into the Applications folder to replace the old one.'**
+  String updateDownloadedFinderHint(Object version);
+
   /// No description provided for @updateInstallAndRestart.
   ///
   /// In en, this message translates to:
   /// **'Install and Restart'**
   String get updateInstallAndRestart;
+
+  /// No description provided for @updateShowInFinder.
+  ///
+  /// In en, this message translates to:
+  /// **'Show in Finder'**
+  String get updateShowInFinder;
 
   /// No description provided for @updateInstallNow.
   ///
@@ -9299,6 +9311,18 @@ abstract class AppLocalizations {
   /// **'The installer has started. The app will close and finish updating automatically.'**
   String get updateInstallingHint;
 
+  /// No description provided for @updatePreparingApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the new version...'**
+  String get updatePreparingApp;
+
+  /// No description provided for @updatePreparingAppHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpacking the update. The new version will be selected in Finder.'**
+  String get updatePreparingAppHint;
+
   /// No description provided for @remindMeLater.
   ///
   /// In en, this message translates to:
@@ -9323,6 +9347,12 @@ abstract class AppLocalizations {
   /// **'This platform must be updated manually from the Release page'**
   String get updateNoticeManualSubtitle;
 
+  /// No description provided for @updateNoticeFinderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download and verify in the app, then replace the old version in Finder'**
+  String get updateNoticeFinderSubtitle;
+
   /// No description provided for @updateNoticeReady.
   ///
   /// In en, this message translates to:
@@ -9334,6 +9364,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The package is verified and ready to install on restart'**
   String get updateNoticeReadySubtitle;
+
+  /// No description provided for @updateNoticeReadyFinderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The package is verified; replace the old version in Finder to finish'**
+  String get updateNoticeReadyFinderSubtitle;
 
   /// No description provided for @updateNoticeFailed.
   ///
@@ -16033,6 +16069,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to start the updater'**
   String get update_errorLaunchFailed;
+
+  /// No description provided for @update_errorExtractFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to unpack the update package'**
+  String get update_errorExtractFailed;
+
+  /// No description provided for @update_errorRevealFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to show the new version in Finder; it is at {path}'**
+  String update_errorRevealFailed(Object path);
 
   /// No description provided for @update_errorCheckFailed.
   ///

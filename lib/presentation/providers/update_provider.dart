@@ -83,6 +83,12 @@ class UpdateState {
 
   bool get hasDownloadedUpdate => downloadedUpdate != null;
 
+  /// macOS 包：在访达中替换旧版本，不重启应用，也不用等任务结束。
+  bool get requiresManualReplace =>
+      (downloadedUpdate?.asset ?? versionInfo?.primaryAsset)
+          ?.requiresManualReplace ==
+      true;
+
   // 兼容现有 UI 字段名。
   int get downloadedBytes => receivedBytes;
   int get downloadSpeedBytesPerSecond => downloadBytesPerSecond;
@@ -152,6 +158,12 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
         }
       }
       return;
+    }
+
+    if (restored != null && restored.update.requiresManualReplace) {
+      // macOS 由用户在访达中替换：已经在运行这个版本或更新的版本，清掉这次的
+      // 更新包和解压出来的应用。
+      await installer.clearPendingUpdate(restored.update);
     }
 
     if (result != null && !result.success) {
@@ -326,7 +338,41 @@ class UpdateStateNotifier extends _$UpdateStateNotifier {
     _downloadCancelToken?.cancel('cancelled by user');
   }
 
-  Future<void> installDownloadedUpdate() => installAndRestart();
+  /// Windows 退出后安装并重启；macOS 在访达中选中新版本，替换由用户完成。
+  Future<void> installDownloadedUpdate() {
+    if (state.downloadedUpdate?.requiresManualReplace == true) {
+      return revealDownloadedUpdate();
+    }
+    return installAndRestart();
+  }
+
+  /// 解压已校验的 macOS 包并在访达中选中新版本。应用继续运行，
+  /// 状态回到“已下载”，用户可以再点一次。
+  Future<void> revealDownloadedUpdate() async {
+    final downloaded = state.downloadedUpdate;
+    if (downloaded == null) return;
+
+    state = state.copyWith(
+      status: UpdateStatus.installing,
+      errorMessage: null,
+      notificationVisible: true,
+    );
+    try {
+      await ref
+          .read(updateInstallerServiceProvider)
+          .revealUpdateInFinder(downloaded);
+      state = state.copyWith(
+        status: UpdateStatus.downloaded,
+        notificationVisible: true,
+      );
+    } catch (error) {
+      state = state.copyWith(
+        status: UpdateStatus.error,
+        errorMessage: _formatError(error),
+        notificationVisible: true,
+      );
+    }
+  }
 
   Future<void> installAndRestart() async {
     final downloaded = state.downloadedUpdate;

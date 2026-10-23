@@ -29,12 +29,17 @@ class UpdateNoticeBanner extends ConsumerWidget {
         : isReady
         ? context.l10n.updateNoticeReady(version)
         : context.l10n.updateNoticeAvailable(version);
+    final inFinder = state.requiresManualReplace;
     final subtitle = isError
         ? (state.errorMessage ?? context.l10n.updateError)
         : isReady
-        ? context.l10n.updateNoticeReadySubtitle
+        ? (inFinder
+              ? context.l10n.updateNoticeReadyFinderSubtitle
+              : context.l10n.updateNoticeReadySubtitle)
         : state.versionInfo?.supportsInAppInstall == true
-        ? context.l10n.updateNoticeAvailableSubtitle
+        ? (inFinder
+              ? context.l10n.updateNoticeFinderSubtitle
+              : context.l10n.updateNoticeAvailableSubtitle)
         : context.l10n.updateNoticeManualSubtitle;
     final accent = isError
         ? theme.colorScheme.error
@@ -109,7 +114,7 @@ class UpdateNoticeBanner extends ConsumerWidget {
                     FilledButton.tonal(
                       onPressed: () => UpdateCheckDialog.show(context),
                       child: Text(
-                        isReady
+                        isReady && !inFinder
                             ? context.l10n.updateInstallNow
                             : context.l10n.updateViewDetails,
                       ),

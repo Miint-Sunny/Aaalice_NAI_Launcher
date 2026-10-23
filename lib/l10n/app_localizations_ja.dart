@@ -5103,7 +5103,15 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String updateDownloadedFinderHint(Object version) {
+    return 'v$version をダウンロードし、検証が完了しました。「Finder に表示」を押したあと、⌘Q でこのアプリを終了し、新しいバージョンを「アプリケーション」フォルダにドラッグして古いバージョンと置き換えてください。';
+  }
+
+  @override
   String get updateInstallAndRestart => 'インストールして再起動';
+
+  @override
+  String get updateShowInFinder => 'Finder に表示';
 
   @override
   String get updateInstallNow => '今すぐインストール';
@@ -5127,6 +5135,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get updateInstallingHint => 'インストーラーが起動しました。アプリは終了し、自動的に更新が完了します。';
 
   @override
+  String get updatePreparingApp => '新しいバージョンを準備しています...';
+
+  @override
+  String get updatePreparingAppHint =>
+      '更新パッケージを展開しています。完了すると Finder で新しいバージョンが選択されます。';
+
+  @override
   String get remindMeLater => '4時間後に通知';
 
   @override
@@ -5142,12 +5157,20 @@ class AppLocalizationsJa extends AppLocalizations {
       'このプラットフォームでは Release ページから手動で更新してください';
 
   @override
+  String get updateNoticeFinderSubtitle =>
+      'アプリ内でダウンロードと検証を行い、Finder で古いバージョンと置き換えます';
+
+  @override
   String updateNoticeReady(Object version) {
     return 'バージョン v$version の準備ができました';
   }
 
   @override
   String get updateNoticeReadySubtitle => 'パッケージは検証済みです。再起動してインストールできます';
+
+  @override
+  String get updateNoticeReadyFinderSubtitle =>
+      'パッケージは検証済みです。Finder で古いバージョンと置き換えてください';
 
   @override
   String get updateNoticeFailed => '前回の更新は完了しませんでした';
@@ -8924,6 +8947,14 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get update_errorLaunchFailed => '更新プログラムの起動に失敗しました';
+
+  @override
+  String get update_errorExtractFailed => '更新パッケージの展開に失敗しました';
+
+  @override
+  String update_errorRevealFailed(Object path) {
+    return '新しいバージョンを Finder に表示できませんでした。場所：$path';
+  }
 
   @override
   String get update_errorCheckFailed => '更新の確認に失敗しました';
