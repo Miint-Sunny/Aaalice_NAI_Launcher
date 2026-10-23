@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../utils/platform_labels.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
+import '../../utils/platform_labels.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../kit/ui_keycap.dart';
 import '../kit/ui_lib_controls.dart';

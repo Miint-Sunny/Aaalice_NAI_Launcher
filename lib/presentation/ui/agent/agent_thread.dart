@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../utils/platform_labels.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../utils/platform_labels.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_preview_image.dart';
 import '../kit/ui_text.dart';

@@ -2,8 +2,8 @@
 import 'package:irondash_message_channel/irondash_message_channel.dart';
 // ignore: implementation_imports, depend_on_referenced_packages
 import 'package:super_native_extensions/src/native/context.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

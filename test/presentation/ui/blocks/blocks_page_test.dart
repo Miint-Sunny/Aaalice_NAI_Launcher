@@ -478,19 +478,6 @@ void main() {
       expect(rec.calls.last, 'delete:y99');
     });
 
-    testWidgets('预览图裁剪：触控板双指捏合缩放（触控板不发滚轮事件）', (t) async {
-      await open(t);
-      final center = t.getCenter(find.byKey(const Key('block-edit-crop')));
-      final trackpad = TestPointer(1, PointerDeviceKind.trackpad);
-      await t.sendEventToBinding(trackpad.panZoomStart(center));
-      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 1.5));
-      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 2.0));
-      await t.sendEventToBinding(trackpad.panZoomEnd());
-      await t.pumpAndSettle();
-      await tapKey(t, 'block-edit-save');
-      expect(rec.drafts.single.thumb!.scale, closeTo(2.0, 1e-9));
-    });
-
     testWidgets('纯文本页原样保存；换图 / 清除预览图；参数从当前读取', (t) async {
       await open(t);
       await tapKey(t, 'block-edit-clear-thumb');
@@ -511,6 +498,19 @@ void main() {
       expect(d.text, '1girl, (solo:1.2)');
       expect(d.thumbToken, 'c12');
       expect(d.params, BlocksFixture.y99Params);
+    });
+
+    testWidgets('预览图裁剪：触控板双指捏合缩放（触控板不发滚轮事件）', (t) async {
+      await open(t);
+      final center = t.getCenter(find.byKey(const Key('block-edit-crop')));
+      final trackpad = TestPointer(1, PointerDeviceKind.trackpad);
+      await t.sendEventToBinding(trackpad.panZoomStart(center));
+      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 1.5));
+      await t.sendEventToBinding(trackpad.panZoomUpdate(center, scale: 2.0));
+      await t.sendEventToBinding(trackpad.panZoomEnd());
+      await t.pumpAndSettle();
+      await tapKey(t, 'block-edit-save');
+      expect(rec.drafts.single.thumb!.scale, closeTo(2.0, 1e-9));
     });
 
     testWidgets('新建块：没内容时保存不可点，有内容后 onCreate', (t) async {

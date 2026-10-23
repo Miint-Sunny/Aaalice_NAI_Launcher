@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../utils/platform_labels.dart';
 import '../channel/channel_contract.dart';
 import '../channel/channel_format.dart';
 import '../channel/channel_geometry.dart';
@@ -14,6 +13,7 @@ import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
 import '../kit/ui_text.dart';
+import '../../utils/platform_labels.dart';
 import 'settings_contract.dart';
 import 'settings_controls.dart';
 import 'settings_format.dart';
