@@ -1682,8 +1682,10 @@ class SettingsUpscaleData {
     this.rtxAvailable = true,
   });
 
-  /// 显卡检测（新增）；null = 没检测到独显。
+  /// 显卡检测（新增）；null = 没检测到独显。Apple 芯片的 Mac 上是芯片名（如 Apple M2 Max）。
   final String? gpuName;
+
+  /// 独立显存；0 = 没有单独的显存（Apple 芯片），卡片只显示名字。
   final int vramGb;
   final Set<SettingsGpuCap> caps;
   final String cudaVersion;

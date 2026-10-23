@@ -2637,7 +2637,9 @@ class _SettingsUpscalePageState extends State<SettingsUpscalePage> {
                       Text(
                         up.gpuName == null
                             ? l.set_upNoGpu
-                            : l.set_upGpu(up.gpuName!, '${up.vramGb}'),
+                            : up.vramGb > 0
+                            ? l.set_upGpu(up.gpuName!, '${up.vramGb}')
+                            : up.gpuName!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: UiText.sans(

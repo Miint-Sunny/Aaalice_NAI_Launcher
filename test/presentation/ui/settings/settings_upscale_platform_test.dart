@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nai_launcher/core/services/settings_gpu_probe.dart';
 import 'package:nai_launcher/data/models/upscale/local_upscale_models.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
 import 'package:nai_launcher/presentation/providers/generation/image_workflow_controller.dart';
@@ -15,22 +16,22 @@ import 'settings_test_harness.dart';
 void main() {
   setUpAll(loadStudioCaptureFonts);
 
-  SettingsViewData view(LocalUpscalePlatform platform) =>
-      SettingsFixture.view(page: SettingsPageId.upscale).copyWith(
-        upscale: settingsUpscaleData(
-          [
-            for (final model in [
-              ...localUpscaleCatalog,
-              ...advancedUpscaleCatalog,
-            ])
-              model.withInstalled(model.bundled),
-          ],
-          const SettingsUpscaleOperation(),
-          const AdvancedUpscaleInstallState(),
-          const UpscaleWorkflowSettings(),
-          platform: platform,
-        ),
-      );
+  SettingsViewData view(
+    LocalUpscalePlatform platform, {
+    SettingsGpuInfo? gpu,
+  }) => SettingsFixture.view(page: SettingsPageId.upscale).copyWith(
+    upscale: settingsUpscaleData(
+      [
+        for (final model in [...localUpscaleCatalog, ...advancedUpscaleCatalog])
+          model.withInstalled(model.bundled),
+      ],
+      const SettingsUpscaleOperation(),
+      const AdvancedUpscaleInstallState(),
+      const UpscaleWorkflowSettings(),
+      gpu: gpu,
+      platform: platform,
+    ),
+  );
 
   test('only Windows offers SeedVR2 and RTX Video installs', () {
     for (final platform in [
@@ -92,6 +93,57 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    'the GPU card names the Apple chip and keeps the Windows and fallback text',
+    (t) async {
+      for (final (platform, gpu) in [
+        (
+          LocalUpscalePlatform.macOS,
+          SettingsGpuProbe.parseMacChip('Apple M2 Max\n'),
+        ),
+        (LocalUpscalePlatform.macOS, null),
+        (
+          LocalUpscalePlatform.windows,
+          SettingsGpuProbe.parse(
+            'NVIDIA GeForce RTX 4070, 12282, 8.9',
+            'CUDA Version: 12.6',
+          ),
+        ),
+      ]) {
+        await t.pumpWidget(const SizedBox.shrink());
+        await pumpSettings(t, data: view(platform, gpu: gpu), height: 2400);
+        final l = AppLocalizations.of(t.element(find.byType(SettingsHost)))!;
+        final card = find.byKey(const Key('upscale-gpu'));
+        String? title(String text) =>
+            find
+                .descendant(of: card, matching: find.text(text))
+                .evaluate()
+                .isEmpty
+            ? null
+            : text;
+        expect(
+          [
+            title('Apple M2 Max'),
+            title(l.set_upGpu('NVIDIA GeForce RTX 4070', '12')),
+            title(l.set_upNoGpu),
+          ].nonNulls,
+          [
+            gpu == null
+                ? l.set_upNoGpu
+                : platform == LocalUpscalePlatform.macOS
+                ? 'Apple M2 Max'
+                : l.set_upGpu('NVIDIA GeForce RTX 4070', '12'),
+          ],
+        );
+        expect(
+          find.descendant(of: card, matching: find.textContaining('0 GB')),
+          findsNothing,
+        );
+        expect(t.takeException(), isNull);
+      }
+    },
+  );
 
   testWidgets('Windows keeps every install action and description', (t) async {
     final rec = await pumpSettings(
