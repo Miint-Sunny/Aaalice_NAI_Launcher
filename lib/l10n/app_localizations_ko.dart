@@ -5913,6 +5913,10 @@ class AppLocalizationsKo extends AppLocalizations {
       '번역 블록을 가운데 버튼으로 누르면 원문과 번역문이 번갈아 바뀌어요. AI 번역이 아무리 좋아도 가끔은 원문을 슬쩍 보고 cat ears가 이상한 말로 바뀌지 않았는지 확인해 보세요.';
 
   @override
+  String get tips_studio_trick_6_mac =>
+      '번역 블록을 ⌘를 누른 채 클릭하면 원문과 번역문이 번갈아 바뀌어요. 오른쪽 클릭 메뉴에도 있어요. AI 번역이 아무리 좋아도 가끔은 원문을 슬쩍 보고 cat ears가 이상한 말로 바뀌지 않았는지 확인해 보세요.';
+
+  @override
   String get tips_studio_trick_7 =>
       '설정의 생성 빈도 제한을 켜면 생성 사이에 강제로 쉬는 시간을 둘 수 있어요. 간격 무작위 변동까지 더하면 리듬이 덜 기계적이에요. 느긋하게 돌리는 밤에도, 손이 멈추지 않는 나에게도 좋아요.';
 

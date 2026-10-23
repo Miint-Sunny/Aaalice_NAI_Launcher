@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/utils/desktop_platform.dart';
+import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../data/models/gallery/gallery_category.dart';
@@ -22,7 +23,6 @@ import '../../providers/local_gallery_provider.dart';
 import '../../providers/selection_mode_provider.dart';
 import '../../providers/tips_provider.dart';
 import '../../utils/gallery_category_label.dart';
-import '../../utils/selection_modifiers.dart';
 import '../shortcuts/shortcut_tooltip.dart';
 import '../navigation/window_chrome_layout.dart';
 import '../tag_expansion/tag_expansion_wrapper.dart';
@@ -135,7 +135,7 @@ class _LocalGalleryToolbarState extends ConsumerState<LocalGalleryToolbar> {
       return KeyEventResult.ignored;
     }
     // macOS 上只认 ⌘A：⌃A 在 Mac 输入框里是「移到行首」
-    if (!isSelectionModifierPressed(keyboard: keyboard)) {
+    if (!isControlOrCommandPressed(keyboard: keyboard)) {
       return KeyEventResult.ignored;
     }
     _searchController.selection = TextSelection(

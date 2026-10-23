@@ -6058,6 +6058,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Middle-click a translation block to flip between the original and the translation. However good the AI is, peek at the original now and then to make sure \"cat ears\" didn\'t become something strange.';
 
   @override
+  String get tips_studio_trick_6_mac =>
+      '⌘-click a translation block to flip between the original and the translation; it is also in the right-click menu. However good the AI is, peek at the original now and then to make sure \"cat ears\" didn\'t become something strange.';
+
+  @override
   String get tips_studio_trick_7 =>
       'Limit generation frequency in Settings forces a cooldown between runs, and a little random jitter keeps the rhythm from feeling mechanical. Good for slow late-night sessions — and for anyone whose finger won\'t leave the button.';
 

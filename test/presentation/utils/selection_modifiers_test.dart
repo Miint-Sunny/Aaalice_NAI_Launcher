@@ -4,18 +4,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/presentation/utils/selection_modifiers.dart';
 
-HardwareKeyboard _holding(LogicalKeyboardKey logical, PhysicalKeyboardKey key) {
-  final keyboard = HardwareKeyboard();
-  keyboard.handleKeyEvent(
-    KeyDownEvent(
-      physicalKey: key,
-      logicalKey: logical,
-      timeStamp: Duration.zero,
-    ),
-  );
-  return keyboard;
-}
-
 /// 按住 [modifier] 按下鼠标，先松开修饰键再抬起鼠标键。
 Future<void> _clickReleasingModifierFirst(
   WidgetTester tester,
@@ -29,28 +17,6 @@ Future<void> _clickReleasingModifierFirst(
 
 void main() {
   tearDown(() => debugDefaultTargetPlatformOverride = null);
-
-  final control = _holding(
-    LogicalKeyboardKey.controlLeft,
-    PhysicalKeyboardKey.controlLeft,
-  );
-  final command = _holding(
-    LogicalKeyboardKey.metaLeft,
-    PhysicalKeyboardKey.metaLeft,
-  );
-
-  test('macOS：只认 ⌘，Control 不算', () {
-    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    expect(isSelectionModifierPressed(keyboard: command), isTrue);
-    expect(isSelectionModifierPressed(keyboard: control), isFalse);
-  });
-
-  test('Windows：Ctrl 和 Meta 都算（不变）', () {
-    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    expect(isSelectionModifierPressed(keyboard: control), isTrue);
-    expect(isSelectionModifierPressed(keyboard: command), isTrue);
-    expect(isSelectionModifierPressed(keyboard: HardwareKeyboard()), isFalse);
-  });
 
   group('PointerDownModifiers', () {
     setUp(PointerDownModifiers.ensureInstalled);

@@ -1,18 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/utils/desktop_platform.dart';
-
-/// Ctrl / ⌘+点击（多选、查相关 tag）、Ctrl / ⌘+A（全选）用的修饰键是否按着。
-///
-/// macOS 只认 ⌘：Mac 上 Control+单击是右键（`ControlClickBinding` 在入口改成次键），⌃A 在
-/// 输入框里是「移到行首」。其他平台 Ctrl 和 Meta 都算，和这些地方原来的写法一样；原来只认 Ctrl
-/// 的地方用 `isPrimarySelectionModifierPressed`。
-bool isSelectionModifierPressed({HardwareKeyboard? keyboard}) {
-  final resolved = keyboard ?? HardwareKeyboard.instance;
-  if (usesMacOSConventions) return resolved.isMetaPressed;
-  return resolved.isControlPressed || resolved.isMetaPressed;
-}
+import '../../core/utils/keyboard_modifier_utils.dart';
 
 /// 按下指针那一刻的修饰键。
 ///
@@ -35,11 +24,11 @@ abstract final class PointerDownModifiers {
 
   static void _record(PointerEvent event) {
     if (event is! PointerDownEvent) return;
-    _selection = isSelectionModifierPressed();
+    _selection = isControlOrCommandPressed();
     _shift = HardwareKeyboard.instance.isShiftPressed;
   }
 
-  /// 最近一次按下时，多选用的修饰键（见 [isSelectionModifierPressed]）是否按着。
+  /// 最近一次按下时，多选用的修饰键（见 [isControlOrCommandPressed]）是否按着。
   static bool get selection => _selection;
 
   /// 最近一次按下时 ⇧ 是否按着。

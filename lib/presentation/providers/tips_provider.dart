@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/utils/desktop_platform.dart';
 import '../../core/utils/platform_shortcut_text.dart';
 import '../../l10n/app_localizations.dart';
 

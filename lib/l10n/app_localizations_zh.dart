@@ -5819,6 +5819,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '在翻译块上按一下鼠标中键，原文和译文来回切换。AI 翻得再好，偶尔也值得偷看一眼原文，确认它没把 cat ears 翻成什么奇怪的东西。';
 
   @override
+  String get tips_studio_trick_6_mac =>
+      '在翻译块上按住 ⌘ 点一下，原文和译文来回切换，右键菜单里也有这一项。AI 翻得再好，偶尔也值得偷看一眼原文，确认它没把 cat ears 翻成什么奇怪的东西。';
+
+  @override
   String get tips_studio_trick_7 =>
       '设置里的「限制生图频率」可以让两次生图之间强制冷却，再加一点随机抖动，节奏就没那么机械。适合挂着慢慢抽的夜晚，也适合管不住手的自己。';
 
@@ -26844,6 +26848,10 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   @override
   String get tips_studio_trick_6 =>
       '在翻譯塊上按一下滑鼠中鍵，原文和譯文來回切換。AI 翻得再好，偶爾也值得偷看一眼原文，確認它沒把 cat ears 翻成什麼奇怪的東西。';
+
+  @override
+  String get tips_studio_trick_6_mac =>
+      '在翻譯塊上按住 ⌘ 點一下，原文和譯文來回切換，右鍵選單裡也有這一項。AI 翻得再好，偶爾也值得偷看一眼原文，確認它沒把 cat ears 翻成什麼奇怪的東西。';
 
   @override
   String get tips_studio_trick_7 =>

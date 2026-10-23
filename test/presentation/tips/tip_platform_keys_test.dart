@@ -34,6 +34,24 @@ void main() {
     }
   });
 
+  test('翻译块切换那条：macOS 写 ⌘+点击，Windows 照旧写鼠标中键', () {
+    for (final locale in _locales) {
+      final l10n = lookupAppLocalizations(locale);
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final mac = _allTips(locale);
+      expect(mac, contains(l10n.tips_studio_trick_6_mac), reason: '$locale');
+      expect(mac, isNot(contains(l10n.tips_studio_trick_6)), reason: '$locale');
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final windows = _allTips(locale);
+      expect(windows, contains(l10n.tips_studio_trick_6), reason: '$locale');
+      expect(
+        windows,
+        isNot(contains(l10n.tips_studio_trick_6_mac)),
+        reason: '$locale',
+      );
+    }
+  });
+
   test('Windows：照旧写 Ctrl、F1', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     final tips = _allTips(const Locale('zh'));
