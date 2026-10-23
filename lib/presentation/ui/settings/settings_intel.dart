@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../../../core/utils/primary_activator.dart';
 import '../../widgets/common/upscale_brand_logo.dart';
 import '../agent/agent_glyphs.dart';
 import '../kit/ui_colors.dart';
@@ -1271,8 +1272,7 @@ class _TextAreaState extends State<_TextArea> {
     );
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true):
-            widget.onSave,
+        const PrimaryActivator(LogicalKeyboardKey.keyS): widget.onSave,
       },
       child: GestureDetector(
         // 点文本框下方的空白也能聚焦。

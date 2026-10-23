@@ -468,6 +468,21 @@ void main() {
       expect(rec.calls.last, 'delete:y99');
     });
 
+    testWidgets('macOS：⌘↩ 保存，Control+↩ 不保存', (t) async {
+      await open(t);
+      await t.tap(find.byKey(const Key('block-edit-title')));
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.enter);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await t.pumpAndSettle();
+      expect(rec.calls, isEmpty);
+      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+      await t.sendKeyEvent(LogicalKeyboardKey.enter);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+      await t.pumpAndSettle();
+      expect(rec.calls, ['save:y99']);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('纯文本页原样保存；换图 / 清除预览图；参数从当前读取', (t) async {
       await open(t);
       await tapKey(t, 'block-edit-clear-thumb');

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../gen/gen_parts.dart';
@@ -163,7 +164,8 @@ class _ToolsEditorPageState extends State<ToolsEditorPage>
     final d = scope.data;
     final a = scope.actions;
     final k = e.logicalKey;
-    final ctrl = HardwareKeyboard.instance.isControlPressed;
+    // 主修饰键：macOS 上是 ⌘
+    final ctrl = isPrimaryShortcutModifierPressed();
     if (k == LogicalKeyboardKey.escape) {
       if (d.expanding) {
         a.onExpanding(false);
@@ -180,7 +182,10 @@ class _ToolsEditorPageState extends State<ToolsEditorPage>
       a.onApply();
       return KeyEventResult.handled;
     }
-    if (!d.shellShortcuts || ctrl) return KeyEventResult.ignored;
+    // 工具字母键：macOS 上按着 ⌘ / Control 时是组合键（⌘W、⌃⌘F……），留给系统菜单
+    if (!d.shellShortcuts || ctrl || isMacChordModifierPressed()) {
+      return KeyEventResult.ignored;
+    }
     final label = k.keyLabel.toUpperCase();
     final tools = d.inpainting
         ? ToolsEditorData.inpaintTools

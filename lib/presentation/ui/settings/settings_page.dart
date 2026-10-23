@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../agent/agent_glyphs.dart';
@@ -179,7 +180,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   KeyEventResult _onKey(FocusNode _, KeyEvent e) {
     if (e is! KeyDownEvent) return KeyEventResult.ignored;
-    final ctrl = HardwareKeyboard.instance.isControlPressed;
+    // 主修饰键：macOS 上是 ⌘（不带 Control，⌃⌘F 是系统的全屏键）
+    final ctrl = isPrimaryShortcutModifierPressed();
     if (ctrl && e.logicalKey == LogicalKeyboardKey.keyF) {
       _searchFocus.requestFocus();
       return KeyEventResult.handled;

@@ -53,6 +53,32 @@ void main() {
     await t.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('macOS：⌘Z 撤销刚才的改动、⌘F 聚焦设置搜索，⌃⌘F 留给系统', (t) async {
+    final rec = await pumpSettings(t, page: SettingsPageId.appearance);
+    await tap(t, 'switch-completionSound');
+    expect(find.byKey(const Key('settings-toast')), findsOneWidget);
+    await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyZ);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await t.pumpAndSettle();
+    expect(rec.calls, contains('undo:c1'));
+    await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    expect(await t.sendKeyEvent(LogicalKeyboardKey.keyF), false);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      isNot('settings-search'),
+    );
+    await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyF);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await t.pump();
+    expect(FocusManager.instance.primaryFocus?.debugLabel, 'settings-search');
+    await t.pump(const Duration(seconds: 5));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('默认跟随系统，主题选项按系统、浅色、深色排列且仍可手动选择', (t) async {
     final rec = await pumpSettings(
       t,
