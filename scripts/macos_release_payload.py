@@ -16,6 +16,7 @@ NODE_VERSION = 'v24.18.0'
 PI_VERSION = '1.3.0'
 ARCHITECTURES = ['arm64', 'x86_64']
 STUDIO_BRIDGE = 'Contents/Resources/tools/studio-bridge'
+RAG_HOST = 'Contents/Resources/tools/rag-stdio-host'
 # npm prebuild folders for one architecture, e.g. prebuilds/darwin-arm64/x.node
 PREBUILD_DIRS = {'darwin-arm64': 'arm64', 'darwin-x64': 'x86_64'}
 
@@ -135,6 +136,16 @@ def verify_agent(root, app):
     return version
 
 
+def verify_rag(app, flutter_assets):
+    """build_macos.sh adds the macOS RAG host and strips the Windows one."""
+    host = app / RAG_HOST
+    if not host.is_file() or not os.access(host, os.X_OK) or not is_macho(host):
+        raise RuntimeError(f'The app bundle must contain an executable {RAG_HOST}')
+    windows = flutter_assets / 'assets/rag/windows'
+    if windows.exists():
+        raise RuntimeError(f'Windows-only RAG host left in the bundle: {windows}')
+
+
 def is_macho(p):
     with p.open('rb') as stream:
         head = stream.read(8)
@@ -187,6 +198,7 @@ def verify(root, app, version, display, allow_host_only_bridge):
     flutter_assets = verify_release_build(app)
     verify_bundle_version(app, version, display)
     verify_assets(flutter_assets)
+    verify_rag(app, flutter_assets)
     node = verify_agent(root, app)
     binaries = verify_architectures(app, allow_host_only_bridge)
     print(json.dumps({'node': node, 'machOFiles': binaries}))
