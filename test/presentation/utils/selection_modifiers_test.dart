@@ -66,7 +66,7 @@ void main() {
       await _clickReleasingModifierFirst(tester, null);
       expect(PointerDownModifiers.selection, isFalse);
 
-      // Mac 上 Control+点击是右键的意思，不算多选
+      // Mac 上多选只认 ⌘（Control+单击在应用里是右键）
       await _clickReleasingModifierFirst(
         tester,
         LogicalKeyboardKey.controlLeft,

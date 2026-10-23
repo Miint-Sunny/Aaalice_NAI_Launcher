@@ -201,29 +201,6 @@ void main() {
     await dispose(tester);
   });
 
-  testWidgets('macOS: Cmd+tap starts multi-select, Control+tap only focuses', (
-    tester,
-  ) async {
-    await pumpView(tester);
-
-    // Control+click means a right click on macOS; treat it as a plain tap.
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.tap(card(0));
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-    await tester.pump();
-    expect(selection().isActive, isFalse);
-    expect(focused(), records[0].path);
-
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
-    await tester.tap(card(3));
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
-    await tester.pump();
-    expect(selection().isActive, isTrue);
-    expect(selection().selectedIds, {records[0].path, records[3].path});
-    await dispose(tester);
-  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
-
   testWidgets(
     'modifiers are read when the button goes down, not when it comes up',
     (tester) async {

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../utils/selection_modifiers.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -493,7 +492,7 @@ class _KidState extends State<_Kid> with ExploreQuickOpen {
         final hw = HardwareKeyboard.instance;
         if (widget.selectable &&
             x.done &&
-            (ctrl.selecting || isSelectionModifierPressed(keyboard: hw))) {
+            (ctrl.selecting || hw.isControlPressed || hw.isMetaPressed)) {
           ctrl.toggleSelect(x.key);
         } else if (widget.selectable && x.done && hw.isShiftPressed) {
           ctrl.selectRange(x.key);

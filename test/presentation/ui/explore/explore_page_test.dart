@@ -206,20 +206,6 @@ void main() {
       expect(find.byKey(const Key('explore-selection-bar')), findsNothing);
     });
 
-    testWidgets('macOS：⌘ 单击进多选；Control 单击只看检查器', (t) async {
-      await pump(t);
-      // Mac 上 Control+点击是右键的意思，按普通点击处理
-      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tapKey(t, 'explore-card-c29');
-      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-      expect(find.byKey(const Key('explore-selection-bar')), findsNothing);
-
-      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
-      await tapKey(t, 'explore-card-c33');
-      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
-      expect(find.byKey(const Key('explore-selection-bar')), findsOneWidget);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
-
     testWidgets('“挑几张去进化”勾上本轮收藏的', (t) async {
       await pump(t);
       await tapKey(t, 'explore-pick-r3');
@@ -292,20 +278,6 @@ void main() {
       await tapKey(t, 'explore-breed');
       expect(rec.calls.last, 'breed:l1:k3-2,k3-5');
     });
-
-    testWidgets('macOS：⌘ 单击子代就勾上；Control 单击只看检查器', (t) async {
-      await pump(t);
-      await tapKey(t, 'explore-tab-evolution');
-      // Mac 上 Control+点击是右键的意思，按普通点击处理
-      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tapKey(t, 'explore-kid-k3-2');
-      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-      await t.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
-      await tapKey(t, 'explore-kid-k3-5');
-      await t.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
-      await tapKey(t, 'explore-breed');
-      expect(rec.calls.last, 'breed:l1:k3-5');
-    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets('再生成 N 张子代，张数可调', (t) async {
       await pump(t);

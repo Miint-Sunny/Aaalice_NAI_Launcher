@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
 import '../../utils/platform_labels.dart';
-import '../../utils/selection_modifiers.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -81,7 +80,7 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
         return;
       }
     }
-    if (_selecting || isSelectionModifierPressed(keyboard: keys)) {
+    if (_selecting || keys.isControlPressed || keys.isMetaPressed) {
       setState(() {
         _selecting = true;
         _selected.contains(b.id) ? _selected.remove(b.id) : _selected.add(b.id);

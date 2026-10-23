@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
-import '../../utils/selection_modifiers.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
@@ -316,8 +315,7 @@ class _ExploreCardState extends State<ExploreCard> {
     final x = widget.candidate;
     final hw = HardwareKeyboard.instance;
     if (hw.isShiftPressed && x.done) return ctrl.selectRange(x.key);
-    if ((isSelectionModifierPressed(keyboard: hw) || ctrl.selecting) &&
-        x.done) {
+    if ((hw.isControlPressed || hw.isMetaPressed || ctrl.selecting) && x.done) {
       return ctrl.toggleSelect(x.key);
     }
     final now = DateTime.now();

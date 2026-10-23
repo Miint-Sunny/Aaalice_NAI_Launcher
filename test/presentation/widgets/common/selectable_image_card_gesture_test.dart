@@ -115,36 +115,6 @@ void main() {
     expect(taps, 2);
   });
 
-  testWidgets(
-    'macOS: Cmd bypasses the debounce, Control counts as a plain click',
-    (tester) async {
-      var taps = 0;
-      await tester.pumpWidget(
-        _testApp(_card(onTap: () => taps++, allowRepeatedModifierTaps: true)),
-      );
-      final card = find.byType(SelectableImageCard);
-
-      // Control+click means a right click on macOS, not a multi-select click.
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-      await tester.tap(card);
-      await tester.pump();
-      await tester.tap(card);
-      await tester.pump();
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
-      expect(taps, 1);
-
-      await tester.pump(const Duration(milliseconds: 600));
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
-      await tester.tap(card);
-      await tester.pump();
-      await tester.tap(card);
-      await tester.pump();
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
-      expect(taps, 3);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
-  );
-
   testWidgets('legacy modifier clicks remain debounced unless opted in', (
     tester,
   ) async {

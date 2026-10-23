@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 
 import '../../core/utils/desktop_platform.dart';
 
-/// 多选点击（Ctrl / ⌘+点击）、全选（Ctrl / ⌘+A）用的修饰键是否按着。
+/// Ctrl / ⌘+点击（多选、查相关 tag）、Ctrl / ⌘+A（全选）用的修饰键是否按着。
 ///
-/// macOS 只认 ⌘：Mac 上 Control+点击是右键的意思，⌃A 在输入框里是「移到行首」，都按没按
-/// 修饰键处理。其他平台 Ctrl 和 Meta 都算，和这些地方原来的写法一样；原来只认 Ctrl 的地方用
-/// `isPrimarySelectionModifierPressed`。
+/// macOS 只认 ⌘：Mac 上 Control+单击是右键（`ControlClickBinding` 在入口改成次键），⌃A 在
+/// 输入框里是「移到行首」。其他平台 Ctrl 和 Meta 都算，和这些地方原来的写法一样；原来只认 Ctrl
+/// 的地方用 `isPrimarySelectionModifierPressed`。
 bool isSelectionModifierPressed({HardwareKeyboard? keyboard}) {
   final resolved = keyboard ?? HardwareKeyboard.instance;
   if (usesMacOSConventions) return resolved.isMetaPressed;
