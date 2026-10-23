@@ -18550,6 +18550,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get set_rgInstallCpu => 'CPU';
 
   @override
+  String get set_rgInstallHintMac =>
+      '下载 Python 与推理依赖（约 200 MB），不下载模型权重。需要 Apple 芯片的 Mac。“自动”在内存 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。';
+
+  @override
+  String get set_rgPythonSubMac => '默认用自动安装的独立环境；也可以选一个已有的 python3。';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      '需要 Apple 芯片的 Mac。PyTorch 已不再提供 Intel 芯片 Mac 的版本，这台 Mac 装不了运行环境。';
+
+  @override
+  String get set_rgEnvUnsupported => '不支持';
+
+  @override
   String get set_rgPhaseExisting => '正在检测已有环境';
 
   @override
@@ -39579,6 +39593,20 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get set_rgInstallCpu => 'CPU';
+
+  @override
+  String get set_rgInstallHintMac =>
+      '下載 Python 與推理依賴（約 200 MB），不下載模型權重。需要 Apple 晶片的 Mac。“自動”在記憶體 18 GB 及以上的 Mac 上用 GPU，16 GB 及以下用 CPU。';
+
+  @override
+  String get set_rgPythonSubMac => '預設用自動安裝的獨立環境；也可以選一個已有的 python3。';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      '需要 Apple 晶片的 Mac。PyTorch 已不再提供 Intel 晶片 Mac 的版本，這臺 Mac 裝不了執行環境。';
+
+  @override
+  String get set_rgEnvUnsupported => '不支援';
 
   @override
   String get set_rgPhaseExisting => '正在檢測已有環境';

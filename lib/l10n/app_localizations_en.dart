@@ -19352,6 +19352,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get set_rgInstallCpu => 'CPU';
 
   @override
+  String get set_rgInstallHintMac =>
+      'Downloads Python and inference packages (about 200 MB), not model weights. Needs a Mac with Apple silicon. Auto runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less.';
+
+  @override
+  String get set_rgPythonSubMac =>
+      'Uses the standalone runtime by default; you can pick an existing python3.';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      'Needs a Mac with Apple silicon. PyTorch no longer makes builds for Intel Macs, so the runtime can\'t be installed on this Mac.';
+
+  @override
+  String get set_rgEnvUnsupported => 'Not supported';
+
+  @override
   String get set_rgPhaseExisting => 'Checking existing runtime';
 
   @override

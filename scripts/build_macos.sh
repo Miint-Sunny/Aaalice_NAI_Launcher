@@ -175,6 +175,26 @@ fetch_node_arch() {
   echo "$dir"
 }
 
+# RAG 的进程宿主（Windows 包里是 assets/rag/windows/stdio_host.exe，管 Job Object）：同一份源码的
+# macOS 实现，让 uv、Python 和它们起的子进程跟着宿主或应用一起退出（见 lib/core/rag/rag_process.dart）。
+# clang 直接编两个架构，不用 Rosetta。Mac 上不用 Windows 的宿主：从 flutter_assets 里删掉，再重签
+# App.framework（删了资源它的签名就对不上了），外面的应用包由 bundle_tools 最后重签
+bundle_rag_host() {
+  local app="$1" host="$1/Contents/Resources/tools/rag-stdio-host"
+  local framework="$1/Contents/Frameworks/App.framework"
+  local windows="$framework/Resources/flutter_assets/assets/rag/windows"
+  mkdir -p "$(dirname "$host")"
+  xcrun clang++ -std=c++17 -O2 -Wall -Wextra -arch arm64 -arch x86_64 \
+    -mmacosx-version-min=12.0 tool/rag/stdio_host.cpp -o "$host"
+  codesign --force --sign "$CODESIGN_IDENTITY" "$host"
+  if [ -e "$windows" ]; then
+    rm -rf "$windows"
+    codesign --force --sign "$CODESIGN_IDENTITY" \
+      --preserve-metadata=identifier,entitlements,requirements,flags,runtime "$framework"
+  fi
+  echo "已放进应用包：RAG 进程宿主（$(lipo -archs "$host")），去掉了 Windows 版宿主"
+}
+
 bundle_tools() {
   local app="$1" bridge_archs="${2:-host}" arm x64 tools agent rel
   if [ ! -d "$app/Contents" ]; then
@@ -213,6 +233,7 @@ bundle_tools() {
 
   # 桥接客户端（Windows 包里是 studio-bridge.exe）
   build_studio_bridge "$tools/studio-bridge" "$bridge_archs" "$x64/bin/node"
+  bundle_rag_host "$app"
 
   # 先签里面的可执行文件和原生模块，再按原来的 entitlements 重签整个应用包（加了文件不重签，签名就对不上了）
   codesign --force --sign "$CODESIGN_IDENTITY" "$agent/node" "$tools/studio-bridge"

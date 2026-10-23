@@ -54,7 +54,7 @@ Windows 的两个版本都支持应用内更新。你的设置、图库数据库
 - **数据位置**：设置、数据库和 Agent 数据在 `~/Library/Application Support/com.wof.naiStudio/`，替换应用不会删除它们。
 - **快捷键**：快捷键里的 `Ctrl` 在 Mac 上换成 `⌘`，快捷键列表用 `⌘/` 打开。
 - **本地放大**：Real-ESRGAN 可以用，引擎和模型与 Windows 版相同，用 Mac 的显卡（Metal）运行。NVIDIA RTX Video 和 SeedVR2 需要 NVIDIA 显卡，目前只有 Windows 版。
-- **暂不支持**：本地语义检索（RAG）目前只有 Windows 版。
+- **本地语义检索（RAG）**：需要 Apple 芯片的 Mac。运行设备选“自动”时，内存 18 GB 及以上的 Mac 用 GPU，16 GB 及以下用 CPU。Intel 芯片的 Mac 用不了：PyTorch 已不再提供 Intel Mac 的版本。
 
 ## 三步上手
 

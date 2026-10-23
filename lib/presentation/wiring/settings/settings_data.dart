@@ -179,6 +179,7 @@ SettingsViewData settingsViewData(
         ? ref.watch(settingsIndexBytesProvider).valueOrNull ?? 0
         : 0,
     preparing: ref.watch(settingsRagStartupProvider).preparing,
+    platform: ref.watch(ragPlatformProvider),
   );
   final storage =
       page == SettingsPageId.storage || page == SettingsPageId.overview

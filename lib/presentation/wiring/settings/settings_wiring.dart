@@ -130,11 +130,17 @@ class _SettingsWiringState extends ConsumerState<SettingsWiring> {
 
   Future<void> _pick(SettingKey key, SettingsValueLabel label) async {
     final before = ref.read(settingsValuesProvider)[key];
+    // A Mac interpreter (python3) has no extension to filter on.
+    final anyFile =
+        key == SettingKey.ragPythonPath &&
+        ref.read(ragPlatformProvider).isMacOS;
     final path =
         key == SettingKey.ragPythonPath || key == SettingKey.completionSoundFile
         ? (await FilePicker.platform.pickFiles(
-            type: FileType.custom,
-            allowedExtensions: key == SettingKey.ragPythonPath
+            type: anyFile ? FileType.any : FileType.custom,
+            allowedExtensions: anyFile
+                ? null
+                : key == SettingKey.ragPythonPath
                 ? ['exe']
                 : ['mp3', 'wav', 'ogg', 'flac'],
           ))?.files.single.path

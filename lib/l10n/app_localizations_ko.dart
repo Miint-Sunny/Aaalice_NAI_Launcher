@@ -18837,6 +18837,20 @@ class AppLocalizationsKo extends AppLocalizations {
   String get set_rgInstallCpu => 'CPU';
 
   @override
+  String get set_rgInstallHintMac =>
+      'Python과 추론 패키지를 받습니다(약 200 MB, 모델 가중치 제외). Apple 실리콘 Mac이 필요합니다. 자동은 메모리 18 GB 이상인 Mac에서는 GPU를, 16 GB 이하에서는 CPU를 사용합니다.';
+
+  @override
+  String get set_rgPythonSubMac => '기본은 자동 설치한 독립 환경이며 기존 python3도 고를 수 있습니다.';
+
+  @override
+  String get set_rgNeedsAppleSilicon =>
+      'Apple 실리콘 Mac이 필요합니다. PyTorch가 Intel Mac용 빌드를 더 이상 제공하지 않아 이 Mac에는 런타임을 설치할 수 없습니다.';
+
+  @override
+  String get set_rgEnvUnsupported => '지원 안 함';
+
+  @override
   String get set_rgPhaseExisting => '기존 환경 확인 중';
 
   @override

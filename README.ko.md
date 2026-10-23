@@ -54,7 +54,7 @@ Windows의 두 버전 모두 앱 내 업데이트를 지원합니다. 설정, �
 - **데이터 위치**: 설정, 데이터베이스, Agent 데이터는 `~/Library/Application Support/com.wof.naiStudio/`에 있으며, 앱을 바꿔도 삭제되지 않습니다.
 - **단축키**: 단축키의 `Ctrl`은 Mac에서 `⌘`가 되고, 단축키 목록은 `⌘/`로 엽니다.
 - **로컬 업스케일**: Real-ESRGAN을 사용할 수 있습니다. 엔진과 모델은 Windows 버전과 같으며 Mac의 GPU(Metal)에서 실행됩니다. NVIDIA RTX Video와 SeedVR2는 NVIDIA GPU가 필요해 현재 Windows 버전에서만 사용할 수 있습니다.
-- **아직 지원하지 않는 기능**: 로컬 시맨틱 검색(RAG)은 현재 Windows 버전에서만 사용할 수 있습니다.
+- **로컬 시맨틱 검색(RAG)**: Apple 실리콘 Mac이 필요합니다. 실행 장치가 자동이면 메모리 18 GB 이상인 Mac에서는 GPU를, 16 GB 이하에서는 CPU를 사용합니다. Intel Mac에서는 사용할 수 없습니다. PyTorch가 Intel Mac용 빌드를 더 이상 제공하지 않기 때문입니다.
 
 ## 세 단계로 시작하기
 
