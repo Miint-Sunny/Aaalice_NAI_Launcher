@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
+import '../../../core/utils/app_bundle_paths.dart';
+import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_glyph.dart';
@@ -13,6 +16,16 @@ import 'settings_format.dart';
 import 'settings_kit.dart';
 import 'settings_overview.dart';
 import 'settings_scope.dart';
+
+/// 没改过的 Vibe 目录显示的默认位置；macOS 用 / 分隔。
+String get _defaultVibesPath => usesMacOSConventions
+    ? 'Documents/NAI_Launcher/vibes'
+    : r'Documents\NAI_Launcher\vibes';
+
+/// 没改过的应用数据（Hive）目录：Windows 在程序旁边的 user-data，macOS 在「应用支持」目录下。
+String get _defaultAppDataPath => usesMacOSConventions
+    ? p.join(AppBundlePaths.applicationSupport, 'hive')
+    : './user-data/hive';
 
 // ───────────────────────────── 生成与额度 ─────────────────────────────
 
@@ -644,9 +657,9 @@ class SettingsStoragePage extends StatelessWidget {
             SettingKeyRow(
               SettingKey.vibePath,
               title: l.set_stVibePath,
-              control: const SetPath(
+              control: SetPath(
                 SettingKey.vibePath,
-                defaultPath: r'Documents\NAI_Launcher\vibes',
+                defaultPath: _defaultVibesPath,
               ),
             ),
             SettingKeyRow(
@@ -776,11 +789,11 @@ class SettingsStoragePage extends StatelessWidget {
               SettingKey.appDataPath,
               title: l.set_stAppData,
               subtitle: l.set_stAppDataSub,
-              control: const SetPath(
+              control: SetPath(
                 SettingKey.appDataPath,
                 width: 300,
                 open: false,
-                defaultPath: './user-data/hive',
+                defaultPath: _defaultAppDataPath,
               ),
             ),
           ],
