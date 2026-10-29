@@ -53,6 +53,11 @@ class SettingsDirectoryMeasurement {
   final Map<String, SettingsMeasuredFile> files;
 }
 
+/// [path] is already resolved (resolveSymbolicLinksSync). Windows lowercases it.
+/// macOS volumes are case-insensitive by default too, but realpath spells every
+/// component the way it is stored on disk, so one file always yields one key;
+/// lowercasing would instead merge two files that differ only in case on a
+/// case-sensitive volume.
 String _physicalPath(String path) {
   final normalized = p.normalize(p.absolute(path));
   return Platform.isWindows ? normalized.toLowerCase() : normalized;
