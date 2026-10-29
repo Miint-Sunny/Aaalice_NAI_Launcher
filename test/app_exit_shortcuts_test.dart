@@ -94,10 +94,33 @@ void main() {
   });
 
   test('ordinary window close still hides to tray', () async {
-    await AppWindowListener().onWindowClose();
+    await AppWindowListener(nativeResourceWindows: true).onWindowClose();
     expect(calls.map((call) => call.method), [
       'setPreventClose',
       'closeAll',
+      'hide',
+    ]);
+  });
+
+  test(
+    'macOS window close hides without the Windows resource window channel',
+    () async {
+      // 没有原生资源小窗时不调 closeAll：Mac 上那个通道没有实现，一调就抛错，窗口就藏不起来
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('com.nailauncher/resource_window_native'),
+            null,
+          );
+      await AppWindowListener(nativeResourceWindows: false).onWindowClose();
+      expect(calls.map((call) => call.method), ['setPreventClose', 'hide']);
+    },
+  );
+
+  test('by default only Windows closes native resource windows', () async {
+    await AppWindowListener().onWindowClose();
+    expect(calls.map((call) => call.method), [
+      'setPreventClose',
+      if (Platform.isWindows) 'closeAll',
       'hide',
     ]);
   });

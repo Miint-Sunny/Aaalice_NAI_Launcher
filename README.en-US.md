@@ -56,6 +56,7 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 - **Shortcuts**: `Ctrl` in shortcuts becomes `⌘` on a Mac; `⌘/` shows the shortcut list.
 - **Local upscaling**: Real-ESRGAN works, with the same engine and models as on Windows, running on the Mac's GPU (Metal). NVIDIA RTX Video and SeedVR2 need an NVIDIA GPU and are Windows-only for now.
 - **Local semantic search (RAG)**: Needs a Mac with Apple silicon. With the device set to Auto it runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less. Intel Macs can't use it: PyTorch no longer makes builds for them.
+- **Resource windows**: On a Mac they open as panels inside the main window: open several, move and resize them, and drag resources back to the workspace. They aren't separate system windows yet, so they can't leave the main window, stay on top on their own, or show full-size images inside.
 
 ## What's new in 2.2
 

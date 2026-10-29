@@ -202,6 +202,13 @@ class AppTrayListener extends TrayListener {
 
 /// 窗口监听器，处理窗口关闭、大小变化和显示事件
 class AppWindowListener extends WindowListener {
+  /// [nativeResourceWindows]：资源小窗是不是独立的原生窗口，默认只有 Windows 是。
+  /// macOS 上资源小窗开在主窗口里，没有原生小窗要关；去调 Windows 原生层的 closeAll
+  /// 会因为没有实现而抛错，窗口就藏不起来了。
+  AppWindowListener({bool? nativeResourceWindows})
+    : _nativeResourceWindows = nativeResourceWindows ?? Platform.isWindows;
+
+  final bool _nativeResourceWindows;
   DateTime? _lastResizeSave;
 
   @override
@@ -210,7 +217,9 @@ class AppWindowListener extends WindowListener {
     try {
       // 阻止窗口关闭
       await windowManager.setPreventClose(true);
-      await ResourceWindowService.instance.closeAll();
+      if (_nativeResourceWindows) {
+        await ResourceWindowService.instance.closeAll();
+      }
       await windowManager.hide();
       AppLogger.d('Window hidden to tray', 'WindowListener');
     } catch (e) {
