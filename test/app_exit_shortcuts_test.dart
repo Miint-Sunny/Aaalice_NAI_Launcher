@@ -184,14 +184,26 @@ void main() {
           }
         },
       );
-      await Future<void>.delayed(Duration.zero);
+      // macOS 先藏窗口、撤菜单栏图标（两次平台调用），再等后台任务；
+      // Windows 等后台任务做完才撤托盘。两边的窗口都最后才关
+      final mac = Platform.isMacOS;
+      if (mac) {
+        await cleanupStarted.future;
+      } else {
+        await Future<void>.delayed(Duration.zero);
+      }
       expect(cleanupStarted.isCompleted, isTrue);
       expect(exited.isCompleted, isFalse);
-      expect(calls.any((call) => call.method == 'destroy'), isFalse);
+      if (mac) {
+        expect(calls.map((call) => call.method), ['hide', 'destroy']);
+      } else {
+        expect(calls.any((call) => call.method == 'destroy'), isFalse);
+      }
       release.complete();
       expect(await exited.future, 0);
       expect(Hive.isBoxOpen(StorageKeys.settingsBox), isFalse);
       expect(calls.map((call) => call.method), [
+        if (mac) 'hide',
         'destroy',
         'setPreventClose',
         'destroy',
