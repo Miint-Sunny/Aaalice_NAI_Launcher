@@ -403,16 +403,15 @@ Future<void> _prepareDataAndStart() => startWithPreparedAppData(
           unawaited(_bootstrapPreparedApplication());
         },
         onCopy: (text) => Clipboard.setData(ClipboardData(text: text)),
-        onOpenDirectory: (path) async {
-          final directory = Directory(path);
-          await Process.run('explorer.exe', [
-            await directory.exists() ? directory.path : directory.parent.path,
-          ]);
-        },
-        onClose: () => windowManager.close(),
+        onOpenDirectory: openStartupDataDirectory,
+        // macOS 上关掉最后一个窗口应用不会退出（见 AppDelegate），这里直接走正常退出；
+        // 这时数据库、Hive 都还没打开
+        onClose: () => Platform.isMacOS
+            ? DesktopAppShutdownService.shutdownAndExit(0)
+            : windowManager.close(),
       ),
     );
-    if (Platform.isWindows) {
+    if (isSupportedDesktop) {
       await windowManager.ensureInitialized();
       await windowManager.waitUntilReadyToShow(
         WindowOptions(
