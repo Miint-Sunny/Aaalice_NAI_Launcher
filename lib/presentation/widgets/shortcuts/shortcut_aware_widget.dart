@@ -5,6 +5,7 @@ import '../../../core/shortcuts/default_shortcuts.dart';
 import '../../../core/shortcuts/shortcut_config.dart';
 import '../../../core/utils/desktop_platform.dart';
 import '../../providers/shortcuts_provider.dart';
+import '../common/text_editing_shortcuts.dart';
 import 'page_focus.dart';
 
 /// 快捷键感知包装器
@@ -450,7 +451,7 @@ class _ShortcutIntent extends Intent {
 class _ShortcutAction extends Action<_ShortcutIntent> {
   @override
   bool isEnabled(_ShortcutIntent intent) =>
-      !intent.yieldsToTextField || !isEditableTextFocused();
+      !intent.yieldsToTextField || !hasEditableTextFocus;
 
   @override
   Object? invoke(_ShortcutIntent intent) {

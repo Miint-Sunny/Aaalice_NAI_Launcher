@@ -103,11 +103,3 @@ class _ShortcutFocusAnchorState extends State<ShortcutFocusAnchor> {
     );
   }
 }
-
-/// 焦点是否在可编辑文本里（输入框、提示词框……）。
-bool isEditableTextFocused() {
-  final context = FocusManager.instance.primaryFocus?.context;
-  return context != null &&
-      (context.widget is EditableText ||
-          context.findAncestorWidgetOfExactType<EditableText>() != null);
-}
