@@ -104,6 +104,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get legacyUndo_startWithout => 'Start Without Undoing';
 
   @override
+  String get legacyRedo_title => 'Switching back to the synced data';
+
+  @override
+  String get legacyRedo_body =>
+      'Changes made here after the sync come back. The data from before the sync is kept as a backup.';
+
+  @override
+  String get legacyRedo_failedTitle => 'Can\'t switch back to the synced data';
+
+  @override
+  String get legacyRedo_startWithout => 'Start Without Switching Back';
+
+  @override
   String get set_bkLegacy => 'Previous version';
 
   @override
@@ -140,8 +153,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String set_bkLegacyUndone(Object time) {
-    return 'The last sync was undone on $time';
+  String get set_bkLegacyRedo => 'Switch back to synced data';
+
+  @override
+  String set_bkLegacyRedoSub(Object time) {
+    return 'Go back to the data from before the $time undo';
+  }
+
+  @override
+  String set_bkLegacyUndoAgainSub(Object time) {
+    return 'Go back to the data from before the $time switch';
   }
 
   @override
@@ -179,6 +200,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get set_bkLegacyUndoConfirm => 'Undo and Restart';
 
   @override
+  String get set_bkLegacyRedoTitle => 'Switch back to the synced data?';
+
+  @override
+  String set_bkLegacyRedoBody(Object time) {
+    return 'Switches back to the data from before the $time undo, including changes made here after the sync. The current data is kept as a backup. Restarts the app.';
+  }
+
+  @override
+  String get set_bkLegacyRedoConfirm => 'Switch Back and Restart';
+
+  @override
+  String set_bkLegacyUndoAgainBody(Object time) {
+    return 'Switches back to the data from before the sync, as it was before the $time switch. The current data is kept as a backup. Restarts the app.';
+  }
+
+  @override
   String get set_bkLegacyBusy =>
       'A task is still running. Try again when it finishes.';
 
@@ -189,6 +226,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get set_bkLegacyUndoFailed =>
       'Can\'t undo the sync. Make sure there\'s enough free disk space, then try again.';
+
+  @override
+  String get set_bkLegacyRedoFailed =>
+      'Can\'t switch back to the synced data. Make sure there\'s enough free disk space, then try again.';
 
   @override
   String get app_subtitle => 'NovelAI Third-party Client';

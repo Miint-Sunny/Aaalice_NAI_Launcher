@@ -156,7 +156,7 @@ void main() {
     }
   });
 
-  testWidgets('a sync or undo from Settings says so', (tester) async {
+  testWidgets('a sync, undo or redo from Settings says so', (tester) async {
     var skipped = 0;
     await pumpView(
       tester,
@@ -194,6 +194,31 @@ void main() {
       ),
     );
     expect(find.text(en.legacyUndo_title), findsOneWidget);
+
+    await pumpView(
+      tester,
+      const LegacyDataImportView(
+        LegacyDataImportStep.copying,
+        task: MacLegacyDataTask.redo,
+      ),
+    );
+    expect(find.text(en.legacyRedo_title), findsOneWidget);
+    expect(find.text(en.legacyRedo_body), findsOneWidget);
+
+    await pumpView(
+      tester,
+      LegacyDataImportView(
+        LegacyDataImportStep.failed,
+        task: MacLegacyDataTask.redo,
+        error: const FileSystemException('Synthetic failure'),
+        onRetry: () {},
+        onSkip: () => skipped++,
+      ),
+    );
+    expect(find.text(en.legacyRedo_failedTitle), findsOneWidget);
+    expect(find.text(en.legacyUndo_failedBody), findsOneWidget);
+    await tester.tap(find.text(en.legacyRedo_startWithout));
+    expect(skipped, 2);
   });
 
   test('the window keeps the task while the app takes over', () {

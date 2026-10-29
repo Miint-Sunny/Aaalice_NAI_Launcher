@@ -1923,16 +1923,15 @@ class SettingsBackupData {
   final SettingsLegacyData? legacy;
 }
 
-/// 旧版（1.x）数据：从旧版同步、撤销上次同步。两者都在下次启动、数据打开前进行。
+/// 旧版（1.x）数据：从旧版同步，以及在同步前、同步后两份数据之间来回换。
+/// 都在下次启动、数据打开前进行。
 @immutable
 class SettingsLegacyData {
   const SettingsLegacyData({
     required this.appName,
     this.copiedAt,
     this.syncedAt,
-    this.undoBackup,
-    this.undoAt,
-    this.undoneAt,
+    this.switchBack,
     this.running = false,
   });
 
@@ -1945,15 +1944,39 @@ class SettingsLegacyData {
   /// 现在的数据来自这次同步。
   final DateTime? syncedAt;
 
-  /// 有值时“撤销上次同步”可用：最近一份备份是这次同步前留下的。
-  final String? undoBackup;
-  final DateTime? undoAt;
-
-  /// 最近一份备份是撤销时留下的：上次同步已经撤销。
-  final DateTime? undoneAt;
+  /// 第二行换回的那份备份；null 时还没有同步过，这一行不可用。
+  final SettingsLegacySwitch? switchBack;
 
   /// 旧版正在运行（同步前要先退出）。
   final bool running;
+}
+
+/// 第二行此刻做什么：最近一份备份是另一份数据，换回它。
+enum SettingsLegacySwitchKind {
+  /// 刚同步过：撤销上次同步，换回同步前的数据。
+  undo,
+
+  /// 撤销过：换回同步后的数据。
+  redo,
+
+  /// 撤销后又换回过：再撤销一次，换回同步前的数据。
+  undoAgain,
+}
+
+/// 第二行要换回的备份。
+@immutable
+class SettingsLegacySwitch {
+  const SettingsLegacySwitch({
+    required this.kind,
+    required this.backup,
+    required this.at,
+  });
+
+  final SettingsLegacySwitchKind kind;
+  final String backup;
+
+  /// 这份备份留下的时间：同步、撤销或换回的那一刻，换回后的数据就是那时的样子。
+  final DateTime at;
 }
 
 // ── 关于
@@ -2123,6 +2146,7 @@ class SettingsActions {
     this.onRestoreBackup = _noId,
     this.onLegacySync = _none,
     this.onLegacyUndo = _noId,
+    this.onLegacyRedo = _noId,
     // 关于
     this.onCheckUpdate = _none,
     this.onInstallUpdate = _none,
@@ -2349,9 +2373,10 @@ class SettingsActions {
   final ValueChanged<Set<SettingsResetScope>> onResetScopes;
   final ValueChanged<String> onRestoreBackup;
 
-  /// 界面已确认过；接线方记下请求并重启，下次启动时同步或撤销。
+  /// 界面已确认过；接线方记下请求并重启，下次启动时同步、撤销或换回。
   final VoidCallback onLegacySync;
   final ValueChanged<String> onLegacyUndo;
+  final ValueChanged<String> onLegacyRedo;
 
   final VoidCallback onCheckUpdate;
   final VoidCallback onInstallUpdate;

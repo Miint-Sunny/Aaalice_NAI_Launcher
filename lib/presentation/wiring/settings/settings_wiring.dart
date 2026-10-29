@@ -518,6 +518,10 @@ class _SettingsWiringState extends ConsumerState<SettingsWiring> {
         () => legacy.undo(id),
         failed: context.l10n.set_bkLegacyUndoFailed,
       ),
+      onLegacyRedo: (id) => _runLegacy(
+        () => legacy.redo(id),
+        failed: context.l10n.set_bkLegacyRedoFailed,
+      ),
       onCheckUpdate: () => _run(system.checkUpdate),
       onInstallUpdate: () => _run(system.installUpdate),
       onOpenChangelog: () => _run(system.changelog),

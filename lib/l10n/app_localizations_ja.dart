@@ -103,6 +103,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get legacyUndo_startWithout => '取り消さずに起動';
 
   @override
+  String get legacyRedo_title => '同期後のデータに戻しています';
+
+  @override
+  String get legacyRedo_body => '同期後にここで行った変更も戻ります。同期前のデータはバックアップとして残します。';
+
+  @override
+  String get legacyRedo_failedTitle => '同期後のデータに戻せません';
+
+  @override
+  String get legacyRedo_startWithout => '戻さずに起動';
+
+  @override
   String get set_bkLegacy => '旧版のデータ';
 
   @override
@@ -139,8 +151,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String set_bkLegacyUndone(Object time) {
-    return '前回の同期は $time に取り消しました';
+  String get set_bkLegacyRedo => '同期後のデータに戻す';
+
+  @override
+  String set_bkLegacyRedoSub(Object time) {
+    return '$time の取り消し前のデータに戻します';
+  }
+
+  @override
+  String set_bkLegacyUndoAgainSub(Object time) {
+    return '$time の切り替え前のデータに戻します';
   }
 
   @override
@@ -177,6 +197,22 @@ class AppLocalizationsJa extends AppLocalizations {
   String get set_bkLegacyUndoConfirm => '取り消して再起動';
 
   @override
+  String get set_bkLegacyRedoTitle => '同期後のデータに戻しますか？';
+
+  @override
+  String set_bkLegacyRedoBody(Object time) {
+    return '$time の取り消し前のデータに戻します。同期後にここで行った変更も戻ります。現在のデータはバックアップとして残します。アプリを再起動します。';
+  }
+
+  @override
+  String get set_bkLegacyRedoConfirm => '戻して再起動';
+
+  @override
+  String set_bkLegacyUndoAgainBody(Object time) {
+    return '$time の切り替え前のデータ、つまり同期前のデータに戻します。現在のデータはバックアップとして残します。アプリを再起動します。';
+  }
+
+  @override
   String get set_bkLegacyBusy => '実行中のタスクがあります。終わってからもう一度お試しください。';
 
   @override
@@ -186,6 +222,10 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get set_bkLegacyUndoFailed =>
       '同期を取り消せません。ディスクの空き容量を確認してから、もう一度お試しください。';
+
+  @override
+  String get set_bkLegacyRedoFailed =>
+      '同期後のデータに戻せません。ディスクの空き容量を確認してから、もう一度お試しください。';
 
   @override
   String get app_subtitle => 'NovelAI サードパーティ クライアント';

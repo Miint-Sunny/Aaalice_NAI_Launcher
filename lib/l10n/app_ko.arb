@@ -69,6 +69,10 @@
   "legacyUndo_failedTitle": "마지막 동기화를 되돌릴 수 없습니다",
   "legacyUndo_failedBody": "데이터는 그대로이며 바꾸다 만 파일도 남지 않았습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.",
   "legacyUndo_startWithout": "되돌리지 않고 시작",
+  "legacyRedo_title": "동기화 후 데이터로 돌아가는 중",
+  "legacyRedo_body": "동기화 후 이곳에서 바꾼 내용도 돌아옵니다. 동기화 전의 데이터는 백업으로 남겨 둡니다.",
+  "legacyRedo_failedTitle": "동기화 후 데이터로 돌아갈 수 없습니다",
+  "legacyRedo_startWithout": "돌아가지 않고 시작",
   "set_bkLegacy": "이전 버전 데이터",
   "set_bkLegacySub": "이전 버전 {app}의 데이터입니다. 읽기만 하고 바꾸지 않습니다. 백업은 최근 2개를 보관합니다.",
   "@set_bkLegacySub": {
@@ -98,8 +102,15 @@
       "time": {}
     }
   },
-  "set_bkLegacyUndone": "마지막 동기화는 {time}에 되돌렸습니다",
-  "@set_bkLegacyUndone": {
+  "set_bkLegacyRedo": "동기화 후 데이터로 돌아가기",
+  "set_bkLegacyRedoSub": "{time} 되돌리기 전의 데이터로 돌아갑니다",
+  "@set_bkLegacyRedoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoAgainSub": "{time} 전환 전의 데이터로 돌아갑니다",
+  "@set_bkLegacyUndoAgainSub": {
     "placeholders": {
       "time": {}
     }
@@ -128,9 +139,24 @@
     }
   },
   "set_bkLegacyUndoConfirm": "되돌리고 다시 시작",
+  "set_bkLegacyRedoTitle": "동기화 후 데이터로 돌아갈까요?",
+  "set_bkLegacyRedoBody": "{time} 되돌리기 전의 데이터로 돌아갑니다. 동기화 후 이곳에서 바꾼 내용도 돌아옵니다. 현재 데이터는 백업으로 남겨 둡니다. 앱을 다시 시작합니다.",
+  "@set_bkLegacyRedoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyRedoConfirm": "돌아가고 다시 시작",
+  "set_bkLegacyUndoAgainBody": "{time} 전환 전의 데이터, 즉 동기화 전의 데이터로 돌아갑니다. 현재 데이터는 백업으로 남겨 둡니다. 앱을 다시 시작합니다.",
+  "@set_bkLegacyUndoAgainBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
   "set_bkLegacyBusy": "아직 진행 중인 작업이 있습니다. 끝난 뒤 다시 시도해 주세요.",
   "set_bkLegacySyncFailed": "동기화를 시작할 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.",
   "set_bkLegacyUndoFailed": "동기화를 되돌릴 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.",
+  "set_bkLegacyRedoFailed": "동기화 후 데이터로 돌아갈 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.",
   "app_subtitle": "NovelAI 서드파티 클라이언트",
   "common_cancel": "취소",
   "common_confirm": "확인",

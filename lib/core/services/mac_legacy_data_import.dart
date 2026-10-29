@@ -28,10 +28,13 @@ enum MacLegacyDataState {
   /// A requested sync replaced this version's data; a backup was kept.
   synced,
 
-  /// A requested undo switched back to the newest sync backup.
+  /// A requested undo switched back to the data from before the last sync.
   undone,
 
-  /// The user chose to start without copying, syncing or undoing.
+  /// A requested redo switched back to the data from after the last sync.
+  redone,
+
+  /// The user chose to start without copying, syncing or switching back.
   skipped,
 
   /// The previous version is running; nothing was changed.
@@ -78,13 +81,13 @@ class MacLegacyDataStatus {
   final List<MacLegacyDataBackup> backups;
   final bool legacyRunning;
 
-  /// A sync or undo waiting for the next launch.
+  /// A sync, undo or redo waiting for the next launch.
   final MacLegacyDataRequest? pending;
 }
 
 /// Copies the previous macOS version's settings, history and libraries on
-/// first launch, and later syncs them again or undoes such a sync when the
-/// user asks in Settings.
+/// first launch, and later syncs them again, or switches between the data
+/// from before and after such a sync, when the user asks in Settings.
 ///
 /// The previous version (W.O.F 1.x and the upstream NAI Launcher, bundle
 /// `com.aaalice.naiLauncher`) keeps its data in its own Application Support
@@ -162,8 +165,8 @@ class MacLegacyDataImport {
   }
 
   /// Starts without the step this launch was about to take: a requested
-  /// sync or undo is dropped; a first-launch copy is recorded as skipped and
-  /// not offered again.
+  /// sync, undo or redo is dropped; a first-launch copy is recorded as
+  /// skipped and not offered again.
   Future<void> skip() {
     _checkPaths();
     return _locked(() async {
@@ -238,8 +241,8 @@ class MacLegacyDataImport {
     }
     final request = await dataSwitch.readRequest();
     if (request?.task == MacLegacyDataTask.sync) return _sync(onCopyStarted);
-    if (request?.task == MacLegacyDataTask.undo) {
-      return _undo(request!.backup!, onCopyStarted);
+    if (request?.backup case final backup?) {
+      return _switchBack(request!.task, backup, onCopyStarted);
     }
     final marker = await readMarker();
     if (marker != null) {
@@ -311,19 +314,23 @@ class MacLegacyDataImport {
     );
   }
 
-  /// Switches back to the backup made by the last sync; the data it
-  /// replaces becomes a backup in turn.
-  Future<MacLegacyDataImportResult> _undo(
+  /// Undo or redo: switches back to a backup, normally the newest one, which
+  /// holds the data from before (undo) or after (redo) the last sync. The
+  /// data it replaces becomes the newest backup in turn, so the two can be
+  /// swapped back and forth.
+  Future<MacLegacyDataImportResult> _switchBack(
+    MacLegacyDataTask task,
     String backupId,
     void Function(MacLegacyDataTask task)? onCopyStarted,
   ) async {
-    const task = MacLegacyDataTask.undo;
     final backups = await dataSwitch.backups();
     final backup = backups.where((b) => b.id == backupId).firstOrNull;
     if (backup == null) {
-      return const MacLegacyDataImportResult(
+      return MacLegacyDataImportResult(
         MacLegacyDataState.failed,
-        error: FileSystemException('The backup to switch back to is missing'),
+        error: const FileSystemException(
+          'The backup to switch back to is missing',
+        ),
         task: task,
       );
     }
@@ -342,8 +349,10 @@ class MacLegacyDataImport {
       );
     }
     await _finishRequest();
-    return const MacLegacyDataImportResult(
-      MacLegacyDataState.undone,
+    return MacLegacyDataImportResult(
+      task == MacLegacyDataTask.redo
+          ? MacLegacyDataState.redone
+          : MacLegacyDataState.undone,
       task: task,
     );
   }
@@ -491,7 +500,7 @@ class MacLegacyDataImport {
   }
 }
 
-/// Shows the copy, sync or undo in the window before the app itself starts.
+/// Shows the copy, sync, undo or redo in the window before the app starts.
 abstract interface class MacLegacyDataImportPresenter {
   void showCopying(MacLegacyDataTask task);
 

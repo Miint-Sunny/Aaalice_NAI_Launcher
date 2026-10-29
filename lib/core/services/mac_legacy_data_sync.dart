@@ -14,13 +14,18 @@ enum MacLegacyDataTask {
   /// a fresh copy, keeping a backup.
   sync,
 
-  /// Settings → Undo last sync: switch back to the newest backup.
+  /// Settings → Undo last sync: switch back to the newest backup, the data
+  /// from before the sync.
   undo,
+
+  /// Settings → Switch back to synced data, offered after an undo: switch
+  /// back to the backup the undo made, the data from after the sync.
+  redo,
 }
 
-/// A sync or undo the user asked for in Settings. Hive and the databases are
-/// open while the app runs, so the request is carried out on the next launch,
-/// before anything opens.
+/// A sync, undo or redo the user asked for in Settings. Hive and the
+/// databases are open while the app runs, so the request is carried out on
+/// the next launch, before anything opens.
 class MacLegacyDataRequest {
   const MacLegacyDataRequest.sync()
     : task = MacLegacyDataTask.sync,
@@ -29,20 +34,23 @@ class MacLegacyDataRequest {
   const MacLegacyDataRequest.undo(String this.backup)
     : task = MacLegacyDataTask.undo;
 
+  const MacLegacyDataRequest.redo(String this.backup)
+    : task = MacLegacyDataTask.redo;
+
   final MacLegacyDataTask task;
 
-  /// Undo: the backup to switch back to.
+  /// Undo or redo: the backup to switch back to.
   final String? backup;
 }
 
-/// This version's data as it was right before a sync or an undo.
+/// This version's data as it was right before a sync, an undo or a redo.
 class MacLegacyDataBackup {
   const MacLegacyDataBackup(this.directory, this.task, this.at);
 
   final Directory directory;
 
-  /// The task the backup was made for: [MacLegacyDataTask.sync] or
-  /// [MacLegacyDataTask.undo].
+  /// The task the backup was made for: [MacLegacyDataTask.sync],
+  /// [MacLegacyDataTask.undo] or [MacLegacyDataTask.redo].
   final MacLegacyDataTask task;
   final DateTime at;
 
@@ -50,7 +58,9 @@ class MacLegacyDataBackup {
 }
 
 /// Requests, backups and the folder switch behind "Sync from previous
-/// version" and "Undo last sync".
+/// version", "Undo last sync" and switching back to the synced data. Undo and
+/// redo swap the data from before and after a sync back and forth: each
+/// switch keeps the data it replaces as the newest backup.
 ///
 /// A switch renames this version's data folder into
 /// `<data folder>.backups/<time>-before-<task>`, moves the top-level entries
@@ -85,7 +95,7 @@ class MacLegacyDataSwitch {
       File(p.join(destination.parent.path, '.$_name.sync-journal.json'));
 
   static final _backupName = RegExp(
-    r'^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-(\d{3})-before-(sync|undo)$',
+    r'^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-(\d{3})-before-(sync|undo|redo)$',
   );
 
   /// A request or an interrupted switch waits for this launch.
@@ -96,13 +106,17 @@ class MacLegacyDataSwitch {
     if (!await _request.exists()) return null;
     try {
       final value = jsonDecode(await _request.readAsString());
-      if (value is Map && value['task'] == MacLegacyDataTask.sync.name) {
-        return const MacLegacyDataRequest.sync();
-      }
-      if (value is Map &&
-          value['task'] == MacLegacyDataTask.undo.name &&
-          value['backup'] is String) {
-        return MacLegacyDataRequest.undo(value['backup'] as String);
+      if (value is Map) {
+        final backup = value['backup'];
+        switch (MacLegacyDataTask.values.asNameMap()[value['task']]) {
+          case MacLegacyDataTask.sync:
+            return const MacLegacyDataRequest.sync();
+          case MacLegacyDataTask.undo when backup is String:
+            return MacLegacyDataRequest.undo(backup);
+          case MacLegacyDataTask.redo when backup is String:
+            return MacLegacyDataRequest.redo(backup);
+          case _:
+        }
       }
     } on FormatException {
       // Unreadable: treated as no request, and removed below.

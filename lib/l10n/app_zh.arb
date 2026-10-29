@@ -69,6 +69,10 @@
   "legacyUndo_failedTitle": "无法撤销上次同步",
   "legacyUndo_failedBody": "数据保持原样，没有留下换了一半的文件。请确认磁盘空间足够，然后重试。",
   "legacyUndo_startWithout": "取消撤销并启动",
+  "legacyRedo_title": "正在换回同步后的数据",
+  "legacyRedo_body": "同步后在这里做的改动都会回来，同步前的数据另存为一份备份。",
+  "legacyRedo_failedTitle": "无法换回同步后的数据",
+  "legacyRedo_startWithout": "取消换回并启动",
   "set_bkLegacy": "旧版数据",
   "set_bkLegacySub": "来自旧版 {app}。只读取它的数据，不会改动；备份保留最近 2 份。",
   "@set_bkLegacySub": {
@@ -98,8 +102,15 @@
       "time": {}
     }
   },
-  "set_bkLegacyUndone": "上次同步已于 {time} 撤销",
-  "@set_bkLegacyUndone": {
+  "set_bkLegacyRedo": "换回同步后的数据",
+  "set_bkLegacyRedoSub": "回到 {time} 撤销前的数据",
+  "@set_bkLegacyRedoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoAgainSub": "回到 {time} 换回前的数据",
+  "@set_bkLegacyUndoAgainSub": {
     "placeholders": {
       "time": {}
     }
@@ -128,9 +139,24 @@
     }
   },
   "set_bkLegacyUndoConfirm": "撤销并重启",
+  "set_bkLegacyRedoTitle": "换回同步后的数据？",
+  "set_bkLegacyRedoBody": "会换回 {time} 撤销前的数据，同步后在这里做的改动也会回来。当前数据另存为一份备份。需要重启。",
+  "@set_bkLegacyRedoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyRedoConfirm": "换回并重启",
+  "set_bkLegacyUndoAgainBody": "会回到 {time} 换回前的数据，也就是同步前的那份。当前数据另存为一份备份。需要重启。",
+  "@set_bkLegacyUndoAgainBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
   "set_bkLegacyBusy": "还有任务在进行，请等它结束后再试。",
   "set_bkLegacySyncFailed": "无法开始同步。请确认磁盘空间足够，然后重试。",
   "set_bkLegacyUndoFailed": "无法撤销同步。请确认磁盘空间足够，然后重试。",
+  "set_bkLegacyRedoFailed": "无法换回同步后的数据。请确认磁盘空间足够，然后重试。",
   "app_subtitle": "NovelAI 第三方客户端",
   "common_cancel": "取消",
   "common_confirm": "确定",

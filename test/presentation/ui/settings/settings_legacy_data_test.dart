@@ -27,7 +27,7 @@ void main() {
   testWidgets('the section sits on top and says where the data came from', (
     tester,
   ) async {
-    await pumpSettings(
+    final rec = await pumpSettings(
       tester,
       page: SettingsPageId.backup,
       data: data(SettingsLegacyData(appName: app, copiedAt: copied)),
@@ -37,11 +37,18 @@ void main() {
     expect(find.text(l.set_bkLegacy), findsOneWidget);
     expect(find.text(l.set_bkLegacySub(app)), findsOneWidget);
     expect(find.text(l.set_bkLegacySyncCopied('10-23 14:05')), findsOneWidget);
-    expect(find.text(l.set_bkLegacyNoSync), findsOneWidget);
     expect(
       tester.getTopLeft(find.text(l.set_bkLegacy)).dy,
       lessThan(tester.getTopLeft(find.text(l.set_bkPrefs)).dy),
     );
+
+    // Nothing to switch back to before the first sync.
+    expect(find.text(l.set_bkLegacyUndo), findsOneWidget);
+    expect(find.text(l.set_bkLegacyNoSync), findsOneWidget);
+    await tester.tap(find.byKey(const Key('legacy-undo')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('settings-confirm')), findsNothing);
+    expect(rec.has('legacyUndo'), isFalse);
   });
 
   testWidgets('sync asks first and warns while the old app is open', (
@@ -74,8 +81,11 @@ void main() {
         SettingsLegacyData(
           appName: app,
           syncedAt: synced,
-          undoBackup: 'backup-1',
-          undoAt: synced,
+          switchBack: SettingsLegacySwitch(
+            kind: SettingsLegacySwitchKind.undo,
+            backup: 'backup-1',
+            at: synced,
+          ),
         ),
       ),
     );
@@ -85,25 +95,104 @@ void main() {
     await tester.tap(find.byKey(const Key('legacy-undo')));
     await tester.pumpAndSettle();
     expect(find.text(l.set_bkLegacyUndoTitle), findsOneWidget);
+    expect(find.text(l.set_bkLegacyUndoBody('10-29 14:05')), findsOneWidget);
     await tester.tap(find.byKey(const Key('confirm-ok')));
     await tester.pumpAndSettle();
     expect(rec.calls, contains('legacyUndo:backup-1'));
   });
 
-  testWidgets('after an undo there is nothing more to undo', (tester) async {
+  testWidgets('after an undo the row switches back to the synced data', (
+    tester,
+  ) async {
+    // Same place and button as the undo; only the words change.
+    await pumpSettings(
+      tester,
+      page: SettingsPageId.backup,
+      data: data(
+        SettingsLegacyData(
+          appName: app,
+          copiedAt: copied,
+          switchBack: SettingsLegacySwitch(
+            kind: SettingsLegacySwitchKind.undo,
+            backup: 'backup-1',
+            at: synced,
+          ),
+        ),
+      ),
+    );
+    final undoButton = tester.getRect(find.byKey(const Key('legacy-undo')));
+    // The page keeps the data it was built with; start it afresh.
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    final undone = DateTime(2026, 10, 29, 15, 30);
     final rec = await pumpSettings(
       tester,
       page: SettingsPageId.backup,
       data: data(
-        SettingsLegacyData(appName: app, copiedAt: copied, undoneAt: synced),
+        SettingsLegacyData(
+          appName: app,
+          copiedAt: copied,
+          switchBack: SettingsLegacySwitch(
+            kind: SettingsLegacySwitchKind.redo,
+            backup: 'backup-2',
+            at: undone,
+          ),
+        ),
       ),
     );
 
-    expect(find.text(l.set_bkLegacyUndone('10-29 14:05')), findsOneWidget);
+    expect(find.text(l.set_bkLegacyRedo), findsOneWidget);
+    expect(find.text(l.set_bkLegacyUndo), findsNothing);
+    expect(find.text(l.set_bkLegacyRedoSub('10-29 15:30')), findsOneWidget);
+    expect(tester.getRect(find.byKey(const Key('legacy-undo'))), undoButton);
+
     await tester.tap(find.byKey(const Key('legacy-undo')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('settings-confirm')), findsNothing);
+    expect(find.text(l.set_bkLegacyRedoTitle), findsOneWidget);
+    expect(find.text(l.set_bkLegacyRedoBody('10-29 15:30')), findsOneWidget);
+    expect(find.text(l.set_bkLegacyRedoConfirm), findsOneWidget);
+    await tester.tap(find.byKey(const Key('confirm-ok')));
+    await tester.pumpAndSettle();
+    expect(rec.calls, contains('legacyRedo:backup-2'));
     expect(rec.has('legacyUndo'), isFalse);
+  });
+
+  testWidgets('after switching back the sync can be undone again', (
+    tester,
+  ) async {
+    final switched = DateTime(2026, 10, 29, 16);
+    final rec = await pumpSettings(
+      tester,
+      page: SettingsPageId.backup,
+      data: data(
+        SettingsLegacyData(
+          appName: app,
+          syncedAt: synced,
+          switchBack: SettingsLegacySwitch(
+            kind: SettingsLegacySwitchKind.undoAgain,
+            backup: 'backup-3',
+            at: switched,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text(l.set_bkLegacyUndo), findsOneWidget);
+    expect(
+      find.text(l.set_bkLegacyUndoAgainSub('10-29 16:00')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('legacy-undo')));
+    await tester.pumpAndSettle();
+    expect(find.text(l.set_bkLegacyUndoTitle), findsOneWidget);
+    expect(
+      find.text(l.set_bkLegacyUndoAgainBody('10-29 16:00')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('confirm-ok')));
+    await tester.pumpAndSettle();
+    expect(rec.calls, contains('legacyUndo:backup-3'));
+    expect(rec.has('legacyRedo'), isFalse);
   });
 
   testWidgets('no section without previous data, on Windows or in a sandbox', (

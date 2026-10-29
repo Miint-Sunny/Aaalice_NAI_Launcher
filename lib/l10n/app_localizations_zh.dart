@@ -101,6 +101,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get legacyUndo_startWithout => '取消撤销并启动';
 
   @override
+  String get legacyRedo_title => '正在换回同步后的数据';
+
+  @override
+  String get legacyRedo_body => '同步后在这里做的改动都会回来，同步前的数据另存为一份备份。';
+
+  @override
+  String get legacyRedo_failedTitle => '无法换回同步后的数据';
+
+  @override
+  String get legacyRedo_startWithout => '取消换回并启动';
+
+  @override
   String get set_bkLegacy => '旧版数据';
 
   @override
@@ -137,8 +149,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String set_bkLegacyUndone(Object time) {
-    return '上次同步已于 $time 撤销';
+  String get set_bkLegacyRedo => '换回同步后的数据';
+
+  @override
+  String set_bkLegacyRedoSub(Object time) {
+    return '回到 $time 撤销前的数据';
+  }
+
+  @override
+  String set_bkLegacyUndoAgainSub(Object time) {
+    return '回到 $time 换回前的数据';
   }
 
   @override
@@ -175,6 +195,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get set_bkLegacyUndoConfirm => '撤销并重启';
 
   @override
+  String get set_bkLegacyRedoTitle => '换回同步后的数据？';
+
+  @override
+  String set_bkLegacyRedoBody(Object time) {
+    return '会换回 $time 撤销前的数据，同步后在这里做的改动也会回来。当前数据另存为一份备份。需要重启。';
+  }
+
+  @override
+  String get set_bkLegacyRedoConfirm => '换回并重启';
+
+  @override
+  String set_bkLegacyUndoAgainBody(Object time) {
+    return '会回到 $time 换回前的数据，也就是同步前的那份。当前数据另存为一份备份。需要重启。';
+  }
+
+  @override
   String get set_bkLegacyBusy => '还有任务在进行，请等它结束后再试。';
 
   @override
@@ -182,6 +218,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get set_bkLegacyUndoFailed => '无法撤销同步。请确认磁盘空间足够，然后重试。';
+
+  @override
+  String get set_bkLegacyRedoFailed => '无法换回同步后的数据。请确认磁盘空间足够，然后重试。';
 
   @override
   String get app_subtitle => 'NovelAI 第三方客户端';
@@ -21958,6 +21997,18 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get legacyUndo_startWithout => '取消復原並啟動';
 
   @override
+  String get legacyRedo_title => '正在換回同步後的資料';
+
+  @override
+  String get legacyRedo_body => '同步後在這裡做的改動都會回來，同步前的資料另存為一份備份。';
+
+  @override
+  String get legacyRedo_failedTitle => '無法換回同步後的資料';
+
+  @override
+  String get legacyRedo_startWithout => '取消換回並啟動';
+
+  @override
   String get set_bkLegacy => '舊版資料';
 
   @override
@@ -21994,8 +22045,16 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   }
 
   @override
-  String set_bkLegacyUndone(Object time) {
-    return '上次同步已於 $time 復原';
+  String get set_bkLegacyRedo => '換回同步後的資料';
+
+  @override
+  String set_bkLegacyRedoSub(Object time) {
+    return '回到 $time 復原前的資料';
+  }
+
+  @override
+  String set_bkLegacyUndoAgainSub(Object time) {
+    return '回到 $time 換回前的資料';
   }
 
   @override
@@ -22032,6 +22091,22 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get set_bkLegacyUndoConfirm => '復原並重啟';
 
   @override
+  String get set_bkLegacyRedoTitle => '換回同步後的資料？';
+
+  @override
+  String set_bkLegacyRedoBody(Object time) {
+    return '會換回 $time 復原前的資料，同步後在這裡做的改動也會回來。當前資料另存為一份備份。需要重啟。';
+  }
+
+  @override
+  String get set_bkLegacyRedoConfirm => '換回並重啟';
+
+  @override
+  String set_bkLegacyUndoAgainBody(Object time) {
+    return '會回到 $time 換回前的資料，也就是同步前的那份。當前資料另存為一份備份。需要重啟。';
+  }
+
+  @override
   String get set_bkLegacyBusy => '還有任務在進行，請等它結束後再試。';
 
   @override
@@ -22039,6 +22114,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get set_bkLegacyUndoFailed => '無法復原同步。請確認磁碟空間足夠，然後重試。';
+
+  @override
+  String get set_bkLegacyRedoFailed => '無法換回同步後的資料。請確認磁碟空間足夠，然後重試。';
 
   @override
   String get app_subtitle => 'NovelAI 第三方客戶端';

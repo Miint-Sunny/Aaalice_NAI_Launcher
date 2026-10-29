@@ -69,6 +69,10 @@
   "legacyUndo_failedTitle": "Can't undo the last sync",
   "legacyUndo_failedBody": "Your data is unchanged and nothing half-switched was left. Make sure there's enough free disk space, then try again.",
   "legacyUndo_startWithout": "Start Without Undoing",
+  "legacyRedo_title": "Switching back to the synced data",
+  "legacyRedo_body": "Changes made here after the sync come back. The data from before the sync is kept as a backup.",
+  "legacyRedo_failedTitle": "Can't switch back to the synced data",
+  "legacyRedo_startWithout": "Start Without Switching Back",
   "set_bkLegacy": "Previous version",
   "set_bkLegacySub": "From the previous version, {app}. Its data is only read, never changed. The latest 2 backups are kept.",
   "@set_bkLegacySub": {
@@ -98,8 +102,15 @@
       "time": {}
     }
   },
-  "set_bkLegacyUndone": "The last sync was undone on {time}",
-  "@set_bkLegacyUndone": {
+  "set_bkLegacyRedo": "Switch back to synced data",
+  "set_bkLegacyRedoSub": "Go back to the data from before the {time} undo",
+  "@set_bkLegacyRedoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoAgainSub": "Go back to the data from before the {time} switch",
+  "@set_bkLegacyUndoAgainSub": {
     "placeholders": {
       "time": {}
     }
@@ -128,9 +139,24 @@
     }
   },
   "set_bkLegacyUndoConfirm": "Undo and Restart",
+  "set_bkLegacyRedoTitle": "Switch back to the synced data?",
+  "set_bkLegacyRedoBody": "Switches back to the data from before the {time} undo, including changes made here after the sync. The current data is kept as a backup. Restarts the app.",
+  "@set_bkLegacyRedoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyRedoConfirm": "Switch Back and Restart",
+  "set_bkLegacyUndoAgainBody": "Switches back to the data from before the sync, as it was before the {time} switch. The current data is kept as a backup. Restarts the app.",
+  "@set_bkLegacyUndoAgainBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
   "set_bkLegacyBusy": "A task is still running. Try again when it finishes.",
   "set_bkLegacySyncFailed": "Can't start the sync. Make sure there's enough free disk space, then try again.",
   "set_bkLegacyUndoFailed": "Can't undo the sync. Make sure there's enough free disk space, then try again.",
+  "set_bkLegacyRedoFailed": "Can't switch back to the synced data. Make sure there's enough free disk space, then try again.",
   "app_subtitle": "NovelAI Third-party Client",
   "common_cancel": "Cancel",
   "common_confirm": "Confirm",

@@ -20,16 +20,11 @@ final settingsLegacyDataProvider = FutureProvider<SettingsLegacyData?>((
     final import = await ref.watch(macLegacyDataLocatorProvider)();
     final status = await import?.status();
     if (status == null) return null;
-    final latest = status.backups.firstOrNull;
-    final undo = latest?.task == MacLegacyDataTask.sync ? latest : null;
-    final undone = latest?.task == MacLegacyDataTask.undo ? latest : null;
     return SettingsLegacyData(
       appName: macLegacyAppName,
       copiedAt: status.copiedAt,
       syncedAt: status.syncedAt,
-      undoBackup: undo?.id,
-      undoAt: undo?.at,
-      undoneAt: undone?.at,
+      switchBack: legacySwitchBack(status.backups.firstOrNull),
       running: status.legacyRunning,
     );
   } on Object {
@@ -38,14 +33,30 @@ final settingsLegacyDataProvider = FutureProvider<SettingsLegacyData?>((
   }
 });
 
+/// What "Undo last sync" offers. The newest backup is always the other side
+/// of the last sync: the data from before it after a sync or a redo, the
+/// data from after it after an undo.
+SettingsLegacySwitch? legacySwitchBack(MacLegacyDataBackup? latest) {
+  if (latest == null) return null;
+  final kind = switch (latest.task) {
+    MacLegacyDataTask.sync => SettingsLegacySwitchKind.undo,
+    MacLegacyDataTask.undo => SettingsLegacySwitchKind.redo,
+    MacLegacyDataTask.redo => SettingsLegacySwitchKind.undoAgain,
+    // The first-launch copy never replaces data, so it makes no backup.
+    MacLegacyDataTask.import => null,
+  };
+  if (kind == null) return null;
+  return SettingsLegacySwitch(kind: kind, backup: latest.id, at: latest.at);
+}
+
 /// The app refused to restart because a task is still running.
 class SettingsLegacyBusy implements Exception {
   const SettingsLegacyBusy();
 }
 
-/// Records a sync or undo for the next launch, then restarts. If the restart
-/// is refused (a generation or download is running) the request is dropped
-/// again, so it never surprises the user on a later launch.
+/// Records a sync, undo or redo for the next launch, then restarts. If the
+/// restart is refused (a generation or download is running) the request is
+/// dropped again, so it never surprises the user on a later launch.
 class SettingsLegacyActions {
   SettingsLegacyActions({required this.locate, required this.restart});
 
@@ -58,6 +69,9 @@ class SettingsLegacyActions {
 
   Future<void> undo(String backup) =>
       _request(MacLegacyDataRequest.undo(backup));
+
+  Future<void> redo(String backup) =>
+      _request(MacLegacyDataRequest.redo(backup));
 
   Future<void> _request(MacLegacyDataRequest request) async {
     final import = await locate();

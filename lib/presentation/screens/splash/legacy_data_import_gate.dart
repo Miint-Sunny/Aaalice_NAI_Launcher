@@ -14,8 +14,8 @@ import '../../widgets/branding/brand_logo.dart';
 import '../../widgets/branding/entry_field.dart';
 
 /// Shows the first-launch copy of the previous macOS version's data, or a
-/// sync or undo requested in Settings (see [MacLegacyDataImport]), in the
-/// window before Hive and the databases open. Nothing is shown unless data
+/// sync, undo or redo requested in Settings (see [MacLegacyDataImport]), in
+/// the window before Hive and the databases open. Nothing is shown unless data
 /// is copied or switched or the user has to decide; the app replaces this
 /// screen with its own once startup continues.
 class LegacyDataImportGate implements MacLegacyDataImportPresenter {
@@ -97,7 +97,7 @@ class LegacyDataImportView {
 
   final LegacyDataImportStep step;
 
-  /// First-launch copy, or a sync or undo requested in Settings.
+  /// First-launch copy, or a sync, undo or redo requested in Settings.
   final MacLegacyDataTask task;
   final Object? error;
   final VoidCallback? onRetry;
@@ -174,7 +174,7 @@ class _LegacyDataImportPageState extends State<LegacyDataImportPage> {
         l10n.legacyImport_runningTitle(appName),
         l10n.legacyImport_runningBody,
       ),
-      // Only a sync reads the previous version; an undo never waits.
+      // Only a sync reads the previous version; undo and redo never wait.
       (LegacyDataImportStep.waiting, _) => (
         l10n.legacyImport_runningTitle(appName),
         l10n.legacySync_runningBody,
@@ -191,6 +191,11 @@ class _LegacyDataImportPageState extends State<LegacyDataImportPage> {
         l10n.legacyUndo_failedTitle,
         l10n.legacyUndo_failedBody,
       ),
+      // Nothing changed either way, so a redo shares the undo's reassurance.
+      (LegacyDataImportStep.failed, MacLegacyDataTask.redo) => (
+        l10n.legacyRedo_failedTitle,
+        l10n.legacyUndo_failedBody,
+      ),
       (_, MacLegacyDataTask.import) => (
         l10n.legacyImport_copyingTitle(appName),
         l10n.legacyImport_copyingBody(appName),
@@ -202,6 +207,10 @@ class _LegacyDataImportPageState extends State<LegacyDataImportPage> {
       (_, MacLegacyDataTask.undo) => (
         l10n.legacyUndo_title,
         l10n.legacyUndo_body,
+      ),
+      (_, MacLegacyDataTask.redo) => (
+        l10n.legacyRedo_title,
+        l10n.legacyRedo_body,
       ),
     };
     return Scaffold(
@@ -270,6 +279,7 @@ class _LegacyDataImportPageState extends State<LegacyDataImportPage> {
         MacLegacyDataTask.import => l10n.legacyImport_startWithout,
         MacLegacyDataTask.sync => l10n.legacySync_startWithout,
         MacLegacyDataTask.undo => l10n.legacyUndo_startWithout,
+        MacLegacyDataTask.redo => l10n.legacyRedo_startWithout,
       },
       onPressed: view.onSkip,
     );

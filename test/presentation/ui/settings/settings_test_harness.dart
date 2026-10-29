@@ -240,6 +240,7 @@ class SettingsHostState extends State<SettingsHost> {
         onRestart: () => call('restart'),
         onLegacySync: () => call('legacySync'),
         onLegacyUndo: (id) => call('legacyUndo:$id'),
+        onLegacyRedo: (id) => call('legacyRedo:$id'),
         onRequestDetails: (id) => call('requestDetails:$id'),
         onUpdateDictionary: (kind) => call('updateDictionary:${kind.name}'),
         onCheckDictionaryUpdates: () => call('checkDictionaryUpdates'),

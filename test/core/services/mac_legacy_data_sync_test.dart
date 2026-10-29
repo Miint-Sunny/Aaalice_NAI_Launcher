@@ -84,6 +84,19 @@ void main() {
     return import().prepare();
   }
 
+  /// Undo or redo to the newest backup, as Settings offers it.
+  Future<MacLegacyDataImportResult> switchBack(
+    MacLegacyDataRequest Function(String backup) request,
+  ) async {
+    final newest = (await import().dataSwitch.backups()).first;
+    await import().request(request(newest.id));
+    return import().prepare();
+  }
+
+  Future<List<MacLegacyDataTask>> backupTasks() async => [
+    for (final backup in await import().dataSwitch.backups()) backup.task,
+  ];
+
   test('a sync replaces the data, keeps a backup and moves this version\'s '
       'own folders over', () async {
     final original = await treeOf(legacy);
@@ -169,20 +182,112 @@ void main() {
     expect(await import().dataSwitch.pending(), isFalse);
   });
 
-  test('backups from syncs and undos count together', () async {
-    Future<List<MacLegacyDataTask>> tasks() async => [
-      for (final backup in await import().dataSwitch.backups()) backup.task,
-    ];
+  test(
+    'undo and switching back swap the two sides and keep later changes',
+    () async {
+      final original = await treeOf(legacy);
+      Future<void> expectBackups(List<MacLegacyDataTask> tasks) async {
+        expect(await backupTasks(), tasks);
+        expect(
+          await import().dataSwitch.backupRoot.list().length,
+          lessThanOrEqualTo(MacLegacyDataSwitch.keep),
+        );
+      }
+
+      // Sync, then keep working in this version.
+      expect((await sync()).state, MacLegacyDataState.synced);
+      await writeData(target, 'hive/settings.hive', 'changed after the sync');
+      await writeData(target, 'hive/history.hive', 'history after the sync');
+      await writeData(target, 'agent-data/session.json', 'agent session 2');
+      await expectBackups([MacLegacyDataTask.sync]);
+
+      // Undo: the data from before the sync.
+      var result = await switchBack(MacLegacyDataRequest.undo);
+      expect(result.state, MacLegacyDataState.undone);
+      expect(result.task, MacLegacyDataTask.undo);
+      expect(await read(target, 'hive/settings.hive'), '2.0 settings');
+      expect(await read(target, 'hive/prompt_blocks.hive'), '2.0 blocks');
+      expect(await exists(target, 'hive/history.hive'), isFalse);
+      expect((await marker())['state'], 'imported');
+      await expectBackups([MacLegacyDataTask.undo]);
+      await writeData(target, 'hive/settings.hive', 'changed after the undo');
+
+      // Switch back: the synced data, with what changed after the sync.
+      result = await switchBack(MacLegacyDataRequest.redo);
+      expect(result.state, MacLegacyDataState.redone);
+      expect(result.task, MacLegacyDataTask.redo);
+      expect(
+        await read(target, 'hive/settings.hive'),
+        'changed after the sync',
+      );
+      expect(await read(target, 'hive/history.hive'), 'history after the sync');
+      expect(await read(target, 'databases/danbooru.db'), '1.1.1 gallery');
+      expect(await exists(target, 'hive/prompt_blocks.hive'), isFalse);
+      expect((await marker())['state'], 'synced');
+      await expectBackups([MacLegacyDataTask.redo]);
+
+      // Undo again: the data from before the sync, with its own later change.
+      result = await switchBack(MacLegacyDataRequest.undo);
+      expect(result.state, MacLegacyDataState.undone);
+      expect(
+        await read(target, 'hive/settings.hive'),
+        'changed after the undo',
+      );
+      expect(await read(target, 'hive/prompt_blocks.hive'), '2.0 blocks');
+      expect(await exists(target, 'hive/history.hive'), isFalse);
+      await expectBackups([MacLegacyDataTask.undo]);
+      final synced = (await import().dataSwitch.backups()).single.directory;
+      expect(
+        await read(synced, 'hive/settings.hive'),
+        'changed after the sync',
+      );
+      expect(await read(synced, 'hive/history.hive'), 'history after the sync');
+
+      // This version's own folders followed every switch.
+      expect(await read(target, 'agent-data/session.json'), 'agent session 2');
+      expect(
+        await read(target, 'settings_backups/v2/a.json'),
+        'preference backup',
+      );
+      expect(await exists(synced, 'agent-data'), isFalse);
+      expect(await treeOf(legacy), original);
+      expect(await import().dataSwitch.pending(), isFalse);
+      expect(await leftovers(), isEmpty);
+    },
+  );
+
+  test('backups from syncs, undos and redos count together', () async {
     await sync();
-    final first = (await import().dataSwitch.backups()).single;
-    await import().request(MacLegacyDataRequest.undo(first.id));
-    await import().prepare();
+    await switchBack(MacLegacyDataRequest.undo);
     await sync();
-    expect(await tasks(), [MacLegacyDataTask.sync, MacLegacyDataTask.undo]);
+    expect(await backupTasks(), [
+      MacLegacyDataTask.sync,
+      MacLegacyDataTask.undo,
+    ]);
 
     // The third backup pushes out the oldest, whatever made it.
     await sync();
-    expect(await tasks(), [MacLegacyDataTask.sync, MacLegacyDataTask.sync]);
+    expect(await backupTasks(), [
+      MacLegacyDataTask.sync,
+      MacLegacyDataTask.sync,
+    ]);
+
+    // Undo and redo each use up the backup they switch to.
+    await switchBack(MacLegacyDataRequest.undo);
+    await switchBack(MacLegacyDataRequest.redo);
+    expect(await backupTasks(), [
+      MacLegacyDataTask.redo,
+      MacLegacyDataTask.sync,
+    ]);
+    await sync();
+    expect(await backupTasks(), [
+      MacLegacyDataTask.sync,
+      MacLegacyDataTask.redo,
+    ]);
+    expect(
+      await import().dataSwitch.backupRoot.list().length,
+      MacLegacyDataSwitch.keep,
+    );
   });
 
   test('a sync that fails while copying changes nothing', () async {

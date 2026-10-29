@@ -69,6 +69,10 @@
   "legacyUndo_failedTitle": "無法復原上次同步",
   "legacyUndo_failedBody": "資料保持原樣，沒有留下換了一半的檔案。請確認磁碟空間足夠，然後重試。",
   "legacyUndo_startWithout": "取消復原並啟動",
+  "legacyRedo_title": "正在換回同步後的資料",
+  "legacyRedo_body": "同步後在這裡做的改動都會回來，同步前的資料另存為一份備份。",
+  "legacyRedo_failedTitle": "無法換回同步後的資料",
+  "legacyRedo_startWithout": "取消換回並啟動",
   "set_bkLegacy": "舊版資料",
   "set_bkLegacySub": "來自舊版 {app}。只讀取它的資料，不會改動；備份保留最近 2 份。",
   "@set_bkLegacySub": {
@@ -98,8 +102,15 @@
       "time": {}
     }
   },
-  "set_bkLegacyUndone": "上次同步已於 {time} 復原",
-  "@set_bkLegacyUndone": {
+  "set_bkLegacyRedo": "換回同步後的資料",
+  "set_bkLegacyRedoSub": "回到 {time} 復原前的資料",
+  "@set_bkLegacyRedoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoAgainSub": "回到 {time} 換回前的資料",
+  "@set_bkLegacyUndoAgainSub": {
     "placeholders": {
       "time": {}
     }
@@ -128,9 +139,24 @@
     }
   },
   "set_bkLegacyUndoConfirm": "復原並重啟",
+  "set_bkLegacyRedoTitle": "換回同步後的資料？",
+  "set_bkLegacyRedoBody": "會換回 {time} 復原前的資料，同步後在這裡做的改動也會回來。當前資料另存為一份備份。需要重啟。",
+  "@set_bkLegacyRedoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyRedoConfirm": "換回並重啟",
+  "set_bkLegacyUndoAgainBody": "會回到 {time} 換回前的資料，也就是同步前的那份。當前資料另存為一份備份。需要重啟。",
+  "@set_bkLegacyUndoAgainBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
   "set_bkLegacyBusy": "還有任務在進行，請等它結束後再試。",
   "set_bkLegacySyncFailed": "無法開始同步。請確認磁碟空間足夠，然後重試。",
   "set_bkLegacyUndoFailed": "無法復原同步。請確認磁碟空間足夠，然後重試。",
+  "set_bkLegacyRedoFailed": "無法換回同步後的資料。請確認磁碟空間足夠，然後重試。",
   "app_subtitle": "NovelAI 第三方客戶端",
   "common_cancel": "取消",
   "common_confirm": "確定",

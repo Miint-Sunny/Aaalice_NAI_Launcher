@@ -104,6 +104,19 @@ class AppLocalizationsKo extends AppLocalizations {
   String get legacyUndo_startWithout => '되돌리지 않고 시작';
 
   @override
+  String get legacyRedo_title => '동기화 후 데이터로 돌아가는 중';
+
+  @override
+  String get legacyRedo_body =>
+      '동기화 후 이곳에서 바꾼 내용도 돌아옵니다. 동기화 전의 데이터는 백업으로 남겨 둡니다.';
+
+  @override
+  String get legacyRedo_failedTitle => '동기화 후 데이터로 돌아갈 수 없습니다';
+
+  @override
+  String get legacyRedo_startWithout => '돌아가지 않고 시작';
+
+  @override
   String get set_bkLegacy => '이전 버전 데이터';
 
   @override
@@ -140,8 +153,16 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String set_bkLegacyUndone(Object time) {
-    return '마지막 동기화는 $time에 되돌렸습니다';
+  String get set_bkLegacyRedo => '동기화 후 데이터로 돌아가기';
+
+  @override
+  String set_bkLegacyRedoSub(Object time) {
+    return '$time 되돌리기 전의 데이터로 돌아갑니다';
+  }
+
+  @override
+  String set_bkLegacyUndoAgainSub(Object time) {
+    return '$time 전환 전의 데이터로 돌아갑니다';
   }
 
   @override
@@ -178,6 +199,22 @@ class AppLocalizationsKo extends AppLocalizations {
   String get set_bkLegacyUndoConfirm => '되돌리고 다시 시작';
 
   @override
+  String get set_bkLegacyRedoTitle => '동기화 후 데이터로 돌아갈까요?';
+
+  @override
+  String set_bkLegacyRedoBody(Object time) {
+    return '$time 되돌리기 전의 데이터로 돌아갑니다. 동기화 후 이곳에서 바꾼 내용도 돌아옵니다. 현재 데이터는 백업으로 남겨 둡니다. 앱을 다시 시작합니다.';
+  }
+
+  @override
+  String get set_bkLegacyRedoConfirm => '돌아가고 다시 시작';
+
+  @override
+  String set_bkLegacyUndoAgainBody(Object time) {
+    return '$time 전환 전의 데이터, 즉 동기화 전의 데이터로 돌아갑니다. 현재 데이터는 백업으로 남겨 둡니다. 앱을 다시 시작합니다.';
+  }
+
+  @override
   String get set_bkLegacyBusy => '아직 진행 중인 작업이 있습니다. 끝난 뒤 다시 시도해 주세요.';
 
   @override
@@ -187,6 +224,10 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get set_bkLegacyUndoFailed =>
       '동기화를 되돌릴 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
+
+  @override
+  String get set_bkLegacyRedoFailed =>
+      '동기화 후 데이터로 돌아갈 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
 
   @override
   String get app_subtitle => 'NovelAI 서드파티 클라이언트';

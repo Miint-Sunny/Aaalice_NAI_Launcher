@@ -57,24 +57,41 @@ void main() {
     expect(data.appName, macLegacyAppName);
     expect(data.copiedAt, DateTime.utc(2026, 10, 23, 6, 5).toLocal());
     expect(data.syncedAt, isNull);
-    expect(data.undoBackup, isNull);
+    expect(data.switchBack, isNull);
     expect(data.running, isFalse);
   });
 
-  test('undo is offered only right after a sync', () async {
-    await import().request(const MacLegacyDataRequest.sync());
-    await import().prepare();
-    final backup = (await import().dataSwitch.backups()).single;
-    final afterSync = (await read(import))!;
-    expect(afterSync.undoBackup, backup.id);
-    expect(afterSync.undoAt, backup.at);
+  test(
+    'the second row swaps between the data before and after a sync',
+    () async {
+      Future<SettingsLegacySwitch> row() async =>
+          (await read(import))!.switchBack!;
+      Future<MacLegacyDataBackup> newest() async =>
+          (await import().dataSwitch.backups()).first;
 
-    await import().request(MacLegacyDataRequest.undo(backup.id));
-    await import().prepare();
-    final afterUndo = (await read(import))!;
-    expect(afterUndo.undoBackup, isNull);
-    expect(afterUndo.undoneAt, isNotNull);
-  });
+      await import().request(const MacLegacyDataRequest.sync());
+      await import().prepare();
+      var back = await row();
+      var backup = await newest();
+      expect(back.kind, SettingsLegacySwitchKind.undo);
+      expect((back.backup, back.at), (backup.id, backup.at));
+
+      await import().request(MacLegacyDataRequest.undo(back.backup));
+      await import().prepare();
+      back = await row();
+      backup = await newest();
+      expect(back.kind, SettingsLegacySwitchKind.redo);
+      expect((back.backup, back.at), (backup.id, backup.at));
+
+      await import().request(MacLegacyDataRequest.redo(back.backup));
+      await import().prepare();
+      back = await row();
+      backup = await newest();
+      expect(back.kind, SettingsLegacySwitchKind.undoAgain);
+      expect((back.backup, back.at), (backup.id, backup.at));
+      expect(legacySwitchBack(null), isNull);
+    },
+  );
 
   test('hidden off macOS, in a sandbox and without previous data', () async {
     // The locator gives nothing on Windows, in tests and in a sandbox
@@ -99,18 +116,25 @@ void main() {
     expect(await read(import), isNull);
   });
 
-  test('sync records the request and restarts', () async {
+  test('sync and switching back record the request and restart', () async {
     var restarts = 0;
-    await SettingsLegacyActions(
+    final actions = SettingsLegacyActions(
       locate: () async => import(),
       restart: () async => restarts++,
-    ).sync();
+    );
 
+    await actions.sync();
     expect(restarts, 1);
     expect(
       (await import().dataSwitch.readRequest())?.task,
       MacLegacyDataTask.sync,
     );
+
+    const backup = '20261029-153000-000-before-undo';
+    await actions.redo(backup);
+    expect(restarts, 2);
+    final request = await import().dataSwitch.readRequest();
+    expect((request?.task, request?.backup), (MacLegacyDataTask.redo, backup));
   });
 
   test('a refused restart drops the request again', () async {

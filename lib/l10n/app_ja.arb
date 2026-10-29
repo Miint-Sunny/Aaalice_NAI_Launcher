@@ -69,6 +69,10 @@
   "legacyUndo_failedTitle": "前回の同期を取り消せません",
   "legacyUndo_failedBody": "データは変更されておらず、途中までの切り替えも残っていません。ディスクの空き容量を確認してから、もう一度お試しください。",
   "legacyUndo_startWithout": "取り消さずに起動",
+  "legacyRedo_title": "同期後のデータに戻しています",
+  "legacyRedo_body": "同期後にここで行った変更も戻ります。同期前のデータはバックアップとして残します。",
+  "legacyRedo_failedTitle": "同期後のデータに戻せません",
+  "legacyRedo_startWithout": "戻さずに起動",
   "set_bkLegacy": "旧版のデータ",
   "set_bkLegacySub": "旧版 {app} のデータです。読み込むだけで変更はしません。バックアップは直近 2 件を保持します。",
   "@set_bkLegacySub": {
@@ -98,8 +102,15 @@
       "time": {}
     }
   },
-  "set_bkLegacyUndone": "前回の同期は {time} に取り消しました",
-  "@set_bkLegacyUndone": {
+  "set_bkLegacyRedo": "同期後のデータに戻す",
+  "set_bkLegacyRedoSub": "{time} の取り消し前のデータに戻します",
+  "@set_bkLegacyRedoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoAgainSub": "{time} の切り替え前のデータに戻します",
+  "@set_bkLegacyUndoAgainSub": {
     "placeholders": {
       "time": {}
     }
@@ -128,9 +139,24 @@
     }
   },
   "set_bkLegacyUndoConfirm": "取り消して再起動",
+  "set_bkLegacyRedoTitle": "同期後のデータに戻しますか？",
+  "set_bkLegacyRedoBody": "{time} の取り消し前のデータに戻します。同期後にここで行った変更も戻ります。現在のデータはバックアップとして残します。アプリを再起動します。",
+  "@set_bkLegacyRedoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyRedoConfirm": "戻して再起動",
+  "set_bkLegacyUndoAgainBody": "{time} の切り替え前のデータ、つまり同期前のデータに戻します。現在のデータはバックアップとして残します。アプリを再起動します。",
+  "@set_bkLegacyUndoAgainBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
   "set_bkLegacyBusy": "実行中のタスクがあります。終わってからもう一度お試しください。",
   "set_bkLegacySyncFailed": "同期を開始できません。ディスクの空き容量を確認してから、もう一度お試しください。",
   "set_bkLegacyUndoFailed": "同期を取り消せません。ディスクの空き容量を確認してから、もう一度お試しください。",
+  "set_bkLegacyRedoFailed": "同期後のデータに戻せません。ディスクの空き容量を確認してから、もう一度お試しください。",
   "app_subtitle": "NovelAI サードパーティ クライアント",
   "common_cancel": "キャンセル",
   "common_confirm": "確認",
