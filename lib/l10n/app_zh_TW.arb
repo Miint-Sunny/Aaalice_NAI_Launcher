@@ -5,6 +5,44 @@
   "brand_entryTagline": "給想像，一個發生的地方。",
   "brand_switchToLight": "切換到淺色",
   "brand_switchToDark": "切換到深色",
+  "legacyImport_copyingTitle": "正在從 {app} 複製資料",
+  "@legacyImport_copyingTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_copyingBody": "設定、歷史記錄、各類庫和收藏只在首次啟動時複製一次，帳號需要重新登入。{app} 自己的資料保持原樣。",
+  "@legacyImport_copyingBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningTitle": "請先退出 {app}",
+  "@legacyImport_runningTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningBody": "首次啟動時要複製舊版的設定、歷史記錄、各類庫和收藏。請完全退出舊版（包括選單列裡的圖示），退出後會自動開始複製。",
+  "legacyImport_waiting": "正在等待 {app} 退出…",
+  "@legacyImport_waiting": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedTitle": "無法從 {app} 複製資料",
+  "@legacyImport_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedBody": "沒有改動任何資料：{app} 的資料保持原樣，也沒有留下複製了一半的檔案。請確認磁碟空間足夠，然後重試。",
+  "@legacyImport_failedBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_startWithout": "跳過複製並啟動",
   "app_subtitle": "NovelAI 第三方客戶端",
   "common_cancel": "取消",
   "common_confirm": "確定",

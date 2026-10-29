@@ -24,6 +24,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get brand_switchToDark => '切换到深色';
 
   @override
+  String legacyImport_copyingTitle(Object app) {
+    return '正在从 $app 复制数据';
+  }
+
+  @override
+  String legacyImport_copyingBody(Object app) {
+    return '设置、历史记录、各类库和收藏只在首次启动时复制一次，账号需要重新登录。$app 自己的数据保持原样。';
+  }
+
+  @override
+  String legacyImport_runningTitle(Object app) {
+    return '请先退出 $app';
+  }
+
+  @override
+  String get legacyImport_runningBody =>
+      '首次启动时要复制旧版的设置、历史记录、各类库和收藏。请完全退出旧版（包括菜单栏里的图标），退出后会自动开始复制。';
+
+  @override
+  String legacyImport_waiting(Object app) {
+    return '正在等待 $app 退出…';
+  }
+
+  @override
+  String legacyImport_failedTitle(Object app) {
+    return '无法从 $app 复制数据';
+  }
+
+  @override
+  String legacyImport_failedBody(Object app) {
+    return '没有改动任何数据：$app 的数据保持原样，也没有留下复制了一半的文件。请确认磁盘空间足够，然后重试。';
+  }
+
+  @override
+  String get legacyImport_startWithout => '跳过复制并启动';
+
+  @override
   String get app_subtitle => 'NovelAI 第三方客户端';
 
   @override
@@ -21714,6 +21751,43 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get brand_switchToDark => '切換到深色';
+
+  @override
+  String legacyImport_copyingTitle(Object app) {
+    return '正在從 $app 複製資料';
+  }
+
+  @override
+  String legacyImport_copyingBody(Object app) {
+    return '設定、歷史記錄、各類庫和收藏只在首次啟動時複製一次，帳號需要重新登入。$app 自己的資料保持原樣。';
+  }
+
+  @override
+  String legacyImport_runningTitle(Object app) {
+    return '請先退出 $app';
+  }
+
+  @override
+  String get legacyImport_runningBody =>
+      '首次啟動時要複製舊版的設定、歷史記錄、各類庫和收藏。請完全退出舊版（包括選單列裡的圖示），退出後會自動開始複製。';
+
+  @override
+  String legacyImport_waiting(Object app) {
+    return '正在等待 $app 退出…';
+  }
+
+  @override
+  String legacyImport_failedTitle(Object app) {
+    return '無法從 $app 複製資料';
+  }
+
+  @override
+  String legacyImport_failedBody(Object app) {
+    return '沒有改動任何資料：$app 的資料保持原樣，也沒有留下複製了一半的檔案。請確認磁碟空間足夠，然後重試。';
+  }
+
+  @override
+  String get legacyImport_startWithout => '跳過複製並啟動';
 
   @override
   String get app_subtitle => 'NovelAI 第三方客戶端';

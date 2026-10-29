@@ -24,6 +24,43 @@ class AppLocalizationsJa extends AppLocalizations {
   String get brand_switchToDark => 'ダークモードに切り替え';
 
   @override
+  String legacyImport_copyingTitle(Object app) {
+    return '$app からデータをコピーしています';
+  }
+
+  @override
+  String legacyImport_copyingBody(Object app) {
+    return '設定、履歴、各種ライブラリとお気に入りは、初回起動時に一度だけコピーされます。アカウントにはもう一度ログインしてください。$app のデータはそのまま残ります。';
+  }
+
+  @override
+  String legacyImport_runningTitle(Object app) {
+    return '$app を終了してください';
+  }
+
+  @override
+  String get legacyImport_runningBody =>
+      '初回起動時に、旧版の設定、履歴、各種ライブラリとお気に入りをコピーします。メニューバーのアイコンも含めて旧版を完全に終了すると、自動的にコピーが始まります。';
+
+  @override
+  String legacyImport_waiting(Object app) {
+    return '$app の終了を待っています…';
+  }
+
+  @override
+  String legacyImport_failedTitle(Object app) {
+    return '$app からデータをコピーできません';
+  }
+
+  @override
+  String legacyImport_failedBody(Object app) {
+    return 'データは何も変更されていません。$app のデータはそのまま残り、途中までのコピーも残っていません。ディスクの空き容量を確認してから、もう一度お試しください。';
+  }
+
+  @override
+  String get legacyImport_startWithout => 'コピーせずに起動';
+
+  @override
   String get app_subtitle => 'NovelAI サードパーティ クライアント';
 
   @override

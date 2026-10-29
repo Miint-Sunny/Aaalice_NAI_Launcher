@@ -40,6 +40,7 @@ import 'core/utils/hive_startup_box_opener.dart';
 import 'core/utils/hive_storage_helper.dart';
 import 'core/utils/app_support_directory.dart';
 import 'core/utils/studio_sandbox.dart';
+import 'presentation/screens/splash/legacy_data_import_gate.dart';
 import 'core/utils/window_focus_tracker.dart';
 import 'core/utils/window_state_coercion.dart';
 import 'core/utils/window_state_persistence.dart';
@@ -368,6 +369,9 @@ Future<void> _bootstrapMainWindow() async {
   );
   AppLogger.i('Application starting', 'Main');
 
+  // On macOS the first launch copies the previous version's data and shows
+  // it in the window (only when there is something to copy or decide).
+  LegacyDataImportGate.install();
   await _prepareDataAndStart();
 }
 

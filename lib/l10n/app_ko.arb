@@ -5,6 +5,44 @@
   "brand_entryTagline": "상상이 현실이 되는 곳.",
   "brand_switchToLight": "라이트 모드로 전환",
   "brand_switchToDark": "다크 모드로 전환",
+  "legacyImport_copyingTitle": "{app}에서 데이터를 복사하는 중",
+  "@legacyImport_copyingTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_copyingBody": "설정, 기록, 각종 라이브러리와 즐겨찾기는 처음 시작할 때 한 번만 복사됩니다. 계정에는 다시 로그인해야 합니다. {app}의 데이터는 그대로 남습니다.",
+  "@legacyImport_copyingBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningTitle": "{app}을(를) 종료해 주세요",
+  "@legacyImport_runningTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_runningBody": "처음 시작할 때 이전 버전의 설정, 기록, 각종 라이브러리와 즐겨찾기를 복사합니다. 메뉴 막대 아이콘까지 이전 버전을 완전히 종료하면 복사가 자동으로 시작됩니다.",
+  "legacyImport_waiting": "{app}이(가) 종료되기를 기다리는 중…",
+  "@legacyImport_waiting": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedTitle": "{app}에서 데이터를 복사할 수 없습니다",
+  "@legacyImport_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_failedBody": "데이터는 변경되지 않았습니다. {app}의 데이터는 그대로이며 복사하다 만 파일도 남지 않았습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.",
+  "@legacyImport_failedBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacyImport_startWithout": "복사하지 않고 시작",
   "app_subtitle": "NovelAI 서드파티 클라이언트",
   "common_cancel": "취소",
   "common_confirm": "확인",

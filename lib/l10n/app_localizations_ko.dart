@@ -24,6 +24,43 @@ class AppLocalizationsKo extends AppLocalizations {
   String get brand_switchToDark => '다크 모드로 전환';
 
   @override
+  String legacyImport_copyingTitle(Object app) {
+    return '$app에서 데이터를 복사하는 중';
+  }
+
+  @override
+  String legacyImport_copyingBody(Object app) {
+    return '설정, 기록, 각종 라이브러리와 즐겨찾기는 처음 시작할 때 한 번만 복사됩니다. 계정에는 다시 로그인해야 합니다. $app의 데이터는 그대로 남습니다.';
+  }
+
+  @override
+  String legacyImport_runningTitle(Object app) {
+    return '$app을(를) 종료해 주세요';
+  }
+
+  @override
+  String get legacyImport_runningBody =>
+      '처음 시작할 때 이전 버전의 설정, 기록, 각종 라이브러리와 즐겨찾기를 복사합니다. 메뉴 막대 아이콘까지 이전 버전을 완전히 종료하면 복사가 자동으로 시작됩니다.';
+
+  @override
+  String legacyImport_waiting(Object app) {
+    return '$app이(가) 종료되기를 기다리는 중…';
+  }
+
+  @override
+  String legacyImport_failedTitle(Object app) {
+    return '$app에서 데이터를 복사할 수 없습니다';
+  }
+
+  @override
+  String legacyImport_failedBody(Object app) {
+    return '데이터는 변경되지 않았습니다. $app의 데이터는 그대로이며 복사하다 만 파일도 남지 않았습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
+  }
+
+  @override
+  String get legacyImport_startWithout => '복사하지 않고 시작';
+
+  @override
   String get app_subtitle => 'NovelAI 서드파티 클라이언트';
 
   @override
