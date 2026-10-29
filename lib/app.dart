@@ -22,7 +22,6 @@ import 'presentation/providers/theme_provider.dart';
 import 'presentation/widgets/common/workspace_typography_scope.dart';
 import 'presentation/widgets/common/workspace_text_scale_scope.dart';
 import 'presentation/widgets/common/numpad_editing_shortcuts.dart';
-import 'presentation/widgets/common/mac_text_editing_shortcuts.dart';
 import 'presentation/widgets/common/text_editing_shortcuts.dart';
 import 'presentation/providers/locale_provider.dart';
 import 'presentation/providers/background_refresh_provider.dart';
@@ -242,14 +241,11 @@ class NAILauncherApp extends ConsumerWidget {
                           ref.read(themeNotifierProvider.notifier).nextTheme(),
                       child: NumpadEditingShortcuts(
                         child: TextEditingShortcuts(
-                          // 浮动资源小窗也在这一层里面，⌘Y 对小窗里的输入框同样有效
-                          child: MacTextEditingShortcuts(
-                            child: NewBadgeScope(
-                              child: FloatingResourceWindowsHost(
-                                builder: floatingResourceWindowBuilder,
-                                child: ResourceWindowBridge(
-                                  child: child ?? const SizedBox.shrink(),
-                                ),
+                          child: NewBadgeScope(
+                            child: FloatingResourceWindowsHost(
+                              builder: floatingResourceWindowBuilder,
+                              child: ResourceWindowBridge(
+                                child: child ?? const SizedBox.shrink(),
                               ),
                             ),
                           ),
