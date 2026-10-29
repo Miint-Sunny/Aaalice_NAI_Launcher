@@ -138,8 +138,9 @@ jobs:
   macos-validation:
     name: Build and package macOS
     runs-on: macos-15
-    # Release build of the universal app bundle plus the packaging checks;
-    # tests run in the Windows job. Nothing is uploaded.
+    # Release build of the universal app bundle plus the packaging checks,
+    # and the few tests that only reach their macOS branch on a Mac; all
+    # other tests run in the Windows job. Nothing is uploaded.
     timeout-minutes: 45
 
     steps:
@@ -172,6 +173,21 @@ jobs:
 
       - name: Generate code
         run: dart run tool/generate.dart
+
+      - name: Run macOS-only tests
+        # These skip or take their Windows branch elsewhere: floating
+        # resource windows, window close and quit order, the 1.x data copy,
+        # RAG host detection, CommonCrypto hashing, Finder open / reveal and
+        # path case in the storage statistics.
+        run: >-
+          flutter test --no-pub
+          test/presentation/wiring/resource_window_opener_test.dart
+          test/app_exit_shortcuts_test.dart
+          test/core/services/mac_legacy_data_import_test.dart
+          test/core/rag/rag_platform_test.dart
+          test/core/utils/file_sha256_test.dart
+          test/app_test.dart
+          test/presentation/wiring/settings_storage_inventory_test.dart
 
       - name: Build macOS release
         run: scripts/build_macos.sh --release
