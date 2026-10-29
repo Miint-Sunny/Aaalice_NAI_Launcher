@@ -5112,12 +5112,6 @@ abstract class AppLocalizations {
   /// **'Copy Prompt'**
   String get localGallery_copyPrompt;
 
-  /// No description provided for @localGallery_copySeed.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy Seed'**
-  String get localGallery_copySeed;
-
   /// No description provided for @localGallery_dragToShare.
   ///
   /// In en, this message translates to:
@@ -26021,12 +26015,6 @@ abstract class AppLocalizations {
   /// **'No translation model yet — click to set one up'**
   String get gen_translateNeedsModel;
 
-  /// No description provided for @gen_translateRestore.
-  ///
-  /// In en, this message translates to:
-  /// **'Show original'**
-  String get gen_translateRestore;
-
   /// No description provided for @gen_translateWith.
   ///
   /// In en, this message translates to:
@@ -26720,7 +26708,7 @@ abstract class AppLocalizations {
   /// No description provided for @gen_repeatTotal.
   ///
   /// In en, this message translates to:
-  /// **'{times} requests, {total} images (scroll to adjust)'**
+  /// **'{times} requests, {total} images · Hold and drag horizontally to adjust'**
   String gen_repeatTotal(Object times, Object total);
 
   /// No description provided for @gen_steps.
@@ -37576,12 +37564,6 @@ abstract class AppLocalizations {
   /// **'Search blocks'**
   String get ag_mentionSearchBlocks;
 
-  /// No description provided for @ag_skillsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Skills'**
-  String get ag_skillsTitle;
-
   /// No description provided for @ag_keySelect.
   ///
   /// In en, this message translates to:
@@ -38313,6 +38295,1176 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Rate limit exceeded'**
   String get mp_errorRateLimit;
+
+  /// No description provided for @ag_tool_prompt_set.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt set'**
+  String get ag_tool_prompt_set;
+
+  /// No description provided for @ag_psCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} {unit}'**
+  String ag_psCount(int count, String unit);
+
+  /// No description provided for @ag_psPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} {index} / {count}'**
+  String ag_psPosition(int index, int count, String unit);
+
+  /// No description provided for @ag_psOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get ag_psOverview;
+
+  /// No description provided for @ag_psSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to one'**
+  String get ag_psSingle;
+
+  /// No description provided for @ag_psPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get ag_psPrompt;
+
+  /// No description provided for @ag_psShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get ag_psShared;
+
+  /// No description provided for @ag_psThisItem.
+  ///
+  /// In en, this message translates to:
+  /// **'This {unit}'**
+  String ag_psThisItem(String unit);
+
+  /// No description provided for @ag_psMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Main prompt'**
+  String get ag_psMain;
+
+  /// No description provided for @ag_psCharacter.
+  ///
+  /// In en, this message translates to:
+  /// **'Character {index}'**
+  String ag_psCharacter(int index);
+
+  /// No description provided for @ag_psNegative.
+  ///
+  /// In en, this message translates to:
+  /// **'Negative'**
+  String get ag_psNegative;
+
+  /// No description provided for @ag_psImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import to canvas'**
+  String get ag_psImport;
+
+  /// No description provided for @ag_psImportTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Writes the main prompt, characters and negative; parameters and references stay as they are'**
+  String get ag_psImportTip;
+
+  /// No description provided for @ag_psImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported “{title}” into the prompt'**
+  String ag_psImported(String title);
+
+  /// No description provided for @ag_psGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get ag_psGenerate;
+
+  /// No description provided for @ag_psGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating'**
+  String get ag_psGenerating;
+
+  /// No description provided for @ag_psRevision.
+  ///
+  /// In en, this message translates to:
+  /// **'v{revision} · {count} changed'**
+  String ag_psRevision(int revision, int count);
+
+  /// No description provided for @ag_psSaveBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as block'**
+  String get ag_psSaveBlock;
+
+  /// No description provided for @ag_psSavedBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved block “{title}” · {count} items'**
+  String ag_psSavedBlock(String title, int count);
+
+  /// No description provided for @ag_psCopyItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this {unit}\'s prompt'**
+  String ag_psCopyItem(String unit);
+
+  /// No description provided for @ag_psCopyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy all'**
+  String get ag_psCopyAll;
+
+  /// No description provided for @ag_psEditItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Agent to edit this {unit}'**
+  String ag_psEditItem(String unit);
+
+  /// No description provided for @ag_psEditDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit “{title}”, {unit} {index} ({item}): '**
+  String ag_psEditDraft(String title, int index, String unit, String item);
+
+  /// No description provided for @ag_psTooManyCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'The current model supports up to {count} characters'**
+  String ag_psTooManyCharacters(int count);
+
+  /// No description provided for @ag_psNoCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'The current model doesn\'t support character prompts'**
+  String get ag_psNoCharacters;
+
+  /// No description provided for @ag_psMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'This card\'s data is no longer available'**
+  String get ag_psMissing;
+
+  /// No description provided for @startup_dataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not prepare application data'**
+  String get startup_dataTitle;
+
+  /// No description provided for @startup_dataHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Application data is not ready. Keep existing files; files with different contents are not merged or overwritten. Back up and check your data folders, free disk space and permissions, then retry.'**
+  String get startup_dataHelp;
+
+  /// No description provided for @startup_dataCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current data folder'**
+  String get startup_dataCurrent;
+
+  /// No description provided for @startup_dataLegacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous data folder'**
+  String get startup_dataLegacy;
+
+  /// No description provided for @startup_dataOpenCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Open current folder'**
+  String get startup_dataOpenCurrent;
+
+  /// No description provided for @startup_dataOpenLegacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Open previous folder'**
+  String get startup_dataOpenLegacy;
+
+  /// No description provided for @startup_dataDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error details'**
+  String get startup_dataDetails;
+
+  /// No description provided for @startup_dataActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed: {error}'**
+  String startup_dataActionFailed(String error);
+
+  /// No description provided for @blocks_expandToText.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand to text'**
+  String get blocks_expandToText;
+
+  /// No description provided for @ag_answeredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Asked you · Answered'**
+  String get ag_answeredTitle;
+
+  /// No description provided for @ag_historyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get ag_historyButton;
+
+  /// No description provided for @ag_historyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation history'**
+  String get ag_historyTitle;
+
+  /// No description provided for @ag_historySearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages and cards…'**
+  String get ag_historySearch;
+
+  /// No description provided for @ag_historyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ag_historyAll;
+
+  /// No description provided for @ag_historyMine.
+  ///
+  /// In en, this message translates to:
+  /// **'My messages'**
+  String get ag_historyMine;
+
+  /// No description provided for @ag_historyCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards'**
+  String get ag_historyCards;
+
+  /// No description provided for @ag_historyQuestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Q&A'**
+  String get ag_historyQuestions;
+
+  /// No description provided for @ag_historyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching entries'**
+  String get ag_historyEmpty;
+
+  /// No description provided for @ag_historyBeforeCompaction.
+  ///
+  /// In en, this message translates to:
+  /// **'This was before compaction. Click to read the summary.'**
+  String get ag_historyBeforeCompaction;
+
+  /// No description provided for @ag_historyAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto compaction'**
+  String get ag_historyAuto;
+
+  /// No description provided for @ag_historyManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual compaction'**
+  String get ag_historyManual;
+
+  /// No description provided for @ag_historyImageMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image message'**
+  String get ag_historyImageMessage;
+
+  /// No description provided for @ag_historyAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'You answered: {answer}'**
+  String ag_historyAnswer(String answer);
+
+  /// No description provided for @ag_historyPromptSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt set'**
+  String get ag_historyPromptSet;
+
+  /// No description provided for @ag_historyImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation card · {count} images'**
+  String ag_historyImages(int count);
+
+  /// No description provided for @ag_historyPromptChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt changes'**
+  String get ag_historyPromptChange;
+
+  /// No description provided for @ag_historyParams.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation settings'**
+  String get ag_historyParams;
+
+  /// No description provided for @ag_historyPositions.
+  ///
+  /// In en, this message translates to:
+  /// **'Character positions'**
+  String get ag_historyPositions;
+
+  /// No description provided for @ag_historySettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings changes'**
+  String get ag_historySettings;
+
+  /// No description provided for @ag_historyGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery card'**
+  String get ag_historyGallery;
+
+  /// No description provided for @ag_historyChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Change summary'**
+  String get ag_historyChanges;
+
+  /// No description provided for @gen_translateTapOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap: show original'**
+  String get gen_translateTapOriginal;
+
+  /// No description provided for @gen_translateTapTranslated.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap: show translation'**
+  String get gen_translateTapTranslated;
+
+  /// No description provided for @gen_translateClearRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear translation blocks and restore'**
+  String get gen_translateClearRestore;
+
+  /// No description provided for @gen_translateClearRestoreSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to plain source text; undo available'**
+  String get gen_translateClearRestoreSub;
+
+  /// No description provided for @gen_translateCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation blocks restored to source text'**
+  String get gen_translateCleared;
+
+  /// No description provided for @gen_translateAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue translation adjustment'**
+  String get gen_translateAdjust;
+
+  /// No description provided for @gen_translateAdjustSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue this translation: split, retranslate, merge'**
+  String get gen_translateAdjustSub;
+
+  /// No description provided for @gen_translateAdjustTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation adjustment'**
+  String get gen_translateAdjustTitle;
+
+  /// No description provided for @gen_translateAdjustContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuing this translation · {count} blocks'**
+  String gen_translateAdjustContext(int count);
+
+  /// No description provided for @gen_translateAdjustSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} blocks selected'**
+  String gen_translateAdjustSelected(int count);
+
+  /// No description provided for @gen_translateAdjustCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse / expand'**
+  String get gen_translateAdjustCollapse;
+
+  /// No description provided for @gen_translateAdjustIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue from this translation. Click blocks on the left to reference them. Edits can be undone.'**
+  String get gen_translateAdjustIntro;
+
+  /// No description provided for @gen_translateAdjustSplit.
+  ///
+  /// In en, this message translates to:
+  /// **'Split again'**
+  String get gen_translateAdjustSplit;
+
+  /// No description provided for @gen_translateAdjustRetranslate.
+  ///
+  /// In en, this message translates to:
+  /// **'Retranslate selected'**
+  String get gen_translateAdjustRetranslate;
+
+  /// No description provided for @gen_translateAdjustMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge selected'**
+  String get gen_translateAdjustMerge;
+
+  /// No description provided for @gen_translateAdjustSplitTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Read current blocks and split referenced blocks into finer semantic units. Preserve exact source.'**
+  String get gen_translateAdjustSplitTemplate;
+
+  /// No description provided for @gen_translateAdjustRetranslateTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Read current blocks and retranslate referenced blocks without changing source.'**
+  String get gen_translateAdjustRetranslateTemplate;
+
+  /// No description provided for @gen_translateAdjustMergeTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Read current blocks and merge referenced blocks in the requested source order. Leave unrelated blocks unchanged.'**
+  String get gen_translateAdjustMergeTemplate;
+
+  /// No description provided for @gen_translateAdjustMarkers.
+  ///
+  /// In en, this message translates to:
+  /// **'Use markers from translation_blocks_read.'**
+  String get gen_translateAdjustMarkers;
+
+  /// No description provided for @gen_translateAdjustHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe how to adjust blocks…'**
+  String get gen_translateAdjustHint;
+
+  /// No description provided for @gen_translateAdjustStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start adjustment. Check the model and Agent runtime.'**
+  String get gen_translateAdjustStartFailed;
+
+  /// No description provided for @gen_translateAdjustRunFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment stopped or failed. Read current blocks before retrying.'**
+  String get gen_translateAdjustRunFailed;
+
+  /// No description provided for @gen_repeatDragTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{times} requests · {total} images'**
+  String gen_repeatDragTotal(int times, int total);
+
+  /// No description provided for @set_cvGroupBatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Group batch results'**
+  String get set_cvGroupBatches;
+
+  /// No description provided for @set_cvGroupBatchesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to both the simple viewer and infinite canvas. Turn off to show images individually and select each image from its history thumbnail.'**
+  String get set_cvGroupBatchesSub;
+
+  /// No description provided for @gen_groupBatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get gen_groupBatches;
+
+  /// No description provided for @gen_translateAdjustPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click blocks on the left to reference'**
+  String get gen_translateAdjustPickHint;
+
+  /// No description provided for @gen_translateAdjustClearRefs.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear references'**
+  String get gen_translateAdjustClearRefs;
+
+  /// No description provided for @gen_translateAdjustSplitInto.
+  ///
+  /// In en, this message translates to:
+  /// **'{source} → {count} blocks'**
+  String gen_translateAdjustSplitInto(String source, int count);
+
+  /// No description provided for @gen_translateAdjustContextNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Context: this translation\'s source, blocks and output'**
+  String get gen_translateAdjustContextNote;
+
+  /// No description provided for @ag_historyStats.
+  ///
+  /// In en, this message translates to:
+  /// **'{messages} messages · {cards} cards'**
+  String ag_historyStats(int messages, int cards);
+
+  /// No description provided for @ag_historyKeySelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get ag_historyKeySelect;
+
+  /// No description provided for @ag_historyKeyJump.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to chat'**
+  String get ag_historyKeyJump;
+
+  /// No description provided for @ag_historyKeyClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get ag_historyKeyClose;
+
+  /// No description provided for @blocks_tempLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary block'**
+  String get blocks_tempLabel;
+
+  /// No description provided for @blocks_tempEditedByAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent edited this{time}.'**
+  String blocks_tempEditedByAgent(String time);
+
+  /// No description provided for @blocks_tempEditedByYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You edited this{time}.'**
+  String blocks_tempEditedByYou(String time);
+
+  /// No description provided for @blocks_tempExplain.
+  ///
+  /// In en, this message translates to:
+  /// **' It is detached from \"{title}\" in the library; changes stay at this spot only. The library and other prompts using this block are unaffected.'**
+  String blocks_tempExplain(String title);
+
+  /// No description provided for @blocks_tempEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get blocks_tempEdit;
+
+  /// No description provided for @blocks_tempCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare with original'**
+  String get blocks_tempCompare;
+
+  /// No description provided for @blocks_tempAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get blocks_tempAdded;
+
+  /// No description provided for @blocks_tempAddedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new tags'**
+  String blocks_tempAddedCount(int count);
+
+  /// No description provided for @blocks_tempAddedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing added'**
+  String get blocks_tempAddedNone;
+
+  /// No description provided for @blocks_tempRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get blocks_tempRemoved;
+
+  /// No description provided for @blocks_tempRemovedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} removed'**
+  String blocks_tempRemovedHint(int count);
+
+  /// No description provided for @blocks_tempRemovedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing removed'**
+  String get blocks_tempRemovedNone;
+
+  /// No description provided for @blocks_tempRevert.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore original'**
+  String get blocks_tempRevert;
+
+  /// No description provided for @blocks_tempKeepEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get blocks_tempKeepEditing;
+
+  /// No description provided for @blocks_tempApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get blocks_tempApply;
+
+  /// No description provided for @blocks_tempSaveAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as new block'**
+  String get blocks_tempSaveAs;
+
+  /// No description provided for @blocks_tempSaveAsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'After saving, this spot uses the new block; the original stays unchanged'**
+  String get blocks_tempSaveAsHint;
+
+  /// No description provided for @blocks_tempSaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get blocks_tempSaveConfirm;
+
+  /// No description provided for @blocks_tempShowOriginal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show original in library'**
+  String get blocks_tempShowOriginal;
+
+  /// No description provided for @gen_menuNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get gen_menuNew;
+
+  /// No description provided for @gen_repeatDragHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag the number left/right · double-click to type'**
+  String get gen_repeatDragHint;
+
+  /// No description provided for @gen_groupBatchesOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Grouped by batch · click to show one at a time'**
+  String get gen_groupBatchesOn;
+
+  /// No description provided for @gen_groupBatchesOff.
+  ///
+  /// In en, this message translates to:
+  /// **'One image at a time · click to group by batch'**
+  String get gen_groupBatchesOff;
+
+  /// No description provided for @blocks_presetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get blocks_presetCustom;
+
+  /// No description provided for @blocks_presetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying block params also restores quality tags and UC preset. On a different model the tier is converted; Turbo follows existing handling.'**
+  String get blocks_presetHint;
+
+  /// No description provided for @gen_vibeInpaintUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Vibe does not support Inpainting and will not apply to this generation.'**
+  String get gen_vibeInpaintUnsupported;
+
+  /// No description provided for @set_stThumbnailCacheLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbnail cache limit'**
+  String get set_stThumbnailCacheLimit;
+
+  /// No description provided for @set_stThumbnailCacheLimitSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Total for all gallery folders. Oldest thumbnails are removed down to 80% at startup or when you clean; originals are never touched.'**
+  String get set_stThumbnailCacheLimitSub;
+
+  /// No description provided for @ag_slashGroupSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get ag_slashGroupSkills;
+
+  /// No description provided for @ag_slashGroupTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt templates'**
+  String get ag_slashGroupTemplates;
+
+  /// No description provided for @ag_slashGroupBuiltin.
+  ///
+  /// In en, this message translates to:
+  /// **'Studio commands'**
+  String get ag_slashGroupBuiltin;
+
+  /// No description provided for @ag_commandNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new chat'**
+  String get ag_commandNew;
+
+  /// No description provided for @ag_commandCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact context'**
+  String get ag_commandCompact;
+
+  /// No description provided for @ag_commandModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a model'**
+  String get ag_commandModel;
+
+  /// No description provided for @ag_commandThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose thinking level'**
+  String get ag_commandThinking;
+
+  /// No description provided for @ag_commandHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Open session history'**
+  String get ag_commandHistory;
+
+  /// No description provided for @ag_commandRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename this chat'**
+  String get ag_commandRename;
+
+  /// No description provided for @ag_commandCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the last reply'**
+  String get ag_commandCopy;
+
+  /// No description provided for @ag_commandExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export this session'**
+  String get ag_commandExport;
+
+  /// No description provided for @ag_commandCompactArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'[instructions]'**
+  String get ag_commandCompactArgs;
+
+  /// No description provided for @ag_commandRenameArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'<name>'**
+  String get ag_commandRenameArgs;
+
+  /// No description provided for @set_agNextSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Next-message suggestions'**
+  String get set_agNextSuggestion;
+
+  /// No description provided for @set_agNextSuggestionSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the current conversation model to suggest your next message. Uses additional tokens; press Tab to accept.'**
+  String get set_agNextSuggestionSub;
+
+  /// No description provided for @set_agCacheWarming.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt cache warming'**
+  String get set_agCacheWarming;
+
+  /// No description provided for @set_agCacheWarmingSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps the model\'s prompt cache warm with a 1-token request just before it expires (5-minute lifetime, all models), so the next step reads the cache instead of resending the whole context.'**
+  String get set_agCacheWarmingSub;
+
+  /// No description provided for @set_agCacheOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get set_agCacheOff;
+
+  /// No description provided for @set_agCacheStreaming.
+  ///
+  /// In en, this message translates to:
+  /// **'Only while Agent is running'**
+  String get set_agCacheStreaming;
+
+  /// No description provided for @set_agCacheIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Also while idle'**
+  String get set_agCacheIdle;
+
+  /// No description provided for @set_agCacheIdleCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Warming while idle (up to 30 minutes) costs extra model usage.'**
+  String get set_agCacheIdleCost;
+
+  /// No description provided for @ag_suggestionAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab to fill in this suggestion'**
+  String get ag_suggestionAccept;
+
+  /// No description provided for @ag_cacheWarmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache warming'**
+  String get ag_cacheWarmTitle;
+
+  /// No description provided for @ag_cacheWarmOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get ag_cacheWarmOff;
+
+  /// No description provided for @ag_cacheWarmRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing the cache…'**
+  String get ag_cacheWarmRefreshing;
+
+  /// No description provided for @ag_cacheWarmIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting — starts with the next run'**
+  String get ag_cacheWarmIdle;
+
+  /// No description provided for @ag_cacheWarmNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next refresh in {time}'**
+  String ag_cacheWarmNext(String time);
+
+  /// No description provided for @set_stOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other files'**
+  String get set_stOther;
+
+  /// No description provided for @set_stIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Some folders could not be read; totals are partial. Hover a category to see its sources.'**
+  String get set_stIncomplete;
+
+  /// No description provided for @set_stSliceIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Partially read'**
+  String get set_stSliceIncomplete;
+
+  /// No description provided for @localGallery_searchHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent searches'**
+  String get localGallery_searchHistoryTitle;
+
+  /// No description provided for @localGallery_searchHistoryClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get localGallery_searchHistoryClear;
+
+  /// No description provided for @localGallery_searchHistoryRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from history'**
+  String get localGallery_searchHistoryRemove;
+
+  /// No description provided for @ag_cacheWarmCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Warmed {count}×'**
+  String ag_cacheWarmCount(int count);
+
+  /// No description provided for @ag_cacheWarmLast.
+  ///
+  /// In en, this message translates to:
+  /// **'last {time}'**
+  String ag_cacheWarmLast(String time);
+
+  /// No description provided for @ag_cacheWarmTtl.
+  ///
+  /// In en, this message translates to:
+  /// **'cache {minutes} min'**
+  String ag_cacheWarmTtl(int minutes);
+
+  /// No description provided for @set_workspaceFontScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Creative text size'**
+  String get set_workspaceFontScale;
+
+  /// No description provided for @set_promptAutocomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt autocomplete'**
+  String get set_promptAutocomplete;
+
+  /// No description provided for @shortcut_action_open_resource_window.
+  ///
+  /// In en, this message translates to:
+  /// **'Open resource window'**
+  String get shortcut_action_open_resource_window;
+
+  /// No description provided for @set_workspaceFontScaleSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Text in prompt boxes, character boxes, blocks and the viewer prompt. Independent of the interface size above.'**
+  String get set_workspaceFontScaleSub;
+
+  /// No description provided for @set_promptAutocompleteSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest tags from the local library while typing in prompt and character boxes; ↑↓ to choose, Tab or Enter to accept, Esc to close.'**
+  String get set_promptAutocompleteSub;
+
+  /// No description provided for @floating_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Resource windows'**
+  String get floating_open;
+
+  /// No description provided for @floating_searchGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Search (whole phrase / exact tag)'**
+  String get floating_searchGallery;
+
+  /// No description provided for @floating_searchName.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name'**
+  String get floating_searchName;
+
+  /// No description provided for @floating_collapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse to title bar'**
+  String get floating_collapse;
+
+  /// No description provided for @floating_expand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get floating_expand;
+
+  /// No description provided for @floating_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here'**
+  String get floating_empty;
+
+  /// No description provided for @floating_loadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load'**
+  String get floating_loadFailed;
+
+  /// No description provided for @floating_loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get floating_loadMore;
+
+  /// No description provided for @set_stThumbQuotaTip.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} thumbnails · counted {time}'**
+  String set_stThumbQuotaTip(int count, String time);
+
+  /// No description provided for @prompt_autocompleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete'**
+  String get prompt_autocompleteTitle;
+
+  /// No description provided for @prompt_autocompleteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'↑↓ move · → related · ← back · Tab / Enter complete · Esc close'**
+  String get prompt_autocompleteHint;
+
+  /// No description provided for @prompt_autocompleteHintRelated.
+  ///
+  /// In en, this message translates to:
+  /// **'↑↓ move · ← back · Enter / click to add · Esc close related'**
+  String get prompt_autocompleteHintRelated;
+
+  /// No description provided for @resourceWindow_pin.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep on top'**
+  String get resourceWindow_pin;
+
+  /// No description provided for @resourceWindow_newWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another resource window'**
+  String get resourceWindow_newWindow;
+
+  /// No description provided for @resourceWindow_rowHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Row height'**
+  String get resourceWindow_rowHeight;
+
+  /// No description provided for @resourceWindow_cardSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Card size'**
+  String get resourceWindow_cardSize;
+
+  /// No description provided for @resourceWindow_dragHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag onto the matching area in Generate'**
+  String get resourceWindow_dragHint;
+
+  /// No description provided for @resourceWindow_dragHintBlocks.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag into a prompt to insert'**
+  String get resourceWindow_dragHintBlocks;
+
+  /// No description provided for @resourceWindow_keyDrag.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag'**
+  String get resourceWindow_keyDrag;
+
+  /// No description provided for @resourceWindow_keyDouble.
+  ///
+  /// In en, this message translates to:
+  /// **'Double-click'**
+  String get resourceWindow_keyDouble;
+
+  /// No description provided for @resourceWindow_hintDrag.
+  ///
+  /// In en, this message translates to:
+  /// **'use in Generate'**
+  String get resourceWindow_hintDrag;
+
+  /// No description provided for @resourceWindow_hintView.
+  ///
+  /// In en, this message translates to:
+  /// **'view large'**
+  String get resourceWindow_hintView;
+
+  /// No description provided for @resourceWindow_hintPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'primary action'**
+  String get resourceWindow_hintPrimary;
+
+  /// No description provided for @resourceWindow_connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to main window'**
+  String get resourceWindow_connected;
+
+  /// No description provided for @resourceWindow_disconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Main window disconnected'**
+  String get resourceWindow_disconnected;
+
+  /// No description provided for @resourceWindow_currentModelUsable.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently usable with this model'**
+  String get resourceWindow_currentModelUsable;
+
+  /// No description provided for @resourceWindow_insertPositive.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert into positive prompt'**
+  String get resourceWindow_insertPositive;
+
+  /// No description provided for @resourceWindow_insertNegative.
+  ///
+  /// In en, this message translates to:
+  /// **'Insert into negative prompt'**
+  String get resourceWindow_insertNegative;
+
+  /// No description provided for @resourceWindow_errorNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This item no longer exists — the list has been refreshed'**
+  String get resourceWindow_errorNotFound;
+
+  /// No description provided for @resourceWindow_errorNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'The main window isn\'t ready yet — try again in a moment'**
+  String get resourceWindow_errorNotReady;
+
+  /// No description provided for @resourceWindow_errorUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'The current model doesn\'t support this action'**
+  String get resourceWindow_errorUnsupported;
+
+  /// No description provided for @resourceWindow_errorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed'**
+  String get resourceWindow_errorFailed;
+
+  /// No description provided for @blocks_tempStandaloneExplain.
+  ///
+  /// In en, this message translates to:
+  /// **' It exists only in this prompt and is not saved to the library. Use Save as new block to keep it.'**
+  String get blocks_tempStandaloneExplain;
+
+  /// No description provided for @blocks_tempCreatedByAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent created this{time}.'**
+  String blocks_tempCreatedByAgent(String time);
+
+  /// No description provided for @blocks_tempCreatedByYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You created this{time}.'**
+  String blocks_tempCreatedByYou(String time);
 }
 
 class _AppLocalizationsDelegate

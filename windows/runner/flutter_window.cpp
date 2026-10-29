@@ -1,4 +1,5 @@
 ﻿#include "flutter_window.h"
+#include "studio_sandbox.h"
 
 #include <optional>
 #include <cmath>
@@ -9,11 +10,15 @@
 #include <flutter/method_channel.h>
 #include <flutter/standard_method_codec.h>
 #include "flutter/generated_plugin_registrant.h"
+#include "desktop_multi_window/desktop_multi_window_plugin.h"
+#include "resource_window.h"
 #include "titlebar_region.h"
 #include "window_material.h"
 
 // Global set to store font names
 static std::set<std::wstring> g_font_names;
+// Callback is a C function pointer; keep the primary HWND on its platform thread.
+static HWND g_resource_window_owner = nullptr;
 
 // Font enumeration callback function
 int CALLBACK EnumFontFamExProc(
@@ -68,7 +73,7 @@ constexpr const wchar_t kWakeUpMessageName[] =
     L"NAI_Launcher_WakeUp_Message";
 
 static UINT GetWakeUpMessage() {
-  static const UINT message = RegisterWindowMessage(kWakeUpMessageName);
+  static const UINT message = RegisterWindowMessageW(studio_sandbox::Identity(kWakeUpMessageName).c_str());
   return message;
 }
 
@@ -93,6 +98,17 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  g_resource_window_owner = GetHandle();
+  RegisterResourceWindowHost(flutter_controller_->engine(), GetHandle());
+  DesktopMultiWindowSetWindowCreatedCallback([](void* controller) {
+    auto* child = reinterpret_cast<flutter::FlutterViewController*>(controller);
+    RegisterResourceWindowPlugins(child, g_resource_window_owner);
+  });
+  clipboard_history_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "com.nailauncher/clipboard_history",
+          &flutter::StandardMethodCodec::GetInstance());
   if (!SetChildContent(flutter_controller_->view()->GetNativeWindow())) {
     return false;
   }
@@ -288,7 +304,14 @@ bool FlutterWindow::OnCreate() {
   return true;
 }
 
+void FlutterWindow::OnClipboardHistoryPaste() {
+  if (clipboard_history_channel_) {
+    clipboard_history_channel_->InvokeMethod("paste", nullptr);
+  }
+}
+
 void FlutterWindow::OnDestroy() {
+  clipboard_history_channel_.reset();
   reveal_.reset();
   reveal_channel_.reset();
   material_channel_.reset();

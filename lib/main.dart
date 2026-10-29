@@ -26,7 +26,12 @@ import 'core/network/system_proxy_http_overrides.dart';
 import 'core/shortcuts/shortcut_storage.dart';
 import 'core/database/database_manager.dart';
 import 'core/services/data_migration_service.dart';
+import 'core/services/app_data_startup.dart';
 import 'core/services/desktop_app_shutdown_service.dart';
+import 'core/services/resource_window_bootstrap.dart';
+import 'core/services/resource_window_protocol.dart';
+import 'core/services/resource_window_service.dart';
+import 'presentation/resource_window/resource_window_entry.dart';
 import 'core/services/sqflite_bootstrap_service.dart';
 import 'core/utils/app_error_reporter.dart';
 import 'core/utils/fatal_diagnostics.dart';
@@ -34,6 +39,7 @@ import 'core/utils/app_logger.dart';
 import 'core/utils/hive_startup_box_opener.dart';
 import 'core/utils/hive_storage_helper.dart';
 import 'core/utils/app_support_directory.dart';
+import 'core/utils/studio_sandbox.dart';
 import 'core/utils/window_focus_tracker.dart';
 import 'core/utils/window_state_coercion.dart';
 import 'core/utils/window_state_persistence.dart';
@@ -53,6 +59,7 @@ import 'data/services/temp_image_service.dart';
 import 'data/services/thumbnail_service.dart';
 import 'presentation/providers/online_gallery_blacklist_provider.dart';
 import 'presentation/screens/splash/app_bootstrap.dart';
+import 'presentation/screens/splash/startup_data_recovery.dart';
 import 'presentation/utils/control_click.dart';
 import 'package:nai_launcher/core/utils/desktop_platform.dart';
 import 'package:nai_launcher/core/network/proxy_bypass.dart';
@@ -202,6 +209,7 @@ class AppWindowListener extends WindowListener {
     try {
       // 阻止窗口关闭
       await windowManager.setPreventClose(true);
+      await ResourceWindowService.instance.closeAll();
       await windowManager.hide();
       AppLogger.d('Window hidden to tray', 'WindowListener');
     } catch (e) {
@@ -330,8 +338,28 @@ void main() {
 Future<void> _bootstrapApplication() async {
   // macOS 上 Control+单击当右键，见 ControlClickBinding
   AppWidgetsBinding.ensureInitialized();
+  if (Platform.isWindows) {
+    final controller = await waitForResourceWindowPlugins();
+    await dispatchResourceWindow(
+      arguments: controller.arguments,
+      startMain: _bootstrapMainWindow,
+      startResource: (arguments) => runResourceWindow(controller, arguments),
+    );
+    return;
+  }
+  await _bootstrapMainWindow();
+}
+
+Future<void> _bootstrapMainWindow() async {
+  if (Platform.isWindows) {
+    final resources = ResourceWindowService.instance;
+    await resources.initialize();
+    DesktopAppShutdownService.registerCleanup(resources.closeAll);
+  }
   registerStudioAssetLicenses();
   AppErrorReporter.installGlobalHandlers();
+
+  initializeSandboxPreferences();
 
   // 先初始化控制台日志；文件日志稍后读取设置后按需开启，默认关闭。
   await AppLogger.initialize(
@@ -340,8 +368,59 @@ Future<void> _bootstrapApplication() async {
   );
   AppLogger.i('Application starting', 'Main');
 
+  await _prepareDataAndStart();
+}
+
+Future<void> _prepareDataAndStart() => startWithPreparedAppData(
+  prepare: getApplicationSupportDirectory,
+  start: _bootstrapPreparedApplication,
+  onFailure: (error, stackTrace) async {
+    AppErrorReporter.reportError(
+      error,
+      stackTrace,
+      source: 'Application data preparation',
+      fatal: true,
+    );
+    runApp(
+      StartupDataRecoveryApp(
+        error: error,
+        onRetry: () async {
+          await getApplicationSupportDirectory();
+          runApp(const StartupDataLoadingApp());
+          unawaited(_bootstrapPreparedApplication());
+        },
+        onCopy: (text) => Clipboard.setData(ClipboardData(text: text)),
+        onOpenDirectory: (path) async {
+          final directory = Directory(path);
+          await Process.run('explorer.exe', [
+            await directory.exists() ? directory.path : directory.parent.path,
+          ]);
+        },
+        onClose: () => windowManager.close(),
+      ),
+    );
+    if (Platform.isWindows) {
+      await windowManager.ensureInitialized();
+      await windowManager.waitUntilReadyToShow(
+        WindowOptions(
+          size: const Size(900, 700),
+          minimumSize: const Size(480, 360),
+          center: true,
+          title: studioWindowTitle(Brand.name),
+          titleBarStyle: TitleBarStyle.normal,
+        ),
+        () async {
+          await windowManager.show();
+          await windowManager.focus();
+        },
+      );
+    }
+  },
+);
+
+Future<void> _bootstrapPreparedApplication() async {
   // Finish storage migration before Hive, SQLite or background services open.
-  await getApplicationSupportDirectory();
+  // _prepareDataAndStart has completed it; retry never repeats opened services.
   // macOS 的 Agent 数据等放「应用支持」目录，先解析好供同步取用
   await AppBundlePaths.init();
 
@@ -644,7 +723,7 @@ Future<void> _bootstrapApplication() async {
         titleBarStyle: Platform.isWindows
             ? TitleBarStyle.hidden
             : TitleBarStyle.normal,
-        title: Brand.name,
+        title: studioWindowTitle(Brand.name),
       );
 
       await windowManager.waitUntilReadyToShow(windowOptions, () async {

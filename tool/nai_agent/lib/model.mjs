@@ -100,7 +100,7 @@ export function redactor(config) {
   };
 }
 
-export async function createStudioModelRuntime(config, { acquireRequest } = {}) {
+export async function createStudioModelRuntime(config, { acquireRequest, transformContext } = {}) {
   const spec = adapters[config.protocol];
   if (!spec || !config.modelId?.trim() || !config.providerId?.trim())
     throw new Error('Missing model or unsupported protocol');
@@ -117,6 +117,8 @@ export async function createStudioModelRuntime(config, { acquireRequest } = {}) 
     contextWindow: config.contextWindow ?? 32768, maxTokens: config.maxTokens ?? 4096,
     // CPA/custom-provider billing is not established by the upstream model catalog.
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    promptCache: { short: Number.isInteger(config.promptCacheSeconds) && config.promptCacheSeconds > 0
+      ? config.promptCacheSeconds : 300 },
     headers: config.headers ?? {},
   };
   const wrap = method => (current, context, options = {}) => lazyStream(current, async () => {
@@ -125,6 +127,8 @@ export async function createStudioModelRuntime(config, { acquireRequest } = {}) 
       throw new Error('Image input is not enabled for this model');
     }
     const adapter = await spec[1]();
+    const { studioSuggestion = false, ...providerOptions } = options;
+    options = providerOptions;
     options.signal?.throwIfAborted();
     // The host shares Studio's provider gate. Waiting for a slot is cancellable
     // and does not consume the HTTP timeout or start a provider request.
@@ -134,7 +138,7 @@ export async function createStudioModelRuntime(config, { acquireRequest } = {}) 
       (config.timeoutSeconds ?? 120) * 1000);
     const signal = options.signal ? AbortSignal.any([options.signal, timeout.signal]) : timeout.signal;
     try {
-      const stream = adapter[method](current, context, {
+      const stream = adapter[method](current, transformContext ? transformContext(context) : context, {
         ...options, apiKey: config.apiKey || 'studio-header-auth', signal,
         maxTokens: Math.min(options.maxTokens ?? model.maxTokens, model.maxTokens),
         ...(config.allowsSampling === false ? { temperature: undefined }
@@ -151,6 +155,22 @@ export async function createStudioModelRuntime(config, { acquireRequest } = {}) 
             }
             if (typeof result.config?.maxOutputTokens === 'number')
               result.config.maxOutputTokens = Math.min(result.config.maxOutputTokens, options.maxTokens);
+          }
+          if (studioSuggestion) {
+            // Keep the cached tool declarations in the prefix, but forbid calling them.
+            if (spec[0] === 'google-generative-ai') {
+              result.config ??= {};
+              result.config.toolConfig = { functionCallingConfig: { mode: 'NONE' } };
+              if (result.config.thinkingConfig) result.config.thinkingConfig = 'thinkingLevel' in result.config.thinkingConfig
+                ? { thinkingLevel: 'MINIMAL' } : { thinkingBudget: 0 };
+            } else {
+              result.tool_choice = spec[0] === 'anthropic-messages' ? { type: 'none' } : 'none';
+              if (spec[0] === 'anthropic-messages' || 'thinking' in result) result.thinking = { type: 'disabled' };
+              if (result.output_config?.effort) result.output_config = { ...result.output_config, effort: 'low' };
+              if ('reasoning_effort' in result) result.reasoning_effort = 'low';
+              if (result.reasoning?.effort) result.reasoning = { ...result.reasoning, effort: 'low' };
+              if ('enable_thinking' in result) result.enable_thinking = false;
+            }
           }
           return result;
         },

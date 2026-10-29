@@ -10,9 +10,11 @@ import '../providers/pill_workspace_provider.dart';
 import '../providers/tips_provider.dart';
 import '../ui/gen/gen_contract.dart';
 import '../widgets/prompt/comfyui_import_wrapper.dart';
+import '../widgets/common/workspace_text_scale_scope.dart';
 import '../widgets/prompt/pills/prompt_pill_editor.dart';
 import '../widgets/prompt/unified/unified_prompt_config.dart';
 import 'generation_backend.dart';
+import 'resource_block_drop_target.dart';
 
 ComfyuiImportCommit beginGenerationComfyuiImport(
   Ref ref, {
@@ -47,7 +49,11 @@ class GenerationEditorWiring extends ConsumerWidget {
   final bool explore;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => WorkspaceTextScaleScope(
+    child: Builder(builder: (context) => _buildEditor(context, ref)),
+  );
+
+  Widget _buildEditor(BuildContext context, WidgetRef ref) {
     final model = ref.watch(
       generationParamsNotifierProvider.select((p) => p.model),
     );
@@ -113,34 +119,41 @@ class GenerationEditorWiring extends ConsumerWidget {
     final textStyle = DefaultTextStyle.of(
       context,
     ).style.copyWith(fontSize: target.fullscreen ? 14 : 13, height: 1.5);
-    Widget editor(int minLines) => PromptPillEditor(
-      key: ValueKey('generation-editor-$scope-${target.fullscreen}'),
-      pillScope: scope,
-      initialPlainText: plain,
-      minLines: minLines,
-      autoGrow: true,
-      allowEvolutionToggle: explorePrompt,
-      textStyle: textStyle,
-      decoration: const InputDecoration(
-        contentPadding: EdgeInsets.zero,
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
-        filled: false,
+    Widget editor(int minLines) => ResourceBlockDropTarget(
+      scope: scope,
+      child: PromptPillEditor(
+        key: ValueKey('generation-editor-$scope-${target.fullscreen}'),
+        pillScope: scope,
+        enableBlurredUndo: true,
+        initialPlainText: plain,
+        minLines: minLines,
+        autoGrow: true,
+        allowEvolutionToggle: explorePrompt,
+        textStyle: textStyle,
+        decoration: const InputDecoration(
+          contentPadding: EdgeInsets.zero,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
+        ),
+        config: editorConfig,
+        beginComfyuiImport:
+            target.isBase && !target.negative && spec.characterPrompts
+            ? () => ref.read(generationEditorImportProvider)(
+                () => context.mounted,
+              )
+            : null,
+        onChanged: (value) {
+          if (!context.mounted ||
+              ref.read(pillWorkspaceProvider(scope)).projection != value) {
+            return;
+          }
+          ref
+              .read(pillRollCoordinatorProvider)
+              .syncLaneProjection(scope, value);
+        },
       ),
-      config: editorConfig,
-      beginComfyuiImport:
-          target.isBase && !target.negative && spec.characterPrompts
-          ? () =>
-                ref.read(generationEditorImportProvider)(() => context.mounted)
-          : null,
-      onChanged: (value) {
-        if (!context.mounted ||
-            ref.read(pillWorkspaceProvider(scope)).projection != value) {
-          return;
-        }
-        ref.read(pillRollCoordinatorProvider).syncLaneProjection(scope, value);
-      },
     );
     if (target.fullscreen) {
       // 全屏：最少行数撑满面板，点空白处也能落光标；长文在面板里滚动。

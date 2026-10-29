@@ -10,9 +10,15 @@ const agentSettingRows = <String, (SettingKey?, String)>{
   'font_family': (SettingKey.fontFamily, 'appearance'),
   'font_scale': (null, 'appearance'),
   'settings_font_scale': (SettingKey.settingsFontScale, 'appearance'),
+  'workspace_font_scale': (SettingKey.workspaceFontScale, 'appearance'),
   'locale': (SettingKey.language, 'appearance'),
   'history_click_behavior': (SettingKey.historyClick, 'canvas'),
   'simple_output_viewer': (SettingKey.outputViewer, 'canvas'),
+  'simple_viewer_group_batches': (
+    SettingKey.simpleViewerGroupBatches,
+    'canvas',
+  ),
+  'thumbnail_cache_limit_gb': (SettingKey.thumbnailCacheLimitGb, 'storage'),
   'canvas_lock_camera': (SettingKey.canvasLockCamera, 'canvas'),
   'canvas_reduced_motion': (SettingKey.reduceMotion, 'appearance'),
   'canvas_zoom_to_fill': (SettingKey.canvasZoomToFill, 'canvas'),
@@ -21,6 +27,7 @@ const agentSettingRows = <String, (SettingKey?, String)>{
   'prompt_weight_scroll_modifier': (SettingKey.wheelModifier, 'generation'),
   'tag_expansion_result_limit': (null, 'generation'),
   'enable_cooccurrence_recommendation': (SettingKey.relatedTags, 'generation'),
+  'prompt_autocomplete_enabled': (SettingKey.promptAutocomplete, 'generation'),
   'share_strip_metadata': (SettingKey.stripMetadata, 'privacy'),
   'protection_confirm_dangerous_actions': (
     SettingKey.confirmDangerous,
@@ -59,6 +66,8 @@ String agentSettingLabel(String storageKey) {
     SettingKey.language => l.set_apLanguage,
     SettingKey.historyClick => l.set_cvHistoryClick,
     SettingKey.outputViewer => l.set_cvViewer,
+    SettingKey.simpleViewerGroupBatches => l.set_cvGroupBatches,
+    SettingKey.thumbnailCacheLimitGb => l.set_stThumbnailCacheLimit,
     SettingKey.canvasLockCamera => l.set_cvLock,
     SettingKey.reduceMotion => l.set_apReduceMotion,
     SettingKey.canvasZoomToFill => l.set_cvFill,
@@ -82,7 +91,12 @@ String agentSettingValue(String key, Object? value) {
   final l = currentL10n;
   if (value == null) return l.set_defaultTag;
   if (value is bool) return value ? l.set_on : l.set_off;
-  if (key == 'font_scale' || key == 'settings_font_scale') return '$value×';
+  if (key == 'font_scale' ||
+      key == 'settings_font_scale' ||
+      key == 'workspace_font_scale') {
+    return '$value×';
+  }
+  if (key == 'thumbnail_cache_limit_gb') return '$value GB';
   if (key == 'protection_generation_interval_seconds') return '$value s';
   if (key == 'protection_generation_interval_jitter_percent') return '$value%';
   return switch ((key, value)) {

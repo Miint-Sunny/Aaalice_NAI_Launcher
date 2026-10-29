@@ -6,6 +6,7 @@
 library;
 
 import '../../../core/utils/prompt_translation_language.dart';
+import 'package:collection/collection.dart';
 
 /// 实例随机模式（P2.5）：固定 = 投影恒为块内容；随机抽取 = 投影为物化的
 /// `currentRoll`（未锁定实例可在参数变更/手动骰子/生成入队后重抽）；
@@ -191,11 +192,158 @@ class PillInstanceSettings {
   );
 }
 
+/// Occurrence-local fixed content, persisted with the draft, not the library.
+class PillTempContent {
+  const PillTempContent({
+    required this.content,
+    this.negativeContent,
+    required this.originalContent,
+    this.originalNegativeContent,
+    required this.editedAt,
+    required this.editedBy,
+    this.title,
+    this.color,
+    this.iconName,
+    this.translations = const [],
+    this.negativeTranslations = const [],
+  });
+  final String content;
+  final String? negativeContent;
+  final String originalContent;
+  final String? originalNegativeContent;
+  final DateTime editedAt;
+  final String editedBy;
+
+  /// Display fields for library-free temporary blocks (`blockId` empty).
+  /// Library-backed temps keep using the library block's title/color/icon.
+  /// [color] uses the `PromptBlock.color` format (`#AARRGGBB`), [iconName] the
+  /// `PromptBlock.iconName` preset key. Old drafts omit these keys.
+  final String? title;
+  final String? color;
+  final String? iconName;
+
+  /// Reading-only blocks, in source order. Generation always uses [content].
+  final List<TranslationPill> translations;
+  final List<TranslationPill> negativeTranslations;
+
+  /// Keep translations whose complete source still occurs after an edit.
+  static List<TranslationPill> retainTranslations(
+    String content,
+    Iterable<TranslationPill> translations,
+  ) {
+    final result = <TranslationPill>[];
+    var offset = 0;
+    for (final translation in translations) {
+      if (translation.source.isEmpty) continue;
+      final start = content.indexOf(translation.source, offset);
+      if (start < 0) continue;
+      result.add(translation);
+      offset = start + translation.source.length;
+    }
+    return List.unmodifiable(result);
+  }
+
+  String? get reading {
+    if (translations.isEmpty) return null;
+    final result = StringBuffer();
+    var offset = 0;
+    for (final translation in translations) {
+      final start = content.indexOf(translation.source, offset);
+      result
+        ..write(content.substring(offset, start))
+        ..write(translation.zh);
+      offset = start + translation.source.length;
+    }
+    return (result..write(content.substring(offset))).toString();
+  }
+
+  Map<String, dynamic> toJson() => {
+    'content': content,
+    'negativeContent': negativeContent,
+    'originalContent': originalContent,
+    'originalNegativeContent': originalNegativeContent,
+    'editedAt': editedAt.toIso8601String(),
+    'editedBy': editedBy,
+    if (title != null) 'title': title,
+    if (color != null) 'color': color,
+    if (iconName != null) 'iconName': iconName,
+    if (translations.isNotEmpty)
+      'translations': translations.map((t) => t.toJson()).toList(),
+    if (negativeTranslations.isNotEmpty)
+      'negativeTranslations': negativeTranslations
+          .map((t) => t.toJson())
+          .toList(),
+  };
+  factory PillTempContent.fromJson(Map<String, dynamic> json) =>
+      PillTempContent(
+        content: json['content'] as String,
+        negativeContent: json['negativeContent'] as String?,
+        originalContent: json['originalContent'] as String,
+        originalNegativeContent: json['originalNegativeContent'] as String?,
+        editedAt: DateTime.parse(json['editedAt'] as String),
+        editedBy: json['editedBy'] as String,
+        title: json['title'] as String?,
+        color: json['color'] as String?,
+        iconName: json['iconName'] as String?,
+        translations: retainTranslations(
+          json['content'] as String,
+          (json['translations'] as List? ?? const []).map(
+            (t) =>
+                TranslationPill.fromJson(Map<String, dynamic>.from(t as Map)),
+          ),
+        ),
+        negativeTranslations: retainTranslations(
+          json['negativeContent'] as String? ?? '',
+          (json['negativeTranslations'] as List? ?? const []).map(
+            (t) =>
+                TranslationPill.fromJson(Map<String, dynamic>.from(t as Map)),
+          ),
+        ),
+      );
+  @override
+  bool operator ==(Object other) =>
+      other is PillTempContent &&
+      other.content == content &&
+      other.negativeContent == negativeContent &&
+      other.originalContent == originalContent &&
+      other.originalNegativeContent == originalNegativeContent &&
+      other.editedAt == editedAt &&
+      other.editedBy == editedBy &&
+      other.title == title &&
+      other.color == color &&
+      other.iconName == iconName &&
+      const ListEquality<TranslationPill>().equals(
+        other.translations,
+        translations,
+      ) &&
+      const ListEquality<TranslationPill>().equals(
+        other.negativeTranslations,
+        negativeTranslations,
+      );
+  @override
+  int get hashCode => Object.hash(
+    content,
+    negativeContent,
+    originalContent,
+    originalNegativeContent,
+    editedAt,
+    editedBy,
+    title,
+    color,
+    iconName,
+    Object.hashAll(translations),
+    Object.hashAll(negativeTranslations),
+  );
+}
+
+const _unchangedTemp = Object();
+
 /// 单个块实例：引用库中的块 + 启用态 + 用户锁定 + 遗传开关 + 随机参数 + 物化 roll 结果。
 class PillInstance {
   const PillInstance({
     required this.blockId,
     this.translation,
+    this.temp,
     this.enabled = true,
     this.locked = false,
     this.evolutionEnabled = false,
@@ -213,6 +361,10 @@ class PillInstance {
   /// Inline bilingual text. When present this instance is independent of the
   /// block library and always projects [TranslationPill.source].
   final TranslationPill? translation;
+  final PillTempContent? temp;
+  bool get temporary => temp != null;
+  String? get tempProjection =>
+      useNegativeContent ? temp?.negativeContent ?? '' : temp?.content;
 
   /// 同一块的负面部分。旧存档缺键时仍解析原有正文。
   final bool useNegativeContent;
@@ -252,6 +404,8 @@ class PillInstance {
   PillInstance copyWith({
     String? blockId,
     TranslationPill? translation,
+    bool clearTranslation = false,
+    Object? temp = _unchangedTemp,
     bool? enabled,
     bool? locked,
     bool? evolutionEnabled,
@@ -265,7 +419,10 @@ class PillInstance {
   }) {
     return PillInstance(
       blockId: blockId ?? this.blockId,
-      translation: translation ?? this.translation,
+      translation: clearTranslation ? null : translation ?? this.translation,
+      temp: identical(temp, _unchangedTemp)
+          ? this.temp
+          : temp as PillTempContent?,
       enabled: enabled ?? this.enabled,
       locked: locked ?? this.locked,
       evolutionEnabled: evolutionEnabled ?? this.evolutionEnabled,
@@ -282,6 +439,7 @@ class PillInstance {
   Map<String, dynamic> toJson() => {
     'blockId': blockId,
     if (translation != null) 'translation': translation!.toJson(),
+    if (temp != null) ...{'temporary': true, 'temp': temp!.toJson()},
     if (useNegativeContent) 'useNegativeContent': true,
     if (bundleId != null) 'bundleId': bundleId,
     if (bundleId != null) 'rollScopeMask': rollScopeMask,
@@ -299,6 +457,11 @@ class PillInstance {
     final rawCursor = json['sequenceCursor'];
     return PillInstance(
       blockId: json['blockId'] as String? ?? '',
+      temp: json['temp'] is Map
+          ? PillTempContent.fromJson(
+              Map<String, dynamic>.from(json['temp'] as Map),
+            )
+          : null,
       translation: json['translation'] is Map
           ? TranslationPill.fromJson(
               Map<String, dynamic>.from(json['translation'] as Map),
@@ -337,6 +500,7 @@ class PillInstance {
       other is PillInstance &&
       other.blockId == blockId &&
       other.translation == translation &&
+      other.temp == temp &&
       other.useNegativeContent == useNegativeContent &&
       other.bundleId == bundleId &&
       other.rollScopeMask == rollScopeMask &&
@@ -352,6 +516,7 @@ class PillInstance {
   int get hashCode => Object.hash(
     blockId,
     translation,
+    temp,
     useNegativeContent,
     bundleId,
     rollScopeMask,

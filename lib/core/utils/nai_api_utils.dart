@@ -1,4 +1,3 @@
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -6,6 +5,7 @@ import 'package:image/image.dart' as img;
 
 import '../network/error_mappers/api_error_mapper.dart';
 import 'app_logger.dart';
+import 'isolate_pool.dart';
 
 /// NAI API 工具类
 /// 提供 NovelAI API 相关的共享静态方法
@@ -22,6 +22,33 @@ class NAIApiUtils {
   /// 当前会话中是否已确认该字节对象是规范化后的 Director Reference PNG。
   static bool isKnownNormalizedPreciseReferencePng(Uint8List imageBytes) {
     return _normalizedPreciseReferencePngCache[imageBytes] == true;
+  }
+
+  static final _preciseNormalizations = Expando<Future<Uint8List>>();
+  static final _preciseIdentities = Expando<Object>();
+
+  static Object preciseReferenceIdentity(Uint8List bytes) =>
+      _preciseIdentities[bytes] ??= Object();
+
+  static void retainPreciseReferenceIdentity(
+    Uint8List before,
+    Uint8List after,
+  ) {
+    _preciseIdentities[after] = preciseReferenceIdentity(before);
+  }
+
+  /// Share background/import/request work by byte-object identity, never by index.
+  static Future<Uint8List> normalizePreciseReference(
+    Uint8List image, {
+    Future<Uint8List> Function(Uint8List)? normalize,
+  }) {
+    if (isKnownNormalizedPreciseReferencePng(image)) return Future.value(image);
+    return _preciseNormalizations[image] ??=
+        Future.sync(
+          () => (normalize ?? ensurePngFormatAsync)(image),
+        ).then(markNormalizedPreciseReferencePng).whenComplete(() {
+          _preciseNormalizations[image] = null;
+        });
   }
 
   /// 将 double 转换为 JSON 数值（整数或浮点数）
@@ -106,8 +133,9 @@ class NAIApiUtils {
 
   /// 在后台 isolate 中执行 Director Reference 图片规范化，避免阻塞 UI isolate。
   static Future<Uint8List> ensurePngFormatAsync(Uint8List imageBytes) async {
-    final normalizedBytes = await Isolate.run(
-      () => ensurePngFormat(imageBytes),
+    final normalizedBytes = await ComputeGate().runCompute(
+      ensurePngFormat,
+      imageBytes,
     );
     return markNormalizedPreciseReferencePng(normalizedBytes);
   }

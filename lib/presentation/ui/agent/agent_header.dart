@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_colors.dart';
+import '../kit/ui_controls.dart';
 import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
 import '../kit/ui_text.dart';
@@ -14,7 +15,16 @@ import 'agent_scope.dart';
 
 /// 顶栏两层：标志 + 「工作区 / 编号 · 聊天名 ▾」+ 新聊天 / 更多 / 收起；下面 对话 / 产物 / 指令 + 上下文。
 class AgentHeader extends StatefulWidget {
-  const AgentHeader({super.key, required this.tab, required this.onTab});
+  const AgentHeader({
+    super.key,
+    required this.tab,
+    required this.onTab,
+    this.historyOpen = false,
+    this.onHistory,
+    this.onClose,
+  });
+  final bool historyOpen;
+  final VoidCallback? onHistory, onClose;
   final AgentTab tab;
   final ValueChanged<AgentTab> onTab;
 
@@ -143,7 +153,7 @@ class _AgentHeaderState extends State<AgentHeader> {
                           key: const Key('agent-close'),
                           glyph: AgentGlyphs.side,
                           tooltip: l.ag_close,
-                          onPressed: a.onClose,
+                          onPressed: widget.onClose ?? a.onClose,
                         ),
                       ],
                     );
@@ -156,51 +166,73 @@ class _AgentHeaderState extends State<AgentHeader> {
             height: 34,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Tab(
-                    key: const Key('agent-tab-chat'),
-                    label: l.ag_tabChat,
-                    on: widget.tab == AgentTab.chat,
-                    onTap: () => widget.onTab(AgentTab.chat),
-                  ),
-                  const SizedBox(width: 18),
-                  _Tab(
-                    key: const Key('agent-tab-shelf'),
-                    label: l.ag_tabShelf,
-                    count: d.shelf.count,
-                    on: widget.tab == AgentTab.shelf,
-                    onTap: () => widget.onTab(AgentTab.shelf),
-                  ),
-                  if (d.memory != null) ...[
-                    const SizedBox(width: 18),
-                    _Tab(
-                      key: const Key('agent-tab-memory'),
-                      label: l.ag_tabMemory,
-                      on: widget.tab == AgentTab.memory,
-                      onTap: () => widget.onTab(AgentTab.memory),
-                    ),
-                  ],
-                  const Spacer(),
-                  UiPopover(
-                    anchor: _usage,
-                    onDismiss: () => setState(() => _usage = null),
-                    builder: (_) => AgentUsagePopover(
-                      onClose: () => setState(() => _usage = null),
-                    ),
-                    child: Builder(
-                      builder: (context) => _UsageButton(
-                        open: _usage != null,
-                        onTap: () async {
-                          final anchor = _below(context, right: true);
-                          await a.onRefreshUsage();
-                          if (mounted) setState(() => _usage = anchor);
-                        },
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  // Narrow panels tighten tab gaps so the history toggle fits.
+                  final gap = box.maxWidth < 320 ? 12.0 : 18.0;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _Tab(
+                        key: const Key('agent-tab-chat'),
+                        label: l.ag_tabChat,
+                        on: widget.tab == AgentTab.chat,
+                        onTap: () => widget.onTab(AgentTab.chat),
                       ),
-                    ),
-                  ),
-                ],
+                      SizedBox(width: gap),
+                      _Tab(
+                        key: const Key('agent-tab-shelf'),
+                        label: l.ag_tabShelf,
+                        count: d.shelf.count,
+                        on: widget.tab == AgentTab.shelf,
+                        onTap: () => widget.onTab(AgentTab.shelf),
+                      ),
+                      if (d.memory != null) ...[
+                        SizedBox(width: gap),
+                        _Tab(
+                          key: const Key('agent-tab-memory'),
+                          label: l.ag_tabMemory,
+                          on: widget.tab == AgentTab.memory,
+                          onTap: () => widget.onTab(AgentTab.memory),
+                        ),
+                      ],
+                      // 10-27：历史贴在上下文圆环左边，宽度只随内容；
+                      // 剩余空间不够放文字时退成时钟图标（LayoutBuilder 只量剩余宽度，不撑开按钮）。
+                      Expanded(
+                        child: LayoutBuilder(
+                          builder: (context, rest) => Align(
+                            alignment: Alignment.centerRight,
+                            child: _HistoryButton(
+                              on: widget.historyOpen,
+                              label: l.ag_historyButton,
+                              tooltip: l.ag_historyTitle,
+                              iconOnly: rest.maxWidth < 72,
+                              onTap: widget.onHistory,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      UiPopover(
+                        anchor: _usage,
+                        onDismiss: () => setState(() => _usage = null),
+                        builder: (_) => AgentUsagePopover(
+                          onClose: () => setState(() => _usage = null),
+                        ),
+                        child: Builder(
+                          builder: (context) => _UsageButton(
+                            open: _usage != null,
+                            onTap: () async {
+                              final anchor = _below(context, right: true);
+                              await a.onRefreshUsage();
+                              if (mounted) setState(() => _usage = anchor);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -489,6 +521,66 @@ class _UsageButtonState extends State<_UsageButton> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 「历史」：与右侧上下文按钮同高同圆角（24 / 6），开着时控件底 + 墨色加粗。
+class _HistoryButton extends StatelessWidget {
+  const _HistoryButton({
+    required this.on,
+    required this.label,
+    required this.tooltip,
+    required this.iconOnly,
+    required this.onTap,
+  });
+  final bool on, iconOnly;
+  final String label, tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        selected: on,
+        child: UiPressable(
+          key: const Key('agent-history-toggle'),
+          onTap: onTap,
+          builder: (context, hover) {
+            final fg = on || hover ? c.ink : c.muted;
+            return Container(
+              height: 24,
+              padding: EdgeInsets.symmetric(horizontal: iconOnly ? 5 : 7),
+              decoration: BoxDecoration(
+                color: on ? c.control : (hover ? c.hover : null),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 5,
+                children: [
+                  AgentIcon(AgentGlyphs.clock, size: 14, color: fg),
+                  if (!iconOnly)
+                    Text(
+                      label,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: UiText.sans(
+                        12,
+                        color: fg,
+                        weight: on ? FontWeight.w600 : FontWeight.w400,
+                        height: 1.2,
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

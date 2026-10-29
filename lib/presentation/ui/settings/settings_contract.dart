@@ -68,6 +68,8 @@ enum SettingKey {
   themeMode, // light / dark / system（system 是新增：跟随 Windows）
   fontFamily, // 选项由 [SettingsViewData.options] 给
   settingsFontScale, // 设置页与对话框字号 0.8–1.5
+  workspaceFontScale, // 创作文字，与界面字号独立
+  promptAutocomplete, // 本地输入补全，默认关闭
   language, // zh / zh_TW / en / ja / ko
   reduceMotion, // 现有画布“减少动态效果”（也让视觉通道停微动）
   completionSound,
@@ -75,6 +77,7 @@ enum SettingKey {
   // 画布与浏览
   historyClick, // openDetail / linkedPreview
   outputViewer, // canvas / simple
+  simpleViewerGroupBatches,
   canvasLockCamera,
   canvasZoomToFill,
   // 快捷键显示
@@ -96,6 +99,7 @@ enum SettingKey {
   autoSave,
   vibePath,
   galleryQuality, // high / standard
+  thumbnailCacheLimitGb, // global GiB, 1..50
   appDataPath, // Hive 目录，改后需重启
   // 词库与缓存
   cacheStatsAutoRefresh,
@@ -103,6 +107,8 @@ enum SettingKey {
   agentModel, // 选项由 options 给
   agentEnterToSend,
   agentMaxRequests, // 1–200
+  agentCacheWarming,
+  agentNextSuggestion,
   // 语义检索
   ragEnabled,
   ragContext, // beforeCursor / around
@@ -213,6 +219,15 @@ class SettingSpec {
       step: .1,
       defaultValue: 1.0,
     ),
+    SettingKey.workspaceFontScale: SettingSpec._(
+      _n,
+      _ap,
+      min: .8,
+      max: 1.5,
+      step: .1,
+      defaultValue: 1.0,
+    ),
+    SettingKey.promptAutocomplete: SettingSpec._(_t, _ge, defaultValue: false),
     SettingKey.language: SettingSpec._(
       _c,
       _ap,
@@ -233,6 +248,19 @@ class SettingSpec {
       _cv,
       choices: ['canvas', 'simple'],
       defaultValue: 'canvas',
+    ),
+    SettingKey.thumbnailCacheLimitGb: SettingSpec._(
+      _n,
+      _st,
+      min: 1,
+      max: 50,
+      step: 1,
+      defaultValue: 20.0,
+    ),
+    SettingKey.simpleViewerGroupBatches: SettingSpec._(
+      _t,
+      _cv,
+      defaultValue: false,
     ),
     SettingKey.canvasLockCamera: SettingSpec._(_t, _cv, defaultValue: false),
     SettingKey.canvasZoomToFill: SettingSpec._(_t, _cv, defaultValue: false),
@@ -286,6 +314,13 @@ class SettingSpec {
       _t,
       _dc,
       defaultValue: true,
+    ),
+    SettingKey.agentNextSuggestion: SettingSpec._(_t, _ag, defaultValue: true),
+    SettingKey.agentCacheWarming: SettingSpec._(
+      _c,
+      _ag,
+      choices: ['off', 'streaming', 'idle'],
+      defaultValue: 'streaming',
     ),
     SettingKey.agentModel: SettingSpec._(_c, _ag),
     SettingKey.agentEnterToSend: SettingSpec._(_t, _ag, defaultValue: true),
@@ -540,6 +575,7 @@ class SettingsViewData {
     SettingsRagData? rag,
     SettingsUpscaleData? upscale,
     SettingsDictionaryData? dictionaries,
+    SettingsStorageData? storage,
   }) => SettingsViewData(
     page: page ?? this.page,
     values: values ?? this.values,
@@ -555,7 +591,7 @@ class SettingsViewData {
     canvas: canvas ?? this.canvas,
     shortcuts: shortcuts ?? this.shortcuts,
     generation: generation,
-    storage: storage,
+    storage: storage ?? this.storage,
     dictionaries: dictionaries ?? this.dictionaries,
     models: models ?? this.models,
     agent: agent ?? this.agent,
@@ -810,13 +846,21 @@ enum SettingsStorageKind {
   ragIndex,
   dictionaries,
   agent,
+  other,
 }
 
 @immutable
 class SettingsStorageSlice {
-  const SettingsStorageSlice(this.kind, this.bytes);
+  const SettingsStorageSlice(
+    this.kind,
+    this.bytes, {
+    this.paths = const [],
+    this.incomplete = false,
+  });
   final SettingsStorageKind kind;
   final int bytes;
+  final List<String> paths;
+  final bool incomplete;
 }
 
 @immutable
@@ -853,6 +897,9 @@ class SettingsStorageData {
     this.thumbnailBytes = 0,
     this.thumbnailLimit = 0,
     this.folderNames = const {},
+    this.incomplete = false,
+    this.thumbnailCount = 0,
+    this.measuredAt,
   });
 
   /// 占用分类（新增：后台统计各目录大小，可缓存）；空 = 还没统计。
@@ -872,6 +919,13 @@ class SettingsStorageData {
   /// 侧注里每个目录的末级名（`outputs`、`vibes`……）。
   final Map<SettingsFolder, String> folderNames;
 
+  final bool incomplete;
+
+  /// 缩略图文件数；悬停缩略图占用时显示。
+  final int thumbnailCount;
+
+  /// 这份占用统计完成的时间；存储页据此判断是否过期需要重算（null = 还没统计）。
+  final DateTime? measuredAt;
   int get totalBytes => slices.fold(0, (s, e) => s + e.bytes);
 }
 
@@ -1563,6 +1617,7 @@ class SettingsRagData {
     this.initializationPhase = '',
     this.initializationProcessed = 0,
     this.initializationTotal = 0,
+    this.indexBusy = false,
     this.error,
   });
 
@@ -1613,6 +1668,9 @@ class SettingsRagData {
   final bool initializing;
   final String initializationPhase;
   final int initializationProcessed, initializationTotal;
+
+  /// Includes read-only index verification without presenting it as a build.
+  final bool indexBusy;
   bool get progressKnown =>
       sources.where((s) => s.enabled).every((s) => s.known);
 
@@ -1621,6 +1679,7 @@ class SettingsRagData {
 
   /// 安装、下载、建库任一在进行：别的重活按钮都不可点。
   bool get busy =>
+      indexBusy ||
       initializing ||
       preparing != null ||
       install != null ||

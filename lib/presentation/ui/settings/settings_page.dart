@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../widgets/common/text_editing_shortcuts.dart';
 
 import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
@@ -183,12 +184,19 @@ class _SettingsPageState extends State<SettingsPage> {
     if (e is! KeyDownEvent) return KeyEventResult.ignored;
     // 主修饰键：macOS 上是 ⌘（不带 Control，⌃⌘F 是系统的全屏键）
     final ctrl = isPrimaryShortcutModifierPressed();
+    if (ctrl &&
+        (e.logicalKey == LogicalKeyboardKey.keyZ ||
+            e.logicalKey == LogicalKeyboardKey.keyY) &&
+        hasEditableTextFocus) {
+      return KeyEventResult.ignored;
+    }
     if (ctrl && e.logicalKey == LogicalKeyboardKey.keyF) {
       _searchFocus.requestFocus();
       return KeyEventResult.handled;
     }
     if (ctrl &&
         e.logicalKey == LogicalKeyboardKey.keyZ &&
+        !HardwareKeyboard.instance.isShiftPressed &&
         _toast != null &&
         _toast!.undoable) {
       widget.actions.onUndo(_toast!.id);
@@ -207,14 +215,10 @@ class _SettingsPageState extends State<SettingsPage> {
     final c = context.ui;
     final data = widget.data;
     final searching = _query.trim().isNotEmpty;
-    final page = searching
-        ? SettingsSearchResults(
-            query: _query.trim(),
-            selected: _sel,
-            onHits: (h) => _hits = h,
-            onJump: (p, anchor) => _open(p, anchor: anchor),
-          )
-        : KeyedSubtree(key: ValueKey(data.page), child: _pageOf(data.page));
+    final page = KeyedSubtree(
+      key: ValueKey(data.page),
+      child: _pageOf(data.page),
+    );
     return SettingsScope(
       data: data,
       actions: widget.actions,
@@ -262,7 +266,23 @@ class _SettingsPageState extends State<SettingsPage> {
                           Expanded(
                             child: Stack(
                               children: [
-                                Positioned.fill(child: page),
+                                Positioned.fill(
+                                  child: Visibility(
+                                    visible: !searching,
+                                    maintainState: true,
+                                    child: page,
+                                  ),
+                                ),
+                                if (searching)
+                                  Positioned.fill(
+                                    child: SettingsSearchResults(
+                                      query: _query.trim(),
+                                      selected: _sel,
+                                      onHits: (h) => _hits = h,
+                                      onJump: (p, anchor) =>
+                                          _open(p, anchor: anchor),
+                                    ),
+                                  ),
                                 if (_toast != null && !searching)
                                   Positioned(
                                     left: 0,

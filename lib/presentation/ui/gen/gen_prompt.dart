@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 
 import '../../../core/utils/localization_extension.dart';
+import '../kit/ui_new_badge.dart';
 import '../../widgets/common/studio_icons.dart';
 import '../../widgets/common/translation_icon.dart';
 import '../../widgets/bridge/bridge_link_icon.dart';
@@ -12,6 +17,7 @@ import '../kit/ui_keycap.dart';
 import '../kit/ui_lib_controls.dart';
 import '../kit/ui_menu.dart';
 import '../kit/ui_popover.dart';
+import '../kit/ui_resource_kind.dart';
 import '../kit/ui_text.dart';
 import 'gen_contract.dart';
 import 'gen_format.dart';
@@ -45,55 +51,24 @@ class GenPromptModule extends StatelessWidget {
   }
 }
 
-/// 编辑器槽位 + 右上角清空 ×（原型 `.ptext`：内边距 6 32 4 12；× 在右 8 上 6）。
+/// 编辑器槽位（原型 `.ptext`）。清空入口只保留在全屏编辑顶栏；
+/// 内联 × 已按 10-25 反馈移除，误清可用 Ctrl+Z 撤销。
 class GenEditorArea extends StatelessWidget {
   const GenEditorArea({
     super.key,
     required this.target,
-    this.padding = const EdgeInsets.fromLTRB(12, 6, 32, 4),
-    this.clearButton = true,
+    this.padding = const EdgeInsets.fromLTRB(12, 6, 12, 4),
   });
   final GenEditorTarget target;
   final EdgeInsets padding;
 
-  /// 右上角清空 ×；全屏编辑把清空放到顶栏，这里不再画。
-  final bool clearButton;
-
   @override
   Widget build(BuildContext context) {
-    final c = context.ui;
     final scope = GenScope.of(context, GenAspect.prompt);
-    return Stack(
-      children: [
-        Padding(
-          key: Key('gen-editor-$target'),
-          padding: padding,
-          child: scope.slots.editor(context, target),
-        ),
-        if (clearButton)
-          Positioned(
-            right: 8,
-            top: padding.top,
-            child: Tooltip(
-              message: context.l10n.gen_clear,
-              child: UiPressable(
-                key: Key('gen-clear-$target'),
-                onTap: () => scope.actions.onClearPrompt(target),
-                builder: (context, hover) => SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Center(
-                    child: UiGlyph(
-                      UiGlyphs.close,
-                      size: 14,
-                      color: hover ? c.ink : c.muted,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
+    return Padding(
+      key: Key('gen-editor-$target'),
+      padding: padding,
+      child: scope.slots.editor(context, target),
     );
   }
 }
@@ -108,93 +83,273 @@ class _PromptHead extends StatelessWidget {
     final data = scope.data;
     final p = data.prompt;
     final l = context.l10n;
-    final hasChars = data.characters?.list.isNotEmpty ?? false;
     final tools = p.tools;
-    return Row(
-      spacing: 2,
-      children: [
-        Expanded(
-          child: Row(
-            spacing: 2,
-            children: [
-              Flexible(
-                child: _PreviewTip(
-                  sections: p.positivePreview,
-                  title: l.gen_finalPositive,
-                  child: GenTab(
-                    key: const Key('gen-tab-positive'),
-                    label: hasChars ? l.gen_basePrompt : l.gen_positive,
-                    selected: !p.negative,
-                    onTap: () => scope.actions.onNegativeTab(false),
-                  ),
-                ),
-              ),
-              Flexible(
-                child: _PreviewTip(
-                  sections: p.negativePreview,
-                  title: p.negativeSupported
-                      ? l.gen_finalNegative
-                      : l.gen_turboNegative,
-                  disabledHint: p.negativeSupported
-                      ? null
-                      : l.gen_turboNegative,
-                  child: GenTab(
-                    key: const Key('gen-tab-negative'),
-                    label: l.gen_negative,
-                    selected: p.negative,
-                    onTap: p.negativeSupported
-                        ? () => scope.actions.onNegativeTab(true)
-                        : null,
-                  ),
-                ),
-              ),
-              if (p.bridge case final b?) _Bridge(bridge: b),
-            ],
-          ),
-        ),
-        if (tools.palettePinned)
-          Builder(
-            builder: (context) => GenIb(
-              key: const Key('gen-tool-palette'),
-              animatedIcon: StudioIcons.promptBlockPalette,
-              glyphSize: 15,
-              tooltip: l.gen_toolPalette,
-              onTap: () => scope.actions.onOpenPalette(genRectOf(context)),
-            ),
-          ),
-        if (tools.dockPinned)
-          GenIb(
-            key: const Key('gen-tool-dock'),
-            animatedIcon: StudioIcons.promptBlocks,
-            glyphSize: 16,
-            active: data.layout.dockOpen,
-            tooltip: l.gen_toolDock,
-            onTap: () => scope.actions.onLayoutChanged(
-              data.layout.copyWith(dockOpen: !data.layout.dockOpen),
-            ),
-          ),
-        if (tools.translatePinned) const _Translate(),
-        if (tools.agentPinned && scope.slots.agentToggle != null)
-          scope.slots.agentToggle!,
+    final buttons = <Widget>[
+      if (tools.palettePinned)
         Builder(
           builder: (context) => GenIb(
-            key: const Key('gen-tool-menu'),
-            animateOnTap: true,
-            icon: GenNaiIcon(
-              'prompt-chunk',
-              size: 16,
-              color: scope.controller.popoverTag == #tools ? c.ink : c.muted,
-            ),
-            active: scope.controller.popoverTag == #tools,
-            tooltip: l.gen_toolsMenu,
-            onTap: () => scope.controller.openPopover(
+            key: const Key('gen-tool-palette'),
+            animatedIcon: StudioIcons.promptBlockPalette,
+            glyphSize: 15,
+            tooltip: l.gen_toolPalette,
+            onTap: () => scope.actions.onOpenPalette(genRectOf(context)),
+          ),
+        ),
+      if (tools.dockPinned)
+        GenIb(
+          key: const Key('gen-tool-dock'),
+          animatedIcon: StudioIcons.promptBlocks,
+          glyphSize: 16,
+          active: data.layout.dockOpen,
+          tooltip: l.gen_toolDock,
+          onTap: () => scope.actions.onLayoutChanged(
+            data.layout.copyWith(dockOpen: !data.layout.dockOpen),
+          ),
+        ),
+      if (tools.translatePinned) const _Translate(),
+      if (tools.resourceWindowsPinned &&
+          scope.actions.onOpenResourceWindow != null)
+        Builder(
+          builder: (context) => GenIb(
+            key: const Key('gen-tool-resources'),
+            glyph: GenGlyphs.resourceWindows,
+            glyphSize: 15,
+            active: scope.controller.popoverTag == #resourceWindows,
+            tooltip: l.floating_open,
+            onTap: () => scope.controller.openMenu(
               genBelow(context, dy: 4, right: true),
-              (_) => const _ToolsMenu(),
-              tag: #tools,
+              [
+                for (final (kind, glyph, label) in _resourceKinds(context))
+                  UiMenuItem(
+                    key: Key('gen-tool-resource-${kind.name}'),
+                    label: label,
+                    glyph: glyph,
+                    onTap: () => scope.actions.onOpenResourceWindow!(kind),
+                  ),
+              ],
+              tag: #resourceWindows,
+              width: 200,
             ),
           ),
         ),
+      if (tools.agentPinned && scope.slots.agentToggle != null)
+        scope.slots.agentToggle!,
+    ];
+    final menu = Builder(
+      builder: (context) => GenIb(
+        key: const Key('gen-tool-menu'),
+        animateOnTap: true,
+        icon: GenNaiIcon(
+          'prompt-chunk',
+          size: 16,
+          color: scope.controller.popoverTag == #tools ? c.ink : c.muted,
+        ),
+        active: scope.controller.popoverTag == #tools,
+        tooltip: l.gen_toolsMenu,
+        onTap: () => scope.controller.openPopover(
+          genBelow(context, dy: 4, right: true),
+          (_) => const _ToolsMenu(),
+          tag: #tools,
+        ),
+      ),
+    );
+    final overflow = buttons.length >= 5;
+    final negativeTab = _PreviewTip(
+      sections: p.negativePreview,
+      title: p.negativeSupported ? l.gen_finalNegative : l.gen_turboNegative,
+      disabledHint: p.negativeSupported ? null : l.gen_turboNegative,
+      child: GenTab(
+        key: const Key('gen-tab-negative'),
+        label: l.gen_negative,
+        selected: p.negative,
+        onTap: p.negativeSupported
+            ? () => scope.actions.onNegativeTab(true)
+            : null,
+      ),
+    );
+    final tabs = Row(
+      mainAxisSize: overflow ? MainAxisSize.min : MainAxisSize.max,
+      spacing: 2,
+      children: [
+        Flexible(
+          child: _PreviewTip(
+            sections: p.positivePreview,
+            title: l.gen_finalPositive,
+            child: GenTab(
+              key: const Key('gen-tab-positive'),
+              label: l.gen_basePrompt,
+              selected: !p.negative,
+              onTap: () => scope.actions.onNegativeTab(false),
+            ),
+          ),
+        ),
+        if (overflow) negativeTab else Flexible(child: negativeTab),
+        if (p.bridge case final b?) _Bridge(bridge: b),
       ],
+    );
+    if (!overflow) {
+      return Row(
+        spacing: 2,
+        children: [
+          Expanded(child: tabs),
+          ...buttons,
+          menu,
+        ],
+      );
+    }
+    const fixedTailWidth = 28 + 7 + 6; // Menu, divider and row gaps.
+    return LayoutBuilder(
+      builder: (context, box) => Row(
+        spacing: 2,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: math.max(0, box.maxWidth - fixedTailWidth - 28),
+            ),
+            child: tabs,
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _PromptToolsStrip(
+                translationIndex: tools.translatePinned
+                    ? (tools.palettePinned ? 1 : 0) + (tools.dockPinned ? 1 : 0)
+                    : null,
+                children: buttons,
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 3),
+            child: UiVSep(key: Key('gen-prompt-tools-divider'), height: 16),
+          ),
+          menu,
+        ],
+      ),
+    );
+  }
+}
+
+class _PromptToolsStrip extends StatefulWidget {
+  const _PromptToolsStrip({required this.children, this.translationIndex});
+  final List<Widget> children;
+  final int? translationIndex;
+  @override
+  State<_PromptToolsStrip> createState() => _PromptToolsStripState();
+}
+
+class _PromptToolsStripState extends State<_PromptToolsStrip> {
+  final _scroll = ScrollController();
+  bool _left = false, _right = false;
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_edges);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _edges());
+  }
+
+  @override
+  void didUpdateWidget(covariant _PromptToolsStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _edges());
+  }
+
+  void _edges() {
+    if (!mounted || !_scroll.hasClients) return;
+    final left = _scroll.offset > 0.5;
+    final right = _scroll.offset < _scroll.position.maxScrollExtent - 0.5;
+    if (left != _left || right != _right) {
+      setState(() {
+        _left = left;
+        _right = right;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final widths = [
+      for (var i = 0; i < widget.children.length; i++)
+        i == widget.translationIndex ? 46.0 : 28.0,
+    ];
+    final overflow = widths.length >= 5;
+    final desiredWidth = overflow
+        ? widths.take(4).fold<double>(0, (total, value) => total + value) +
+              widths[4] / 2 +
+              8
+        : widths.fold<double>(0, (total, value) => total + value) +
+              (widths.length - 1) * 2;
+    return LayoutBuilder(
+      builder: (context, limits) {
+        final width = math.min(desiredWidth, limits.maxWidth);
+        return SizedBox(
+          key: const Key('gen-prompt-tools-strip'),
+          width: width,
+          height: 28,
+          child: Listener(
+            onPointerSignal: (event) {
+              if (event is! PointerScrollEvent ||
+                  !_scroll.hasClients ||
+                  _scroll.position.maxScrollExtent <= 0) {
+                return;
+              }
+              GestureBinding.instance.pointerSignalResolver.register(event, (
+                _,
+              ) {
+                final delta = event.scrollDelta.dx != 0
+                    ? event.scrollDelta.dx
+                    : event.scrollDelta.dy;
+                _scroll.jumpTo(
+                  (_scroll.offset + delta).clamp(
+                    0.0,
+                    _scroll.position.maxScrollExtent,
+                  ),
+                );
+              });
+            },
+            child: ShaderMask(
+              key: const Key('gen-prompt-tools-fade'),
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  _left ? Colors.transparent : Colors.white,
+                  Colors.white,
+                  Colors.white,
+                  _right ? Colors.transparent : Colors.white,
+                ],
+                stops: [0, 12 / bounds.width, 1 - 12 / bounds.width, 1],
+              ).createShader(bounds),
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(
+                  context,
+                ).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  controller: _scroll,
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    spacing: 2,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < widget.children.length; i++)
+                        SizedBox(
+                          width: widths[i],
+                          height: 28,
+                          child: Center(child: widget.children[i]),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -309,10 +464,12 @@ class _Translate extends StatelessWidget {
     final open = scope.controller.popoverTag == #translate;
     final tip = t.busy
         ? l.gen_translating
+        : t.hasTranslations
+        ? (t.showing
+              ? l.gen_translateTapOriginal
+              : l.gen_translateTapTranslated)
         : t.route == null
         ? l.gen_translateNeedsModel
-        : t.showing
-        ? l.gen_translateRestore
         : l.gen_translateWith(t.route!);
     return Builder(
       builder: (context) => Container(
@@ -334,10 +491,10 @@ class _Translate extends StatelessWidget {
                 onTap: t.busy
                     ? null
                     : () {
-                        if (t.route == null) {
-                          scope.actions.onTranslationSettings();
-                        } else if (t.showing) {
+                        if (t.hasTranslations) {
                           scope.actions.onToggleTranslation();
+                        } else if (t.route == null) {
+                          scope.actions.onTranslationSettings();
                         } else {
                           scope.actions.onTranslate();
                         }
@@ -379,9 +536,34 @@ class _Translate extends StatelessWidget {
     final scope = GenScope.of(context, GenAspect.prompt);
     final t = scope.data.prompt.translate;
     final l = context.l10n;
+    Rect adjustmentAnchor() {
+      var rect = genRectOf(context);
+      context.visitAncestorElements((element) {
+        if (element.widget.key == const Key('gen-prompt')) {
+          rect = genRectOf(element);
+          return false;
+        }
+        return true;
+      });
+      return rect;
+    }
+
     scope.controller.openMenu(
       anchor,
       [
+        UiMenuItem(
+          key: const Key('gen-translate-adjust'),
+          label: l.gen_translateAdjust,
+          subtitle: l.gen_translateAdjustSub,
+          badge: uiNewBadge(context, 'translate.adjust', l.gen_menuNew),
+          glyph: UiGlyphs.chat,
+          enabled:
+              !t.busy &&
+              t.canAdjust &&
+              scope.actions.onTranslationAdjust != null,
+          onTap: () =>
+              scope.actions.onTranslationAdjust?.call(adjustmentAnchor()),
+        ),
         UiMenuItem(
           key: const Key('gen-translate-new'),
           label: l.gen_translateNew,
@@ -394,8 +576,20 @@ class _Translate extends StatelessWidget {
               ? l.gen_translateShowOriginal
               : l.gen_translateShowTranslated,
           glyph: UiGlyphs.swap,
-          enabled: !t.busy && t.route != null,
+          enabled: !t.busy && t.hasTranslations,
           onTap: scope.actions.onToggleTranslation,
+        ),
+        UiMenuItem(
+          key: const Key('gen-translate-clear'),
+          label: l.gen_translateClearRestore,
+          subtitle: l.gen_translateClearRestoreSub,
+          badge: uiNewBadge(context, 'translate.clearRestore', l.gen_menuNew),
+          glyph: UiGlyphs.undo,
+          enabled:
+              !t.busy &&
+              t.hasTranslations &&
+              scope.actions.onClearTranslations != null,
+          onTap: () => scope.actions.onClearTranslations?.call(),
         ),
         UiMenuItem(
           label: l.gen_translateSettings,
@@ -426,7 +620,7 @@ class _Translate extends StatelessWidget {
           ),
       ],
       tag: #translate,
-      width: 240,
+      width: 280,
     );
   }
 }
@@ -549,6 +743,8 @@ class _ToolsMenu extends StatelessWidget {
               ),
             ),
           ),
+          if (scope.actions.onOpenResourceWindow case final open?)
+            _ResourceWindowsRow(onOpen: open),
           _MenuSection(l.gen_toolsPinned),
           pinRow(
             const Key('gen-pin-palette'),
@@ -571,6 +767,14 @@ class _ToolsMenu extends StatelessWidget {
             GenPromptTool.translatePinned,
             t.translatePinned,
           ),
+          if (scope.actions.onOpenResourceWindow != null)
+            pinRow(
+              const Key('gen-pin-resources'),
+              UiGlyph(GenGlyphs.resourceWindows, size: 15, color: c.muted),
+              l.floating_open,
+              GenPromptTool.resourceWindowsPinned,
+              t.resourceWindowsPinned,
+            ),
           if (scope.slots.agentToggle != null)
             pinRow(
               const Key('gen-pin-agent'),
@@ -822,7 +1026,7 @@ class GenFullscreenEditor extends StatelessWidget {
                 spacing: 10,
                 children: [
                   UiGlyph(UiGlyphs.expand, size: 15, color: c.muted),
-                  Flexible(
+                  Expanded(
                     child: Text(
                       title,
                       maxLines: 1,
@@ -860,7 +1064,6 @@ class GenFullscreenEditor extends StatelessWidget {
                         style: UiText.sans(12, color: c.muted, height: 1.2),
                       ),
                     ),
-                  const Spacer(),
                   UiIconBox(
                     key: Key('gen-clear-$t'),
                     glyph: UiGlyphs.trash,
@@ -879,7 +1082,6 @@ class GenFullscreenEditor extends StatelessWidget {
             Expanded(
               child: GenEditorArea(
                 target: t,
-                clearButton: false,
                 padding: const EdgeInsets.fromLTRB(28, 20, 28, 20),
               ),
             ),
@@ -920,6 +1122,158 @@ class GenFullscreenEditor extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 资源窗口的四类入口（工具菜单的二级菜单和头部钉住按钮共用）。
+List<(FloatingResourceKind, String, String)> _resourceKinds(
+  BuildContext context,
+) {
+  final l = context.l10n;
+  return [
+    (FloatingResourceKind.gallery, UiGlyphs.picture, l.localGallery_title),
+    (FloatingResourceKind.blocks, UiGlyphs.layers, l.blocks_title),
+    (FloatingResourceKind.vibe, UiGlyphs.spark, l.refs_vibeTitle),
+    (FloatingResourceKind.precise, UiGlyphs.personStar, l.refs_preciseTitle),
+  ];
+}
+
+/// 工具菜单里的「资源窗口」行：悬停或点击在菜单右侧展开二级菜单（右边放不下就翻到左边）。
+/// 二级菜单不铺遮罩：鼠标移回其它行即收起，点某一类打开对应窗口并关掉整个菜单。
+class _ResourceWindowsRow extends StatefulWidget {
+  const _ResourceWindowsRow({required this.onOpen});
+  final ValueChanged<FloatingResourceKind> onOpen;
+
+  @override
+  State<_ResourceWindowsRow> createState() => _ResourceWindowsRowState();
+}
+
+class _ResourceWindowsRowState extends State<_ResourceWindowsRow> {
+  final _portal = OverlayPortalController();
+  final _row = GlobalKey();
+  Timer? _close;
+  var _inRow = false, _inSub = false;
+
+  @override
+  void dispose() {
+    _close?.cancel();
+    super.dispose();
+  }
+
+  void _open() {
+    _close?.cancel();
+    if (!_portal.isShowing) setState(_portal.show);
+  }
+
+  /// 鼠标从行移到二级菜单要经过一条缝：留 160ms 再判断是否真的离开了两者。
+  void _maybeClose() {
+    _close?.cancel();
+    _close = Timer(const Duration(milliseconds: 160), () {
+      if (mounted && !_inRow && !_inSub && _portal.isShowing) {
+        setState(_portal.hide);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    final scope = GenScope.of(context, GenAspect.prompt);
+    return OverlayPortal(
+      controller: _portal,
+      overlayChildBuilder: (overlayContext) {
+        final box = _row.currentContext?.findRenderObject();
+        final overlay = Overlay.of(overlayContext).context.findRenderObject();
+        if (box is! RenderBox || overlay is! RenderBox) {
+          return const SizedBox.shrink();
+        }
+        // 菜单外框比行宽 4（内边距）+ 1（描边）；二级菜单和外框留 4 的缝。
+        final rect =
+            overlay.globalToLocal(box.localToGlobal(Offset.zero)) & box.size;
+        const width = 200.0, gap = 9.0;
+        final right = rect.right + gap;
+        final left = right + width > overlay.size.width - 4
+            ? rect.left - gap - width
+            : right;
+        return Positioned(
+          left: left,
+          top: rect.top - 5,
+          child: MouseRegion(
+            onEnter: (_) {
+              _inSub = true;
+              _open();
+            },
+            onExit: (_) {
+              _inSub = false;
+              _maybeClose();
+            },
+            child: TextFieldTapRegion(
+              child: UiMenu(
+                key: const Key('gen-resource-menu'),
+                width: width,
+                onClose: scope.controller.closePopover,
+                items: [
+                  for (final (kind, glyph, label) in _resourceKinds(context))
+                    UiMenuItem(
+                      key: Key('gen-resource-${kind.name}'),
+                      label: label,
+                      glyph: glyph,
+                      onTap: () => widget.onOpen(kind),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      child: MouseRegion(
+        onEnter: (_) {
+          _inRow = true;
+          _open();
+        },
+        onExit: (_) {
+          _inRow = false;
+          _maybeClose();
+        },
+        child: UiPressable(
+          key: const Key('gen-resource-windows'),
+          onTap: _open,
+          builder: (context, hover) => Container(
+            key: _row,
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: hover || _portal.isShowing ? c.control : null,
+              borderRadius: BorderRadius.circular(7),
+            ),
+            child: Row(
+              spacing: 10,
+              children: [
+                SizedBox(
+                  width: 16,
+                  child: UiGlyph(
+                    GenGlyphs.resourceWindows,
+                    size: 15,
+                    color: c.muted,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    l.floating_open,
+                    style: UiText.sans(13, color: c.ink),
+                  ),
+                ),
+                if (uiNewBadge(context, 'tools.resourceWindows', l.gen_menuNew)
+                    case final b?)
+                  UiMini(b, tone: UiMiniTone.accent),
+                UiGlyph(UiGlyphs.chevronRight, size: 13, color: c.faint),
+              ],
+            ),
+          ),
         ),
       ),
     );

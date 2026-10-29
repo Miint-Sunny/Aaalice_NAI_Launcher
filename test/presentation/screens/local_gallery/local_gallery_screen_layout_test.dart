@@ -3,6 +3,7 @@ import 'package:irondash_message_channel/irondash_message_channel.dart';
 // ignore: implementation_imports, depend_on_referenced_packages
 import 'package:super_native_extensions/src/native/context.dart';
 import 'dart:convert';
+import 'package:nai_launcher/presentation/services/image_clipboard_service.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -13,6 +14,8 @@ import 'package:nai_launcher/data/services/gallery/gallery_filter_service.dart';
 import 'package:nai_launcher/presentation/providers/local_gallery_provider.dart';
 import 'package:nai_launcher/presentation/router/gallery_navigation_request.dart';
 import 'package:flutter/material.dart';
+import 'package:nai_launcher/presentation/widgets/common/text_editing_shortcuts.dart';
+import 'package:nai_launcher/presentation/providers/bulk_operation_provider.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,7 +33,6 @@ import 'package:nai_launcher/data/services/gallery/gallery_column_width_store.da
 import 'package:nai_launcher/data/services/gallery/unified_gallery_service.dart';
 import 'package:nai_launcher/data/services/thumbnail_service.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
-import 'package:nai_launcher/presentation/providers/bulk_operation_provider.dart';
 import 'package:nai_launcher/presentation/providers/collection_provider.dart';
 import 'package:nai_launcher/presentation/providers/gallery_category_provider.dart';
 import 'package:nai_launcher/presentation/providers/krita/krita_bridge_notifier.dart';
@@ -63,6 +65,13 @@ import '../../../helpers/fake_local_gallery_service.dart';
 import '../../../helpers/studio_capture_fonts.dart';
 import '../../../helpers/light_theme_contrast.dart'
     show InMemoryLocalStorageService;
+
+class _RecordingClipboard extends ImageClipboardService {
+  _RecordingClipboard(this.onCopy) : super(stripMetadata: () => false);
+  final void Function(String) onCopy;
+  @override
+  Future<void> copyFile(String path) async => onCopy(path);
+}
 
 /// 本地画廊三栏布局：深浅主题、多语言、宽窄窗口下的实际渲染回归。
 ///
@@ -111,6 +120,78 @@ void main() {
     });
   });
 
+  testWidgets(
+    'R2 gallery bulk undo/redo never runs while search text is focused',
+    (tester) async {
+      final bulk = _RecordingBulkOperations();
+      final container = await _pumpScreen(
+        tester,
+        records: records,
+        dimensions: dimensions,
+        locale: const Locale('zh'),
+        dark: false,
+        size: const Size(1600, 1000),
+        extraOverrides: [
+          bulkOperationNotifierProvider.overrideWith(() => bulk),
+        ],
+      );
+      final field = find
+          .descendant(
+            of: find.byType(LocalGalleryToolbar),
+            matching: find.byType(TextField),
+          )
+          .first;
+      await tester.tap(field);
+      await tester.pump();
+      Future<void> type(String text) async {
+        tester.testTextInput.updateEditingValue(
+          TextEditingValue(
+            text: text,
+            selection: TextSelection.collapsed(offset: text.length),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 550));
+      }
+
+      Future<void> key(LogicalKeyboardKey key, {bool shift = false}) async {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        if (shift) await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.sendKeyEvent(key);
+        if (shift) await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pump();
+      }
+
+      final controller = tester.widget<TextField>(field).controller!;
+      await type('blue');
+      await type('blue eyes');
+      await key(LogicalKeyboardKey.keyZ);
+      expect(controller.text, 'blue');
+      await key(LogicalKeyboardKey.keyY);
+      expect(controller.text, 'blue eyes');
+      await key(LogicalKeyboardKey.keyZ);
+      await key(LogicalKeyboardKey.keyZ, shift: true);
+      expect(controller.text, 'blue eyes');
+      expect(bulk.calls, isEmpty);
+      FocusManager.instance.primaryFocus!.unfocus();
+      await tester.pump();
+      tester
+          .widget<KeyboardListener>(find.byType(KeyboardListener).first)
+          .focusNode
+          .requestFocus();
+      await tester.pump();
+      await key(LogicalKeyboardKey.keyZ);
+      await _settle(tester);
+      await key(LogicalKeyboardKey.keyY);
+      await _settle(tester);
+      expect(bulk.calls, ['undo', 'redo']);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      await tester.pump(const Duration(minutes: 1));
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.windows),
+  );
+
   final cases = <(Locale, bool, Size, String)>[
     (const Locale('zh'), false, const Size(1600, 1000), 'zh-light-wide'),
     (const Locale('zh'), true, const Size(1600, 1000), 'zh-dark-wide'),
@@ -127,6 +208,36 @@ void main() {
     ),
     (const Locale('zh', 'TW'), true, const Size(1600, 1000), 'zh-TW-dark-wide'),
   ];
+
+  testWidgets('repeated app focus changes do not reload the gallery', (
+    tester,
+  ) async {
+    final container = await _pumpScreen(
+      tester,
+      records: records,
+      dimensions: dimensions,
+      locale: const Locale('zh'),
+      dark: false,
+      size: const Size(1600, 1000),
+    );
+    final service =
+        container.read(galleryServiceProvider) as FakeLocalGalleryService;
+    final timelineRequests = service.timelineRequests;
+    final before = container.read(localGalleryNotifierProvider).timeline;
+    for (var i = 0; i < 3; i++) {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump(const Duration(seconds: 6));
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(const Duration(seconds: 6));
+    }
+    expect(service.refreshCount, 0);
+    expect(service.timelineRequests, timelineRequests);
+    expect(container.read(localGalleryNotifierProvider).timeline, same(before));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    container.dispose();
+    await tester.pump(const Duration(minutes: 1));
+  });
 
   testWidgets(
     'gallery context action imports original onto canvas and navigates home',
@@ -193,6 +304,60 @@ void main() {
     },
   );
 
+  testWidgets(
+    'context copy uses captured original once and permits character-only Prompt',
+    (tester) async {
+      final record = records.first.copyWith(
+        metadata: const NaiImageMetadata(
+          prompt: '',
+          characterPrompts: ['blue eyes'],
+        ),
+      );
+      final copies = <String>[];
+      final clipboard = _RecordingClipboard(copies.add);
+      final container = await _pumpScreen(
+        tester,
+        records: [record, ...records.skip(1)],
+        dimensions: dimensions,
+        locale: const Locale('en'),
+        dark: false,
+        size: const Size(1600, 1000),
+        extraOverrides: [
+          imageClipboardServiceProvider.overrideWithValue(clipboard),
+        ],
+      );
+      await tester.tap(_cardFor(record), buttons: kSecondaryMouseButton);
+      await _settle(tester);
+      final prompt = tester.widget<MenuItemButton>(
+        find.ancestor(
+          of: find.text('Copy Prompt'),
+          matching: find.byType(MenuItemButton),
+        ),
+      );
+      expect(prompt.onPressed, isNotNull);
+      final button = tester.widget<MenuItemButton>(
+        find.ancestor(
+          of: find.text('Copy image'),
+          matching: find.byType(MenuItemButton),
+        ),
+      );
+      button.onPressed!();
+      await tester.pump();
+      for (var i = 0; i < 10 && copies.isEmpty; i++) {
+        await tester.runAsync(
+          () async => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(find.byKey(const Key('image-action-menu')), findsNothing);
+      expect(copies, [record.path]);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+      await tester.pump(const Duration(minutes: 1));
+    },
+  );
+
   for (final (locale, dark, size, name) in cases) {
     testWidgets('local gallery three-pane layout $name', (tester) async {
       final container = await _pumpScreen(
@@ -222,6 +387,13 @@ void main() {
           tester.getCenter(find.byType(GalleryAddMenuButton)).dy,
           closeTo(rowCenter, .6),
         );
+        final add = find.byType(GalleryAddMenuButton);
+        final addIcon = find.descendant(of: add, matching: find.byType(Icon));
+        final addInk = find.descendant(
+          of: add,
+          matching: find.byWidgetPredicate((w) => w is InkResponse),
+        );
+        expect(tester.getRect(addIcon).center, tester.getRect(addInk).center);
       }
 
       // 单击第二张：进入查看，详情面板显示参数
@@ -234,6 +406,25 @@ void main() {
       final inspector = find.byType(GalleryInspectorPanel);
       if (size.width >= 1300) {
         expect(inspector, findsOneWidget);
+        for (final button
+            in tester
+                .widgetList<IconButton>(
+                  find.descendant(
+                    of: inspector,
+                    matching: find.byType(IconButton),
+                  ),
+                )
+                .where(
+                  (b) => b.style?.fixedSize?.resolve({}) == const Size(32, 32),
+                )) {
+          final host = find.byWidget(button);
+          final icon = find.descendant(of: host, matching: find.byType(Icon));
+          final ink = find.descendant(
+            of: host,
+            matching: find.byWidgetPredicate((w) => w is InkResponse),
+          );
+          expect(tester.getRect(icon).center, tester.getRect(ink).center);
+        }
         expect(
           find.byKey(const Key('gallery-inspector-reuse')),
           findsOneWidget,
@@ -702,6 +893,22 @@ Finder _cardFor(LocalImageRecord record) => find.byWidgetPredicate(
   (widget) => widget is LocalImageCard && widget.record.path == record.path,
 );
 
+class _RecordingBulkOperations extends BulkOperationNotifier {
+  final calls = <String>[];
+  @override
+  BulkOperationState build() =>
+      const BulkOperationState(canUndo: true, canRedo: true);
+  @override
+  Future<void> undo() async {
+    calls.add('undo');
+  }
+
+  @override
+  Future<void> redo() async {
+    calls.add('redo');
+  }
+}
+
 Future<ProviderContainer> _pumpScreen(
   WidgetTester tester, {
   required List<LocalImageRecord> records,
@@ -722,6 +929,9 @@ Future<ProviderContainer> _pumpScreen(
   final container = ProviderContainer(
     overrides: [
       ...extraOverrides,
+      galleryFileMonitorProvider.overrideWith(
+        (ref) => fakeGalleryFileMonitor(),
+      ),
       if (translator != null)
         detailPromptTranslatorProvider.overrideWithValue(translator),
       galleryServiceProvider.overrideWith(
@@ -755,7 +965,9 @@ Future<ProviderContainer> _pumpScreen(
               routerConfig: router,
               builder: (context, child) => RepaintBoundary(
                 key: _captureKey,
-                child: WindowChromeScope(child: _CaptionStub(child: child!)),
+                child: TextEditingShortcuts(
+                  child: WindowChromeScope(child: _CaptionStub(child: child!)),
+                ),
               ),
             )
           : MaterialApp(
@@ -766,7 +978,9 @@ Future<ProviderContainer> _pumpScreen(
               theme: theme,
               builder: (context, child) => RepaintBoundary(
                 key: _captureKey,
-                child: WindowChromeScope(child: _CaptionStub(child: child!)),
+                child: TextEditingShortcuts(
+                  child: WindowChromeScope(child: _CaptionStub(child: child!)),
+                ),
               ),
               home: navigation == null
                   ? const LocalGalleryScreen()
@@ -846,20 +1060,6 @@ class _CaptionStub extends StatelessWidget {
       ],
     );
   }
-}
-
-class _RecordingBulkOperations extends BulkOperationNotifier {
-  final calls = <String>[];
-
-  @override
-  BulkOperationState build() =>
-      const BulkOperationState(canUndo: true, canRedo: true);
-
-  @override
-  Future<void> undo() async => calls.add('undo');
-
-  @override
-  Future<void> redo() async => calls.add('redo');
 }
 
 class _TestKritaBridgeNotifier extends KritaBridgeNotifier {

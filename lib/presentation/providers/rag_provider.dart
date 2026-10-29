@@ -484,7 +484,7 @@ class RagController extends Notifier<RagStatus> {
                 phase: event['phase'] == 'complete'
                     ? (s.complete ? 'ready' : 'partial')
                     : event['phase'] as String?,
-                busy: event['phase'] == 'building',
+                busy: const {'building', 'checking'}.contains(event['phase']),
                 clearJob: ['complete', 'error'].contains(event['phase']),
                 error: event['code'] as String?,
                 clearError: event['phase'] != 'error',
@@ -576,7 +576,7 @@ class RagController extends Notifier<RagStatus> {
         bytes: (result['bytes'] as num?)?.toInt(),
         complete: result['complete'] as bool?,
         partial: result['partial'] as bool?,
-        busy: result['building'] as bool?,
+        busy: result['building'] == true || result['checking'] == true,
         details: {
           for (final key in [
             'images',
@@ -591,6 +591,8 @@ class RagController extends Notifier<RagStatus> {
             ? 'paused'
             : result['building'] == true
             ? 'building'
+            : result['checking'] == true
+            ? 'checking'
             : result['complete'] == true
             ? 'ready'
             : (result['indexed'] as num? ?? 0) > 0
@@ -751,12 +753,13 @@ class RagController extends Notifier<RagStatus> {
       });
       if (!_disposed &&
           epoch == _epoch &&
-          !_finishedJobs.contains(result['job_id'])) {
+          !_finishedJobs.contains(result['job_id']) &&
+          state.forSource(source).jobId != result['job_id']) {
         _change(
           source,
           (s) => s.copyWith(
             jobId: result['job_id'] as String,
-            phase: 'building',
+            phase: 'checking',
             processed: 0,
             busy: true,
             clearError: true,
@@ -801,7 +804,7 @@ class RagController extends Notifier<RagStatus> {
     }
     await client.request('resume', {'job_id': id, 'source': source.name});
     if (!_disposed && epoch == _epoch) {
-      _change(source, (s) => s.copyWith(phase: 'building', busy: true));
+      _change(source, (s) => s.copyWith(phase: 'checking', busy: true));
     }
   }
 

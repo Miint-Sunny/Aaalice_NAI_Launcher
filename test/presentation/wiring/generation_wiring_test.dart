@@ -1,6 +1,7 @@
 import 'package:nai_launcher/presentation/router/app_router.dart';
 import 'package:nai_launcher/presentation/widgets/navigation/integrated_title_bar.dart';
 import 'dart:async';
+import 'package:nai_launcher/presentation/wiring/resource_window_wiring.dart';
 import 'package:nai_launcher/presentation/ui/tools/tools_sheets.dart';
 import 'dart:io';
 import 'package:nai_launcher/presentation/providers/prompt_translation_provider.dart';
@@ -37,9 +38,14 @@ import 'package:nai_launcher/presentation/providers/tips_provider.dart';
 import 'package:nai_launcher/presentation/providers/prompt_block_library_provider.dart';
 import 'package:nai_launcher/presentation/providers/subscription_provider.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_page.dart';
+import 'package:nai_launcher/presentation/ui/gen/gen_header.dart';
+import 'package:nai_launcher/presentation/providers/floating_resource_windows_provider.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_contract.dart';
+import 'package:nai_launcher/presentation/ui/settings/settings_contract.dart';
+import 'package:nai_launcher/presentation/wiring/settings/settings_edits.dart';
 import 'package:nai_launcher/presentation/wiring/generation_wiring.dart';
 import 'package:nai_launcher/presentation/wiring/generation_backend.dart';
+import 'package:nai_launcher/presentation/wiring/generation_operations.dart';
 import 'package:nai_launcher/presentation/providers/krita/bridge_draft_snapshot.dart';
 import 'package:nai_launcher/presentation/providers/pill_workspace_provider.dart';
 import 'package:nai_launcher/data/models/prompt_block/pill_document.dart';
@@ -79,6 +85,7 @@ void main() {
         characterPromptRepositoryProvider.overrideWithValue(MemoryCharacters()),
         promptBlockLibraryNotifierProvider.overrideWith(EmptyBlocks.new),
         authNotifierProvider.overrideWith(OfflineAuth.new),
+        nativeResourceWindowsProvider.overrideWithValue(false),
         imageGenerationNotifierProvider.overrideWith(DataGeneration.new),
         subscriptionNotifierProvider.overrideWith(DataSubscription.new),
         tipEpochProvider.overrideWith((ref) => Stream.value(0)),
@@ -131,6 +138,37 @@ void main() {
     await tester.pump();
   }
 
+  /// 内联 × 已移除（10-25），清空入口在全屏编辑顶栏。
+  Future<void> clearFromFullscreen(
+    WidgetTester tester,
+    GenEditorTarget target,
+  ) async {
+    Future<void> tap(String key) async {
+      final f = find.byKey(Key(key));
+      await tester.ensureVisible(f);
+      await tester.tap(f);
+      await tester.pumpAndSettle();
+    }
+
+    final ch = target.character;
+    if (ch == null) {
+      await tap('gen-tool-menu');
+      await tap('gen-fullscreen');
+    } else {
+      await tap('gen-character-more-$ch');
+      await tap('gen-character-fullscreen-$ch');
+    }
+    final full = ch == null
+        ? GenEditorTarget.base(negative: target.negative, fullscreen: true)
+        : GenEditorTarget.character(
+            ch,
+            negative: target.negative,
+            fullscreen: true,
+          );
+    await tap('gen-clear-$full');
+    await tap('gen-fullscreen-close');
+  }
+
   String promptFor(GenEditorTarget target) {
     if (target.character case final index?) {
       final character = container
@@ -141,6 +179,97 @@ void main() {
     final params = container.read(generationParamsNotifierProvider);
     return target.negative ? params.negativePrompt : params.prompt;
   }
+
+  testWidgets('prompt tools menu opens each resource window kind', (
+    tester,
+  ) async {
+    await pump(tester);
+    final header = tester.widget<GenHeader>(find.byType(GenHeader).first);
+    expect(header.onOpenResourceWindow, isNotNull);
+    for (final kind in FloatingResourceKind.values) {
+      await tester.tap(find.byKey(const Key('gen-tool-menu')).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('gen-resource-windows')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('gen-resource-${kind.name}')));
+      await tester.pumpAndSettle();
+    }
+    expect(
+      container
+          .read(floatingResourceWindowsProvider)
+          .map((window) => window.kind),
+      FloatingResourceKind.values,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'placing img2img source preserves bytes, reuses tile and focuses it',
+    (tester) async {
+      final bytes = Uint8List.fromList(
+        img.encodePng(img.Image(width: 16, height: 16)),
+      );
+      container
+          .read(generationParamsNotifierProvider.notifier)
+          .setSourceImage(bytes);
+      await pump(tester);
+      final host = tester.state<ConsumerState>(find.byType(GenerationWiring));
+      final operations = GenerationOperations(
+        host.ref,
+        host.context,
+        () => host.mounted,
+      );
+      await tester.runAsync(operations.placeSource);
+      final generation = container.read(imageGenerationNotifierProvider);
+      expect(generation.history, hasLength(1));
+      final id = generation.history.single.id;
+      expect(generation.history.single.bytes, orderedEquals(bytes));
+      expect(container.read(generationPreviewSelectionProvider), id);
+      final otherBytes = Uint8List.fromList(
+        img.encodePng(img.Image(width: 17, height: 17)),
+      );
+      container
+          .read(imageGenerationNotifierProvider.notifier)
+          .registerSourceImage(otherBytes);
+      await tester.runAsync(operations.placeSource);
+      expect(
+        container.read(imageGenerationNotifierProvider).history,
+        hasLength(2),
+      );
+      expect(container.read(generationPreviewSelectionProvider), id);
+      expect(
+        container.read(generationParamsNotifierProvider).prompt,
+        'current prompt',
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('placing img2img source is blocked during generation', (
+    tester,
+  ) async {
+    final bytes = Uint8List.fromList(
+      img.encodePng(img.Image(width: 16, height: 16)),
+    );
+    container
+        .read(generationParamsNotifierProvider.notifier)
+        .setSourceImage(bytes);
+    (container.read(imageGenerationNotifierProvider.notifier) as DataGeneration)
+        .publish(
+          const ImageGenerationState(status: GenerationStatus.generating),
+        );
+    await pump(tester);
+    final host = tester.state<ConsumerState>(find.byType(GenerationWiring));
+    await tester.runAsync(
+      GenerationOperations(
+        host.ref,
+        host.context,
+        () => host.mounted,
+      ).placeSource,
+    );
+    expect(container.read(imageGenerationNotifierProvider).history, isEmpty);
+    expect(container.read(generationPreviewSelectionProvider), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   for (final target in const [
     GenEditorTarget.base(),
@@ -167,10 +296,7 @@ void main() {
         await tester.tap(tab);
         await tester.pumpAndSettle();
       }
-      final clear = find.byKey(Key('gen-clear-$target'));
-      await tester.ensureVisible(clear);
-      await tester.tap(clear);
-      await tester.pumpAndSettle();
+      await clearFromFullscreen(tester, target);
       expect(promptFor(target), isEmpty);
       expect(
         (container.read(generationPlatformProvider) as MemoryGenerationPlatform)
@@ -191,8 +317,7 @@ void main() {
 
   testWidgets('清空后两秒内仍能撤销并恢复原提示词', (tester) async {
     await pump(tester);
-    await tester.tap(find.byKey(const Key('gen-clear-base')));
-    await tester.pumpAndSettle();
+    await clearFromFullscreen(tester, const GenEditorTarget.base());
     expect(promptFor(const GenEditorTarget.base()), isEmpty);
     await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.byType(SnackBarAction));
@@ -435,7 +560,10 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  Future<GoRouter> pumpViewer(WidgetTester tester) async {
+  Future<GoRouter> pumpViewer(
+    WidgetTester tester, {
+    bool startInViewer = true,
+  }) async {
     final image = GeneratedImage(
       id: 'viewer-image',
       bytes: img.encodePng(img.Image(width: 512, height: 768)),
@@ -446,7 +574,7 @@ void main() {
     (container.read(imageGenerationNotifierProvider.notifier) as DataGeneration)
         .publish(ImageGenerationState(history: [image]));
     final router = GoRouter(
-      initialLocation: '/generation/viewer',
+      initialLocation: startInViewer ? '/generation/viewer' : '/generation',
       routes: [
         GoRoute(
           path: '/generation',
@@ -484,6 +612,72 @@ void main() {
     );
     await tester.pump();
     return router;
+  }
+
+  for (final output in ['canvas', 'simple']) {
+    testWidgets('历史单击实时遵循设置并打开真实大图路由：$output', (tester) async {
+      final settings = container.read(settingsValueStoreProvider);
+      await tester.runAsync(() async {
+        await settings.write(SettingKey.outputViewer, output);
+        await settings.write(SettingKey.historyClick, 'linkedPreview');
+      });
+      final router = await pumpViewer(tester, startInViewer: false);
+      await tester.pumpAndSettle();
+      final before = container.read(generationParamsNotifierProvider);
+      final batch = tester
+          .widget<GenerationPage>(find.byType(GenerationPage))
+          .data
+          .history
+          .batches
+          .single;
+      final tile = find.byKey(Key('gen-batch-tile-${batch.id}'));
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      expect(find.byType(ImageViewerPage), findsNothing);
+      expect(
+        container.read(generationPreviewSelectionProvider),
+        'viewer-image',
+      );
+
+      // Write through the same adapter as the two settings cards. No page
+      // remount or restart should be needed for the next click to open detail.
+      await tester.runAsync(() async {
+        await settings.write(SettingKey.historyClick, 'openDetail');
+        // History's double-click interval uses the wall clock. Keep this a
+        // separate click, otherwise the old linked behavior also opens detail.
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+      });
+      await tester.pump();
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      expect(find.byType(ImageViewerPage), findsOneWidget);
+      expect(
+        tester
+            .widget<GenerationViewerWiring>(find.byType(GenerationViewerWiring))
+            .request
+            .selected,
+        'viewer-image',
+      );
+      router.pop();
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => settings.write(SettingKey.historyClick, 'linkedPreview'),
+      );
+      await tester.pump();
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      expect(find.byType(ImageViewerPage), findsNothing);
+      expect(
+        container.read(generationPreviewSelectionProvider),
+        'viewer-image',
+      );
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+      expect(find.byType(ImageViewerPage), findsOneWidget);
+      expect(container.read(generationParamsNotifierProvider), same(before));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
   }
 
   testWidgets('大图翻译显示忙态，取消后慢结果不复活，也不写入生图草稿', (tester) async {

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/localization_extension.dart';
 import '../../widgets/common/studio_glass_surface.dart';
 import '../../widgets/common/studio_animated_icon.dart';
 import '../kit/ui_colors.dart';
@@ -18,6 +19,9 @@ import 'gen_format.dart';
 
 /// 生图页原型里有、kit 里没有的图标路径（`mock.html` 的 `const P`）。
 abstract final class GenGlyphs {
+  /// 资源小窗（四格不等分）。
+  static const resourceWindows =
+      'M4 5h7v7H4zM13 5h7v4h-7zM13 11h7v8h-7zM4 14h7v5H4z';
   static const save2 = 'M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6';
   static const autosave = 'M5 4h11l3 3v13H5zM8 4v4h7V4M12 12v6M9 15h6';
   static const multi = 'M8 4h12v12H8zM4 8v12h12M11 10l2 2 4-4';
@@ -493,8 +497,13 @@ class GenTokenBar extends StatelessWidget {
         : t > .9
         ? c.warn
         : c.ink.withValues(alpha: .85);
+    // 默认提示气泡在下方 24px，会盖住下一张卡的标题行（10-24 反馈）；
+    // 改为贴在条的上方，只压在本卡编辑区的底边。
     return Tooltip(
+      key: const Key('gen-token-tooltip'),
       message: '${tokens.used} / ${tokens.limit} tokens',
+      preferBelow: false,
+      verticalOffset: 10,
       child: Container(
         height: 3,
         margin: margin,
@@ -541,6 +550,7 @@ class GenSliderRow extends StatefulWidget {
     required this.onChanged,
     this.min = 0,
     this.max = 1,
+    this.inputMax,
     this.decimals = 2,
     this.defaultValue,
     this.labelWidth = 64,
@@ -554,6 +564,7 @@ class GenSliderRow extends StatefulWidget {
   final ValueChanged<double> onChanged;
   final double min;
   final double max;
+  final double? inputMax;
   final int decimals;
   final double? defaultValue;
   final double labelWidth;
@@ -613,6 +624,7 @@ class _GenSliderRowState extends State<GenSliderRow> {
           value: v,
           min: widget.min,
           max: widget.max,
+          inputMax: widget.inputMax,
           decimals: widget.decimals,
           compact: widget.compact,
           onSubmitted: widget.enabled ? widget.onChanged : null,
@@ -982,6 +994,51 @@ class GenConfirmDialog extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 简洁查看器右上角的「⊞ 分组」开关（原型 `.float .fb`，开着时强调色底）。
+class GenGroupBatchesToggle extends StatelessWidget {
+  const GenGroupBatchesToggle({
+    super.key,
+    required this.grouped,
+    required this.onChanged,
+  });
+  final bool grouped;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    final fg = grouped ? c.accent : c.ink;
+    return GenFloat(
+      children: [
+        Semantics(
+          button: true,
+          toggled: grouped,
+          child: GenFloatButton(
+            key: const Key('simple-viewer-group-batches'),
+            width: null,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            selected: grouped,
+            tooltip: grouped ? l.gen_groupBatchesOn : l.gen_groupBatchesOff,
+            onTap: () => onChanged(!grouped),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 5,
+              children: [
+                UiGlyph(UiGlyphs.grid, size: 14, color: fg),
+                Text(
+                  l.gen_groupBatches,
+                  style: UiText.sans(12, color: fg, height: 1.2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

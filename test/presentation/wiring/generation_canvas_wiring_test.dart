@@ -1,3 +1,4 @@
+import '../../helpers/grouped_canvas_batches.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -33,6 +34,7 @@ import 'package:nai_launcher/presentation/providers/image_generation_provider.da
 import 'package:nai_launcher/presentation/providers/prompt_block_library_provider.dart';
 import 'package:nai_launcher/presentation/providers/shortcuts_provider.dart';
 import 'package:nai_launcher/presentation/providers/simple_output_viewer_provider.dart';
+import 'package:nai_launcher/presentation/providers/simple_viewer_group_batches_provider.dart';
 import 'package:nai_launcher/presentation/providers/subscription_provider.dart';
 import 'package:nai_launcher/presentation/providers/tips_provider.dart';
 import 'package:nai_launcher/core/utils/localization_extension.dart';
@@ -58,6 +60,7 @@ import 'generation_data_wiring_test.dart'
     show DataGeneration, DataSubscription, DataShortcuts, DataRecents;
 import '../screens/generation/widgets/reference_module_test.dart'
     show prepareGenerationDropTestPlatform;
+import '../../helpers/uiux_frontend_capture.dart';
 
 class _CountingTipDeck extends TipDeck {
   _CountingTipDeck() : super(seed: 23);
@@ -150,6 +153,7 @@ void main() {
     storage.values[StorageKeys.canvasReducedMotion] = true;
     container = ProviderContainer(
       overrides: [
+        groupedCanvasBatchesOverride,
         tipDeckProvider.overrideWithValue(deck),
         tipEpochProvider.overrideWith((ref) => Stream.value(0)),
         localStorageServiceProvider.overrideWithValue(storage),
@@ -389,14 +393,18 @@ void main() {
           ),
         ),
     ];
+    // Create the real isolate work in runAsync before the widget can start it
+    // in the fake async zone (which cannot deliver compute completions).
+    await tester.runAsync(() async {
+      for (final image in sources) {
+        await container.read(generatedImageMetadataProvider(image).future);
+      }
+    });
     publish(ImageGenerationState(history: sources));
     await pump(tester);
     final initialBar = tester.getRect(find.byKey(const Key('gen-bar-top')));
     final initialDraft = container.read(generationParamsNotifierProvider);
     final prices = <String, int>{};
-    for (final image in sources) {
-      await container.read(generatedImageMetadataProvider(image).future);
-    }
     await tester.pumpAndSettle();
 
     for (final image in [...sources, ...sources, ...sources]) {
@@ -1163,6 +1171,221 @@ void main() {
     }
     expect(tester.takeException(), isNull);
   });
+  testWidgets('分组开关同时控制简洁查看器与无限画布，切换保留选中图', (tester) async {
+    await container
+        .read(simpleViewerGroupBatchesProvider.notifier)
+        .setGrouped(false);
+    final a = image(4, 0);
+    final b = image(4, 1);
+    publish(ImageGenerationState(history: [a, b], displayImages: [a, b]));
+    await container
+        .read(simpleOutputViewerNotifierProvider.notifier)
+        .setSimple(true);
+    await pump(tester, fullPage: true);
+    expect(container.read(generationHistoryBatchesProvider), hasLength(2));
+    expect(find.byKey(Key('gen-tile-${b.id}')), findsOneWidget);
+    expect(find.byKey(Key('gen-tile-${a.id}')), findsNothing);
+    container.read(generationHistoryActionsProvider).focusBatch('img:${a.id}');
+    await tester.pumpAndSettle();
+    expect(find.byKey(Key('gen-tile-${a.id}')), findsOneWidget);
+    container.read(generationPreviewFocusNodeProvider).requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(container.read(generationPreviewSelectionProvider), b.id);
+    expect(find.byKey(Key('gen-tile-${b.id}')), findsOneWidget);
+    expect(find.byKey(Key('gen-tile-${a.id}')), findsNothing);
+    await captureUiuxRegion(
+      tester,
+      find.byType(RepaintBoundary).first,
+      'group-toggle-off',
+      const Rect.fromLTWH(900, 0, 700, 360),
+    );
+    await tester.tap(find.byKey(const Key('simple-viewer-group-batches')));
+    await tester.pumpAndSettle();
+    expect(container.read(simpleViewerGroupBatchesProvider), true);
+    await captureUiuxRegion(
+      tester,
+      find.byType(RepaintBoundary).first,
+      'group-toggle-on',
+      const Rect.fromLTWH(900, 0, 700, 360),
+    );
+    expect(
+      storage.getSetting<bool>(StorageKeys.simpleViewerGroupBatches),
+      true,
+    );
+    expect(container.read(generationHistoryBatchesProvider), hasLength(1));
+    expect(find.byKey(Key('gen-tile-${a.id}')), findsOneWidget);
+    expect(find.byKey(Key('gen-tile-${b.id}')), findsOneWidget);
+    await container
+        .read(simpleViewerGroupBatchesProvider.notifier)
+        .setGrouped(false);
+    await container
+        .read(simpleOutputViewerNotifierProvider.notifier)
+        .setSimple(false);
+    await tester.pumpAndSettle();
+    expect(container.read(generationHistoryBatchesProvider), hasLength(2));
+    expect(find.byType(GenerationCanvasWiring), findsOneWidget);
+    expect(find.byKey(const Key('simple-viewer-group-batches')), findsNothing);
+    final singles = container.read(canvasFeedLayoutProvider);
+    expect(singles.groups.map((group) => group.key), [
+      'img:${a.id}',
+      'img:${b.id}',
+    ]);
+    expect(singles.groups.every((group) => group.tiles.length == 1), isTrue);
+    expect(
+      singles.items[1].worldRect.center.dx,
+      singles.items[0].worldRect.center.dx,
+    );
+    expect(
+      singles.items[1].worldRect.top,
+      greaterThan(singles.items[0].worldRect.bottom),
+    );
+    container.read(generationHistoryActionsProvider).focusBatch('img:${b.id}');
+    await tester.pumpAndSettle();
+    expect(container.read(generationPreviewSelectionProvider), b.id);
+    expect(
+      container.read(generationCanvasGroupSelectionProvider)!.group,
+      'img:${b.id}',
+    );
+    final beforeWheel = camera();
+    await wheel(tester, const Offset(0, 80));
+    expect(camera().offset, isNot(beforeWheel.offset));
+    expect(camera().scale, beforeWheel.scale);
+    await container
+        .read(simpleViewerGroupBatchesProvider.notifier)
+        .setGrouped(true);
+    await tester.pumpAndSettle();
+    expect(container.read(canvasFeedLayoutProvider).groups.single.key, 'run:4');
+    expect(container.read(generationHistoryBatchesProvider), hasLength(1));
+    expect(container.read(generationPreviewSelectionProvider), b.id);
+    expect(container.read(generationCanvasGroupSelectionProvider)!.subimage, 1);
+    await container
+        .read(simpleViewerGroupBatchesProvider.notifier)
+        .setGrouped(false);
+    await tester.pumpAndSettle();
+    expect(container.read(generationPreviewSelectionProvider), b.id);
+    expect(
+      container.read(generationCanvasGroupSelectionProvider)!.group,
+      'img:${b.id}',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('无限画布逐张模式保留生成多槽位，完成后逐张接管', (tester) async {
+    final old = image(4);
+    final first = image(9);
+    final last = image(9, 1);
+    await container
+        .read(simpleViewerGroupBatchesProvider.notifier)
+        .setGrouped(false);
+    publish(
+      ImageGenerationState(
+        status: GenerationStatus.generating,
+        generationRunId: 9,
+        totalImages: 2,
+        currentImage: 1,
+        batchWidth: 512,
+        batchHeight: 768,
+        history: [old],
+      ),
+    );
+    await pump(tester, fullPage: true);
+    final pending = container.read(canvasFeedLayoutProvider);
+    expect(pending.groups.map((group) => group.key), [
+      'run:9',
+      'img:${old.id}',
+    ]);
+    expect(pending.groups.first.tiles, hasLength(2));
+    expect(pending.groups.first.tiles.every((tile) => tile.isInFlight), isTrue);
+    publish(
+      ImageGenerationState(
+        status: GenerationStatus.generating,
+        generationRunId: 9,
+        totalImages: 2,
+        currentImage: 2,
+        batchWidth: 512,
+        batchHeight: 768,
+        currentImages: [first],
+        history: [old],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final partial = container.read(canvasFeedLayoutProvider).groups.first;
+    expect(partial.key, 'run:9');
+    expect(partial.tiles.first.image, same(first));
+    expect(partial.tiles.last.isInFlight, isTrue);
+    container
+        .read(generationHistoryActionsProvider)
+        .focusBatch('img:${old.id}');
+    await tester.pumpAndSettle();
+    expect(container.read(generationFocusViewProvider)!.id, 'img:${old.id}');
+    expect(
+      tester
+          .widget<GenerationPage>(find.byType(GenerationPage))
+          .data
+          .history
+          .selected,
+      'img:${old.id}',
+    );
+    container.read(generationHistoryActionsProvider).focusBatch('run:9');
+    await tester.pumpAndSettle();
+    publish(
+      ImageGenerationState(
+        status: GenerationStatus.completed,
+        generationRunId: 9,
+        currentImages: [first, last],
+        history: [old],
+        displayImages: [first, last],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final completed = container.read(canvasFeedLayoutProvider);
+    expect(completed.groups.map((group) => group.key), [
+      'img:${first.id}',
+      'img:${last.id}',
+      'img:${old.id}',
+    ]);
+    expect(completed.groups.every((group) => group.tiles.length == 1), isTrue);
+    expect(container.read(generationHistoryBatchesProvider), hasLength(3));
+    expect(container.read(generationPreviewSelectionProvider), first.id);
+    expect(first.generationRunId, last.generationRunId);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('简洁模式新批完成显示最新单张，生成中保留多槽位', (tester) async {
+    await container
+        .read(simpleViewerGroupBatchesProvider.notifier)
+        .setGrouped(false);
+    await container
+        .read(simpleOutputViewerNotifierProvider.notifier)
+        .setSimple(true);
+    final old = image(1);
+    publish(ImageGenerationState(history: [old], displayImages: [old]));
+    await pump(tester, fullPage: true);
+    publish(loading(9, count: 2));
+    await tester.pump();
+    expect(container.read(generationFocusViewProvider)!.tiles, hasLength(2));
+    container.read(generationPreviewSelectionProvider.notifier).select(old.id);
+    final first = image(9, 0);
+    final last = image(9, 1);
+    publish(
+      ImageGenerationState(
+        status: GenerationStatus.completed,
+        currentImages: [first, last],
+        history: [old],
+        displayImages: [first, last],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      container.read(generationFocusViewProvider)!.tiles.single.id,
+      last.id,
+    );
+    expect(find.byKey(Key('gen-tile-${last.id}')), findsOneWidget);
+    expect(find.byKey(Key('gen-tile-${first.id}')), findsNothing);
+  });
+
   testWidgets('简单模式不挂相机，切回后定位原选择且可反复切换', (tester) async {
     publish(ImageGenerationState(history: [image(2), image(1)]));
     await container

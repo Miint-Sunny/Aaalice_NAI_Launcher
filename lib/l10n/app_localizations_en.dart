@@ -2813,9 +2813,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localGallery_copyPrompt => 'Copy Prompt';
 
   @override
-  String get localGallery_copySeed => 'Copy Seed';
-
-  @override
   String get localGallery_dragToShare => 'Drag to share';
 
   @override
@@ -14996,9 +14993,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No translation model yet — click to set one up';
 
   @override
-  String get gen_translateRestore => 'Show original';
-
-  @override
   String gen_translateWith(Object route) {
     return 'Translate ($route)';
   }
@@ -15376,7 +15370,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String gen_repeatTotal(Object times, Object total) {
-    return '$times requests, $total images (scroll to adjust)';
+    return '$times requests, $total images · Hold and drag horizontally to adjust';
   }
 
   @override
@@ -21650,9 +21644,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ag_mentionSearchBlocks => 'Search blocks';
 
   @override
-  String get ag_skillsTitle => 'Skills';
-
-  @override
   String get ag_keySelect => 'Select';
 
   @override
@@ -22041,4 +22032,690 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mp_errorRateLimit => 'Rate limit exceeded';
+
+  @override
+  String get ag_tool_prompt_set => 'Prompt set';
+
+  @override
+  String ag_psCount(int count, String unit) {
+    return '$count $unit';
+  }
+
+  @override
+  String ag_psPosition(int index, int count, String unit) {
+    return '$unit $index / $count';
+  }
+
+  @override
+  String get ag_psOverview => 'Show all';
+
+  @override
+  String get ag_psSingle => 'Back to one';
+
+  @override
+  String get ag_psPrompt => 'Prompt';
+
+  @override
+  String get ag_psShared => 'Shared';
+
+  @override
+  String ag_psThisItem(String unit) {
+    return 'This $unit';
+  }
+
+  @override
+  String get ag_psMain => 'Main prompt';
+
+  @override
+  String ag_psCharacter(int index) {
+    return 'Character $index';
+  }
+
+  @override
+  String get ag_psNegative => 'Negative';
+
+  @override
+  String get ag_psImport => 'Import to canvas';
+
+  @override
+  String get ag_psImportTip =>
+      'Writes the main prompt, characters and negative; parameters and references stay as they are';
+
+  @override
+  String ag_psImported(String title) {
+    return 'Imported “$title” into the prompt';
+  }
+
+  @override
+  String get ag_psGenerate => 'Generate';
+
+  @override
+  String get ag_psGenerating => 'Generating';
+
+  @override
+  String ag_psRevision(int revision, int count) {
+    return 'v$revision · $count changed';
+  }
+
+  @override
+  String get ag_psSaveBlock => 'Save as block';
+
+  @override
+  String ag_psSavedBlock(String title, int count) {
+    return 'Saved block “$title” · $count items';
+  }
+
+  @override
+  String ag_psCopyItem(String unit) {
+    return 'Copy this $unit\'s prompt';
+  }
+
+  @override
+  String get ag_psCopyAll => 'Copy all';
+
+  @override
+  String ag_psEditItem(String unit) {
+    return 'Ask Agent to edit this $unit';
+  }
+
+  @override
+  String ag_psEditDraft(String title, int index, String unit, String item) {
+    return 'Edit “$title”, $unit $index ($item): ';
+  }
+
+  @override
+  String ag_psTooManyCharacters(int count) {
+    return 'The current model supports up to $count characters';
+  }
+
+  @override
+  String get ag_psNoCharacters =>
+      'The current model doesn\'t support character prompts';
+
+  @override
+  String get ag_psMissing => 'This card\'s data is no longer available';
+
+  @override
+  String get startup_dataTitle => 'Could not prepare application data';
+
+  @override
+  String get startup_dataHelp =>
+      'Application data is not ready. Keep existing files; files with different contents are not merged or overwritten. Back up and check your data folders, free disk space and permissions, then retry.';
+
+  @override
+  String get startup_dataCurrent => 'Current data folder';
+
+  @override
+  String get startup_dataLegacy => 'Previous data folder';
+
+  @override
+  String get startup_dataOpenCurrent => 'Open current folder';
+
+  @override
+  String get startup_dataOpenLegacy => 'Open previous folder';
+
+  @override
+  String get startup_dataDetails => 'Error details';
+
+  @override
+  String startup_dataActionFailed(String error) {
+    return 'Action failed: $error';
+  }
+
+  @override
+  String get blocks_expandToText => 'Expand to text';
+
+  @override
+  String get ag_answeredTitle => 'Asked you · Answered';
+
+  @override
+  String get ag_historyButton => 'History';
+
+  @override
+  String get ag_historyTitle => 'Conversation history';
+
+  @override
+  String get ag_historySearch => 'Search messages and cards…';
+
+  @override
+  String get ag_historyAll => 'All';
+
+  @override
+  String get ag_historyMine => 'My messages';
+
+  @override
+  String get ag_historyCards => 'Cards';
+
+  @override
+  String get ag_historyQuestions => 'Q&A';
+
+  @override
+  String get ag_historyEmpty => 'No matching entries';
+
+  @override
+  String get ag_historyBeforeCompaction =>
+      'This was before compaction. Click to read the summary.';
+
+  @override
+  String get ag_historyAuto => 'Auto compaction';
+
+  @override
+  String get ag_historyManual => 'Manual compaction';
+
+  @override
+  String get ag_historyImageMessage => 'Image message';
+
+  @override
+  String ag_historyAnswer(String answer) {
+    return 'You answered: $answer';
+  }
+
+  @override
+  String get ag_historyPromptSet => 'Prompt set';
+
+  @override
+  String ag_historyImages(int count) {
+    return 'Generation card · $count images';
+  }
+
+  @override
+  String get ag_historyPromptChange => 'Prompt changes';
+
+  @override
+  String get ag_historyParams => 'Generation settings';
+
+  @override
+  String get ag_historyPositions => 'Character positions';
+
+  @override
+  String get ag_historySettings => 'Settings changes';
+
+  @override
+  String get ag_historyGallery => 'Gallery card';
+
+  @override
+  String get ag_historyChanges => 'Change summary';
+
+  @override
+  String get gen_translateTapOriginal => 'Tap: show original';
+
+  @override
+  String get gen_translateTapTranslated => 'Tap: show translation';
+
+  @override
+  String get gen_translateClearRestore =>
+      'Clear translation blocks and restore';
+
+  @override
+  String get gen_translateClearRestoreSub =>
+      'Return to plain source text; undo available';
+
+  @override
+  String get gen_translateCleared =>
+      'Translation blocks restored to source text';
+
+  @override
+  String get gen_translateAdjust => 'Continue translation adjustment';
+
+  @override
+  String get gen_translateAdjustSub =>
+      'Continue this translation: split, retranslate, merge';
+
+  @override
+  String get gen_translateAdjustTitle => 'Translation adjustment';
+
+  @override
+  String gen_translateAdjustContext(int count) {
+    return 'Continuing this translation · $count blocks';
+  }
+
+  @override
+  String gen_translateAdjustSelected(int count) {
+    return '$count blocks selected';
+  }
+
+  @override
+  String get gen_translateAdjustCollapse => 'Collapse / expand';
+
+  @override
+  String get gen_translateAdjustIntro =>
+      'Continue from this translation. Click blocks on the left to reference them. Edits can be undone.';
+
+  @override
+  String get gen_translateAdjustSplit => 'Split again';
+
+  @override
+  String get gen_translateAdjustRetranslate => 'Retranslate selected';
+
+  @override
+  String get gen_translateAdjustMerge => 'Merge selected';
+
+  @override
+  String get gen_translateAdjustSplitTemplate =>
+      'Read current blocks and split referenced blocks into finer semantic units. Preserve exact source.';
+
+  @override
+  String get gen_translateAdjustRetranslateTemplate =>
+      'Read current blocks and retranslate referenced blocks without changing source.';
+
+  @override
+  String get gen_translateAdjustMergeTemplate =>
+      'Read current blocks and merge referenced blocks in the requested source order. Leave unrelated blocks unchanged.';
+
+  @override
+  String get gen_translateAdjustMarkers =>
+      'Use markers from translation_blocks_read.';
+
+  @override
+  String get gen_translateAdjustHint => 'Describe how to adjust blocks…';
+
+  @override
+  String get gen_translateAdjustStartFailed =>
+      'Could not start adjustment. Check the model and Agent runtime.';
+
+  @override
+  String get gen_translateAdjustRunFailed =>
+      'Adjustment stopped or failed. Read current blocks before retrying.';
+
+  @override
+  String gen_repeatDragTotal(int times, int total) {
+    return '$times requests · $total images';
+  }
+
+  @override
+  String get set_cvGroupBatches => 'Group batch results';
+
+  @override
+  String get set_cvGroupBatchesSub =>
+      'Applies to both the simple viewer and infinite canvas. Turn off to show images individually and select each image from its history thumbnail.';
+
+  @override
+  String get gen_groupBatches => 'Group';
+
+  @override
+  String get gen_translateAdjustPickHint =>
+      'Click blocks on the left to reference';
+
+  @override
+  String get gen_translateAdjustClearRefs => 'Clear references';
+
+  @override
+  String gen_translateAdjustSplitInto(String source, int count) {
+    return '$source → $count blocks';
+  }
+
+  @override
+  String get gen_translateAdjustContextNote =>
+      'Context: this translation\'s source, blocks and output';
+
+  @override
+  String ag_historyStats(int messages, int cards) {
+    return '$messages messages · $cards cards';
+  }
+
+  @override
+  String get ag_historyKeySelect => 'Select';
+
+  @override
+  String get ag_historyKeyJump => 'Jump to chat';
+
+  @override
+  String get ag_historyKeyClose => 'Close';
+
+  @override
+  String get blocks_tempLabel => 'Temporary block';
+
+  @override
+  String blocks_tempEditedByAgent(String time) {
+    return 'Agent edited this$time.';
+  }
+
+  @override
+  String blocks_tempEditedByYou(String time) {
+    return 'You edited this$time.';
+  }
+
+  @override
+  String blocks_tempExplain(String title) {
+    return ' It is detached from \"$title\" in the library; changes stay at this spot only. The library and other prompts using this block are unaffected.';
+  }
+
+  @override
+  String get blocks_tempEdit => 'Edit';
+
+  @override
+  String get blocks_tempCompare => 'Compare with original';
+
+  @override
+  String get blocks_tempAdded => 'Added';
+
+  @override
+  String blocks_tempAddedCount(int count) {
+    return '$count new tags';
+  }
+
+  @override
+  String get blocks_tempAddedNone => 'Nothing added';
+
+  @override
+  String get blocks_tempRemoved => 'Removed';
+
+  @override
+  String blocks_tempRemovedHint(int count) {
+    return '$count removed';
+  }
+
+  @override
+  String get blocks_tempRemovedNone => 'Nothing removed';
+
+  @override
+  String get blocks_tempRevert => 'Restore original';
+
+  @override
+  String get blocks_tempKeepEditing => 'Keep editing';
+
+  @override
+  String get blocks_tempApply => 'Apply';
+
+  @override
+  String get blocks_tempSaveAs => 'Save as new block';
+
+  @override
+  String get blocks_tempSaveAsHint =>
+      'After saving, this spot uses the new block; the original stays unchanged';
+
+  @override
+  String get blocks_tempSaveConfirm => 'Save';
+
+  @override
+  String get blocks_tempShowOriginal => 'Show original in library';
+
+  @override
+  String get gen_menuNew => 'New';
+
+  @override
+  String get gen_repeatDragHint =>
+      'Drag the number left/right · double-click to type';
+
+  @override
+  String get gen_groupBatchesOn =>
+      'Grouped by batch · click to show one at a time';
+
+  @override
+  String get gen_groupBatchesOff =>
+      'One image at a time · click to group by batch';
+
+  @override
+  String get blocks_presetCustom => 'Custom';
+
+  @override
+  String get blocks_presetHint =>
+      'Applying block params also restores quality tags and UC preset. On a different model the tier is converted; Turbo follows existing handling.';
+
+  @override
+  String get gen_vibeInpaintUnsupported =>
+      'Vibe does not support Inpainting and will not apply to this generation.';
+
+  @override
+  String get set_stThumbnailCacheLimit => 'Thumbnail cache limit';
+
+  @override
+  String get set_stThumbnailCacheLimitSub =>
+      'Total for all gallery folders. Oldest thumbnails are removed down to 80% at startup or when you clean; originals are never touched.';
+
+  @override
+  String get ag_slashGroupSkills => 'Skills';
+
+  @override
+  String get ag_slashGroupTemplates => 'Prompt templates';
+
+  @override
+  String get ag_slashGroupBuiltin => 'Studio commands';
+
+  @override
+  String get ag_commandNew => 'Start a new chat';
+
+  @override
+  String get ag_commandCompact => 'Compact context';
+
+  @override
+  String get ag_commandModel => 'Choose a model';
+
+  @override
+  String get ag_commandThinking => 'Choose thinking level';
+
+  @override
+  String get ag_commandHistory => 'Open session history';
+
+  @override
+  String get ag_commandRename => 'Rename this chat';
+
+  @override
+  String get ag_commandCopy => 'Copy the last reply';
+
+  @override
+  String get ag_commandExport => 'Export this session';
+
+  @override
+  String get ag_commandCompactArgs => '[instructions]';
+
+  @override
+  String get ag_commandRenameArgs => '<name>';
+
+  @override
+  String get set_agNextSuggestion => 'Next-message suggestions';
+
+  @override
+  String get set_agNextSuggestionSub =>
+      'Use the current conversation model to suggest your next message. Uses additional tokens; press Tab to accept.';
+
+  @override
+  String get set_agCacheWarming => 'Prompt cache warming';
+
+  @override
+  String get set_agCacheWarmingSub =>
+      'Keeps the model\'s prompt cache warm with a 1-token request just before it expires (5-minute lifetime, all models), so the next step reads the cache instead of resending the whole context.';
+
+  @override
+  String get set_agCacheOff => 'Off';
+
+  @override
+  String get set_agCacheStreaming => 'Only while Agent is running';
+
+  @override
+  String get set_agCacheIdle => 'Also while idle';
+
+  @override
+  String get set_agCacheIdleCost =>
+      'Warming while idle (up to 30 minutes) costs extra model usage.';
+
+  @override
+  String get ag_suggestionAccept => 'Tab to fill in this suggestion';
+
+  @override
+  String get ag_cacheWarmTitle => 'Cache warming';
+
+  @override
+  String get ag_cacheWarmOff => 'Off';
+
+  @override
+  String get ag_cacheWarmRefreshing => 'Refreshing the cache…';
+
+  @override
+  String get ag_cacheWarmIdle => 'Waiting — starts with the next run';
+
+  @override
+  String ag_cacheWarmNext(String time) {
+    return 'Next refresh in $time';
+  }
+
+  @override
+  String get set_stOther => 'Other files';
+
+  @override
+  String get set_stIncomplete =>
+      'Some folders could not be read; totals are partial. Hover a category to see its sources.';
+
+  @override
+  String get set_stSliceIncomplete => 'Partially read';
+
+  @override
+  String get localGallery_searchHistoryTitle => 'Recent searches';
+
+  @override
+  String get localGallery_searchHistoryClear => 'Clear';
+
+  @override
+  String get localGallery_searchHistoryRemove => 'Remove from history';
+
+  @override
+  String ag_cacheWarmCount(int count) {
+    return 'Warmed $count×';
+  }
+
+  @override
+  String ag_cacheWarmLast(String time) {
+    return 'last $time';
+  }
+
+  @override
+  String ag_cacheWarmTtl(int minutes) {
+    return 'cache $minutes min';
+  }
+
+  @override
+  String get set_workspaceFontScale => 'Creative text size';
+
+  @override
+  String get set_promptAutocomplete => 'Prompt autocomplete';
+
+  @override
+  String get shortcut_action_open_resource_window => 'Open resource window';
+
+  @override
+  String get set_workspaceFontScaleSub =>
+      'Text in prompt boxes, character boxes, blocks and the viewer prompt. Independent of the interface size above.';
+
+  @override
+  String get set_promptAutocompleteSub =>
+      'Suggest tags from the local library while typing in prompt and character boxes; ↑↓ to choose, Tab or Enter to accept, Esc to close.';
+
+  @override
+  String get floating_open => 'Resource windows';
+
+  @override
+  String get floating_searchGallery => 'Search (whole phrase / exact tag)';
+
+  @override
+  String get floating_searchName => 'Search by name';
+
+  @override
+  String get floating_collapse => 'Collapse to title bar';
+
+  @override
+  String get floating_expand => 'Expand';
+
+  @override
+  String get floating_empty => 'Nothing here';
+
+  @override
+  String get floating_loadFailed => 'Could not load';
+
+  @override
+  String get floating_loadMore => 'Load more';
+
+  @override
+  String set_stThumbQuotaTip(int count, String time) {
+    return '$count thumbnails · counted $time';
+  }
+
+  @override
+  String get prompt_autocompleteTitle => 'Complete';
+
+  @override
+  String get prompt_autocompleteHint =>
+      '↑↓ move · → related · ← back · Tab / Enter complete · Esc close';
+
+  @override
+  String get prompt_autocompleteHintRelated =>
+      '↑↓ move · ← back · Enter / click to add · Esc close related';
+
+  @override
+  String get resourceWindow_pin => 'Keep on top';
+
+  @override
+  String get resourceWindow_newWindow => 'Open another resource window';
+
+  @override
+  String get resourceWindow_rowHeight => 'Row height';
+
+  @override
+  String get resourceWindow_cardSize => 'Card size';
+
+  @override
+  String get resourceWindow_dragHint =>
+      'Drag onto the matching area in Generate';
+
+  @override
+  String get resourceWindow_dragHintBlocks => 'Drag into a prompt to insert';
+
+  @override
+  String get resourceWindow_keyDrag => 'Drag';
+
+  @override
+  String get resourceWindow_keyDouble => 'Double-click';
+
+  @override
+  String get resourceWindow_hintDrag => 'use in Generate';
+
+  @override
+  String get resourceWindow_hintView => 'view large';
+
+  @override
+  String get resourceWindow_hintPrimary => 'primary action';
+
+  @override
+  String get resourceWindow_connected => 'Connected to main window';
+
+  @override
+  String get resourceWindow_disconnected => 'Main window disconnected';
+
+  @override
+  String get resourceWindow_currentModelUsable =>
+      'Currently usable with this model';
+
+  @override
+  String get resourceWindow_insertPositive => 'Insert into positive prompt';
+
+  @override
+  String get resourceWindow_insertNegative => 'Insert into negative prompt';
+
+  @override
+  String get resourceWindow_errorNotFound =>
+      'This item no longer exists — the list has been refreshed';
+
+  @override
+  String get resourceWindow_errorNotReady =>
+      'The main window isn\'t ready yet — try again in a moment';
+
+  @override
+  String get resourceWindow_errorUnsupported =>
+      'The current model doesn\'t support this action';
+
+  @override
+  String get resourceWindow_errorFailed => 'Action failed';
+
+  @override
+  String get blocks_tempStandaloneExplain =>
+      ' It exists only in this prompt and is not saved to the library. Use Save as new block to keep it.';
+
+  @override
+  String blocks_tempCreatedByAgent(String time) {
+    return 'Agent created this$time.';
+  }
+
+  @override
+  String blocks_tempCreatedByYou(String time) {
+    return 'You created this$time.';
+  }
 }

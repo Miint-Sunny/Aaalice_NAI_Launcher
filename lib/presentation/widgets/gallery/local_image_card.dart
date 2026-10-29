@@ -8,14 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/cache/thumbnail_cache_service.dart';
 import '../../../core/utils/app_logger.dart';
-import '../../../core/utils/image_share_sanitizer.dart';
+import '../../services/image_clipboard_service.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../data/models/gallery/local_image_record.dart';
 import '../../../data/services/thumbnail_service.dart';
 import '../../providers/canvas_settings_provider.dart';
 import '../../providers/local_gallery_provider.dart';
-import '../../providers/share_image_settings_provider.dart';
-import '../../utils/clipboard_image.dart';
 import '../common/app_toast.dart';
 import 'gallery_nai_versions.dart';
 import '../common/studio_icons.dart';
@@ -135,16 +133,42 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
   void didUpdateWidget(LocalImageCard oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.record.path != widget.record.path) {
+    if (oldWidget.record.path != widget.record.path ||
+        oldWidget.record.modifiedAt != widget.record.modifiedAt ||
+        oldWidget.record.size != widget.record.size) {
+      final previousPath = _displayPath;
       _displayPath = null;
       _loadState = _ImageLoadState.idle;
       _failureRetryScheduled = false;
       _failureRetryTimer?.cancel();
-      unawaited(_loadThumbnail());
+      unawaited(() async {
+        if (previousPath != null) {
+          final decode = thumbnailCoverDecodeSize(
+            cardWidth: widget.width,
+            cardHeight: widget.height,
+            imageAspect: _imageAspect,
+            devicePixelRatio: _devicePixelRatio,
+            quality: _requestedQuality!,
+            tier: _requestedSize ?? _pickSizeForCurrentWidth(),
+          );
+          await ResizeImage.resizeIfNeeded(
+            decode.width,
+            decode.height,
+            FileImage(File(previousPath)),
+          ).evict();
+        }
+        if (mounted) await _loadThumbnail();
+      }());
       return;
     }
 
-    final widthChanged = oldWidget.width != widget.width;
+    final widthChanged =
+        oldWidget.width != widget.width ||
+        oldWidget.height != widget.height ||
+        oldWidget.imageWidth != widget.imageWidth ||
+        oldWidget.imageHeight != widget.imageHeight ||
+        oldWidget.record.metadata?.width != widget.record.metadata?.width ||
+        oldWidget.record.metadata?.height != widget.record.metadata?.height;
     final sizeChanged =
         widthChanged &&
         _displayPath != null &&
@@ -172,10 +196,18 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
     });
   }
 
+  double get _imageAspect {
+    final w = widget.imageWidth ?? widget.record.metadata?.width ?? 0;
+    final h = widget.imageHeight ?? widget.record.metadata?.height ?? 0;
+    return w > 0 && h > 0 ? w / h : widget.width / widget.height;
+  }
+
   ThumbnailSize _pickSizeForCurrentWidth() => resolveThumbnailTier(
     widget.width,
     _devicePixelRatio,
     ref.read(localGalleryNotifierProvider).thumbnailQuality,
+    cardHeight: widget.height,
+    imageAspect: _imageAspect,
   );
 
   Future<void> _initAndLoadThumbnail() async {
@@ -191,9 +223,16 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
 
     _isLoadingThumbnail = true;
     final path = widget.record.path;
+    final modifiedAt = widget.record.modifiedAt;
+    final fileSize = widget.record.size;
+    bool isCurrent() =>
+        mounted &&
+        widget.record.path == path &&
+        widget.record.modifiedAt == modifiedAt &&
+        widget.record.size == fileSize;
     final fileName = path.split(Platform.pathSeparator).last;
     final quality = ref.read(localGalleryNotifierProvider).thumbnailQuality;
-    final size = resolveThumbnailTier(widget.width, _devicePixelRatio, quality);
+    final size = _pickSizeForCurrentWidth();
     _requestedSize = size;
     _requestedQuality = quality;
 
@@ -206,7 +245,7 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
           '[CardLoad] Original file NOT FOUND: $path',
           'LocalImageCard',
         );
-        if (mounted) setState(() => _loadState = _ImageLoadState.error);
+        if (isCurrent()) setState(() => _loadState = _ImageLoadState.error);
         return;
       }
 
@@ -218,7 +257,7 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
       if (existingPath != null) {
         _failureRetryTimer?.cancel();
         _failureRetryScheduled = false;
-        if (mounted && widget.record.path == path) {
+        if (isCurrent()) {
           setState(() {
             _displayPath = existingPath;
             _loadState = _ImageLoadState.loaded;
@@ -241,7 +280,7 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
         priority: widget.priority,
       );
 
-      if (!mounted || widget.record.path != path) return;
+      if (!isCurrent()) return;
 
       if (generatedPath != null) {
         _failureRetryTimer?.cancel();
@@ -257,14 +296,16 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
       }
     } catch (e, stack) {
       AppLogger.e('[CardLoad] ERROR: $fileName', e, stack, 'LocalImageCard');
-      _markThumbnailFailed();
+      if (isCurrent()) _markThumbnailFailed();
     } finally {
       _isLoadingThumbnail = false;
       if (mounted) {
         final currentQuality = ref
             .read(localGalleryNotifierProvider)
             .thumbnailQuality;
-        if (currentQuality != _requestedQuality ||
+        if (!isCurrent()) {
+          unawaited(_loadThumbnail());
+        } else if (currentQuality != _requestedQuality ||
             _pickSizeForCurrentWidth() != _requestedSize) {
           _scheduleDebouncedReload();
         }
@@ -320,22 +361,7 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
         return;
       }
 
-      final stripMetadata = ref
-          .read(shareImageSettingsProvider)
-          .effectiveStripMetadataForCopyAndDrag;
-      final sourceParts = sourceFile.path.split(RegExp(r'[/\\]'));
-      final sourceName = sourceParts.isNotEmpty
-          ? sourceParts.last
-          : 'shared.png';
-      final originalBytes = await sourceFile.readAsBytes();
-      final shareImage = await ImageShareSanitizer.prepareForCopyOrDrag(
-        originalBytes,
-        fileName: sourceName,
-        stripMetadata: stripMetadata,
-      );
-
-      // 统一规范化为 PNG，避免 jpg/webp 原始字节被当成 PNG 导致粘贴失败。
-      await writeImageBytesToClipboardAsPng(shareImage.bytes);
+      await ref.read(imageClipboardServiceProvider).copyFile(sourceFile.path);
 
       if (mounted) {
         AppToast.success(context, context.l10n.gallery_copiedToClipboard);
@@ -597,12 +623,19 @@ class _LocalImageCardState extends ConsumerState<LocalImageCard> {
     GalleryThumbnailQuality quality,
   ) {
     final pixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final multiplier = quality == GalleryThumbnailQuality.hd ? 1.5 : 1.0;
+    final decode = thumbnailCoverDecodeSize(
+      cardWidth: widget.width,
+      cardHeight: widget.height,
+      imageAspect: _imageAspect,
+      devicePixelRatio: pixelRatio,
+      quality: quality,
+      tier: _requestedSize ?? _pickSizeForCurrentWidth(),
+    );
     return Image.file(
       File(imagePath),
       fit: BoxFit.cover,
-      cacheWidth: (widget.width * pixelRatio * multiplier).toInt(),
-      cacheHeight: (widget.height * pixelRatio * multiplier).toInt(),
+      cacheWidth: decode.width,
+      cacheHeight: decode.height,
       gaplessPlayback: true,
       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded || frame != null) return child;

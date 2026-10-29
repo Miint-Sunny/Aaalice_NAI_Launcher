@@ -14,6 +14,7 @@ import '../providers/prompt_block_library_provider.dart';
 import '../ui/blocks/blocks_contract.dart';
 import '../ui/blocks/blocks_instance.dart';
 import '../utils/prompt_block_instance_bundle.dart';
+import '../utils/prompt_block_instance_display.dart';
 import 'blocks_actions.dart';
 import 'blocks_generation_target.dart';
 import 'blocks_mapping.dart';
@@ -34,9 +35,11 @@ class BlockInstanceWiring extends ConsumerWidget {
     required this.marker,
     required this.onDismiss,
     this.allowEvolutionToggle = false,
+    this.occurrence = 0,
   });
   final String scope;
   final String marker;
+  final int occurrence;
   final VoidCallback onDismiss;
   final bool allowEvolutionToggle;
 
@@ -61,13 +64,9 @@ class BlockInstanceWiring extends ConsumerWidget {
     final atoms = instance.useNegativeContent
         ? block?.negativeAtomsOrSplit ?? <String>[]
         : block?.atomsOrSplit ?? <String>[];
-    final send = !instance.enabled || block == null
-        ? ''
-        : instance.settings.hasRoll
-        ? instance.currentRoll ?? ''
-        : instance.useNegativeContent
-        ? block.negativeContent
-        : block.content;
+    final send = ref
+        .read(pillWorkspaceProvider(scope).notifier)
+        .projectionForMarker(marker);
     final index = atoms.isEmpty
         ? 0
         : (instance.sequenceCursor -
@@ -103,22 +102,70 @@ class BlockInstanceWiring extends ConsumerWidget {
       }
     }
 
-    final missing = PromptBlock.create(
-      id: instance.blockId,
-      title: context.l10n.blocks_missing,
-      content: '',
-    );
+    final standalone = isStandaloneTemp(instance);
+    final missing = standalone
+        ? standaloneTempBlock(instance, context.l10n.blocks_tempLabel)
+        : PromptBlock.create(
+            id: instance.blockId,
+            title: context.l10n.blocks_missing,
+            content: '',
+          );
+    Future<void> expand([String? content, String? negative]) =>
+        host.run(() async {
+          final applied = await ref
+              .read(blocksGenerationTargetProvider)
+              .commit(
+                () => ref
+                    .read(pillWorkspaceProvider(scope).notifier)
+                    .expandMarker(
+                      marker,
+                      occurrence: occurrence,
+                      tempContent: content,
+                      tempNegativeContent: negative,
+                    ),
+                alive: () => context.mounted,
+                unchanged: current,
+              );
+          if (applied && context.mounted) onDismiss();
+        });
     return Material(
       type: MaterialType.transparency,
       child: BlockInstanceCard(
         data: BlockInstanceViewData(
-          block: blockDataOf(block ?? missing, library),
-          settings: toBlockRollSettings(settings),
+          block: blockDataOf(
+            instance.temporary
+                ? (block ?? missing).copyWith(
+                    content: instance.temp!.content,
+                    atoms: null,
+                    negativeContent: instance.temp!.negativeContent ?? '',
+                    negativeAtoms: null,
+                  )
+                : block ?? missing,
+            library,
+          ),
+          settings: toBlockRollSettings(
+            instance.temporary ? PillInstanceSettings.fixedDefault : settings,
+          ),
+          temporary: instance.temporary,
+          standalone: standalone,
+          tempContent: instance.temp?.content,
+          tempNegativeContent: instance.temp?.negativeContent,
+          tempTranslations: instance.temp?.translations ?? const [],
+          tempNegativeTranslations:
+              instance.temp?.negativeTranslations ?? const [],
+          originalContent: instance.temp?.originalContent,
+          originalNegativeContent: instance.temp?.originalNegativeContent,
+          editedAt: instance.temp?.editedAt,
+          editedBy: instance.temp?.editedBy,
+          folders: instance.temporary
+              ? blockFoldersOf(library, const {})
+              : const [],
           locked: source.instance.locked,
           enabled: instance.enabled,
           drawn: blockDrawnOf(send),
           send: send,
           skipped:
+              !instance.temporary &&
               instance.settings.hasRoll &&
               instance.currentRoll == '' &&
               instance.enabled,
@@ -136,10 +183,65 @@ class BlockInstanceWiring extends ConsumerWidget {
           evolution: allowEvolutionToggle
               ? source.instance.evolutionEnabled
               : null,
-          missing: block == null,
-          catalog: blocksParamCatalog,
+          missing: block == null && !standalone,
+          catalog: blocksParamCatalogWithReader(ref.read),
         ),
         actions: BlockInstanceActions(
+          onEditTempContent: (content, negative) => host.run(() async {
+            await ref
+                .read(blocksGenerationTargetProvider)
+                .commit(
+                  () {
+                    ref
+                        .read(pillWorkspaceProvider(scope).notifier)
+                        .editTempContent(
+                          marker,
+                          content,
+                          negative,
+                          occurrence: occurrence,
+                        );
+                  },
+                  alive: () => context.mounted,
+                  unchanged: current,
+                );
+            if (context.mounted) onDismiss();
+          }),
+          onRevertTemp: !instance.temporary || standalone
+              ? null
+              : () => host.run(() async {
+                  await ref
+                      .read(blocksGenerationTargetProvider)
+                      .commit(
+                        () {
+                          ref
+                              .read(pillWorkspaceProvider(scope).notifier)
+                              .revertTemp(marker);
+                        },
+                        alive: () => context.mounted,
+                        unchanged: current,
+                      );
+                }),
+          onSaveTempAsNewBlock: !instance.temporary
+              ? null
+              : (title, folderId) => host.run(() async {
+                  final notifier = ref.read(
+                    pillWorkspaceProvider(scope).notifier,
+                  );
+                  final allowed = await ref
+                      .read(blocksGenerationTargetProvider)
+                      .commit(
+                        () {},
+                        alive: () => context.mounted,
+                        unchanged: current,
+                      );
+                  if (allowed) {
+                    await notifier.saveTempAsNewBlock(
+                      marker,
+                      title: title,
+                      folderId: folderId,
+                    );
+                  }
+                }),
           onReroll: () {
             if (current()) rollPromptBlockBundle(ref, scope, marker);
           },
@@ -217,6 +319,8 @@ class BlockInstanceWiring extends ConsumerWidget {
           onEditBlock: () {
             if (block != null) host.edit(id: block.id);
           },
+          onExpand: expand,
+          onExpandTempContent: expand,
           onRemove: () {
             if (current()) {
               removePromptBlockBundle(ref, scope, marker);

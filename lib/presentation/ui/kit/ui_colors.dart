@@ -39,6 +39,10 @@ class UiColors {
     required this.warn,
     required this.warnBg,
     required this.star,
+    required this.weightTop,
+    required this.weightTopInk,
+    required this.weightBottom,
+    required this.weightBottomInk,
     required this.weightUp,
     required this.weightUpInk,
     required this.weightDown,
@@ -90,6 +94,11 @@ class UiColors {
       warn: dark ? const Color(0xFFF1A10D) : const Color(0xFFB86E00),
       warnBg: dark ? const Color(0xFF2A2110) : const Color(0xFFFFF6E5),
       star: dark ? const Color(0xFFFFB224) : const Color(0xFFF5A400),
+      // 权重五档 + 负（B08）：字色 + 浅底；编辑器与大图共用。
+      weightTop: dark ? const Color(0xFF4A260C) : const Color(0xFFFFE0C7),
+      weightTopInk: dark ? const Color(0xFFFF8B42) : const Color(0xFFC2410C),
+      weightBottom: dark ? const Color(0xFF2B1F4F) : const Color(0xFFEFE7FF),
+      weightBottomInk: dark ? const Color(0xFFB79CFF) : const Color(0xFF6D28D9),
       weightUp: dark ? const Color(0xFF3A2A10) : const Color(0xFFFFF1DC),
       weightUpInk: dark ? const Color(0xFFFFB547) : const Color(0xFFA85B00),
       weightDown: dark ? const Color(0xFF10264A) : const Color(0xFFE6F0FF),
@@ -196,6 +205,10 @@ class UiColors {
   final Color star;
 
   /// 提示词权重高亮（大图信息栏）：权重大于 1 暖色、小于 1 冷色、负数红色；底色 + 权重数字色。
+  final Color weightTop;
+  final Color weightTopInk;
+  final Color weightBottom;
+  final Color weightBottomInk;
   final Color weightUp;
   final Color weightUpInk;
   final Color weightDown;
@@ -214,4 +227,18 @@ class UiColors {
 
 extension UiColorsContext on BuildContext {
   UiColors get ui => UiColors.of(this);
+}
+
+/// 可框选文字的行内底色：半透明色叠在 [base] 上与不透明的 [target] 看起来一样。
+/// Flutter 的段落先画选区、再画带 `background` 的文字，不透明底色会盖住选区，
+/// 框选时像“穿过”了这些词（10-24 反馈）；按 [alpha] 透出选区。
+Color uiSelectableTint(Color target, Color base, [double alpha = .35]) {
+  int ch(double t, double b) =>
+      ((t - (1 - alpha) * b) / alpha * 255).round().clamp(0, 255);
+  return Color.fromARGB(
+    (alpha * 255).round(),
+    ch(target.r, base.r),
+    ch(target.g, base.g),
+    ch(target.b, base.b),
+  );
 }

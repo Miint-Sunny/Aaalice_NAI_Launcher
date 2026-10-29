@@ -15,6 +15,7 @@ import '../kit/ui_text.dart';
 import 'blocks_contract.dart';
 import 'blocks_format.dart';
 import 'blocks_parts.dart';
+import 'blocks_temp_card.dart';
 
 /// 点开药丸的实例卡（宽 348）。“调整”进抽取规则面板（宽 452），同一个浮层里切换，点“完成”才写回。
 ///
@@ -45,6 +46,13 @@ class _BlockInstanceCardState extends State<BlockInstanceCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.data.temporary) {
+      return BlockTempCard(
+        key: const Key('block-temp-card'),
+        data: widget.data,
+        actions: widget.actions,
+      );
+    }
     final reduce = MediaQuery.disableAnimationsOf(context);
     return AnimatedSwitcher(
       duration: reduce ? Duration.zero : const Duration(milliseconds: 180),
@@ -112,6 +120,13 @@ class _CardState extends State<_Card> {
         label: l10n.blocks_copySend,
         onTap: a.onCopySend,
       ),
+      if (a.onExpand != null)
+        UiMenuItem(
+          key: const Key('block-card-expand'),
+          glyph: UiGlyphs.unfold,
+          label: l10n.blocks_expandToText,
+          onTap: a.onExpand!,
+        ),
       UiMenuItem(
         glyph: UiGlyphs.trash,
         label: l10n.blocks_removeInstance,
@@ -219,7 +234,9 @@ class _CardState extends State<_Card> {
             ),
           );
 
-    final pool = b.atoms.length;
+    final pool = b.primaryAtoms.length;
+    // 纯负面块没有正面页，固定模式直接显示负面内容。
+    final showNegative = _negative || b.atoms.isEmpty;
     final body = <Widget>[
       if (s.mode != BlockMode.fixed)
         Row(
@@ -249,7 +266,7 @@ class _CardState extends State<_Card> {
         BlockLabel(
           l10n.blocks_content,
           count: l10n.blocks_items(
-            _negative ? b.negativeAtoms.length : b.atoms.length,
+            showNegative ? b.negativeAtoms.length : b.atoms.length,
           ),
           trailing: b.hasNegative && b.atoms.isNotEmpty
               ? BlockSeg<bool>(
@@ -265,7 +282,7 @@ class _CardState extends State<_Card> {
               : null,
         ),
         BlockAtoms(
-          _negative ? b.negativeAtoms : b.atoms,
+          showNegative ? b.negativeAtoms : b.atoms,
           mono: true,
           fontSize: 11,
           max: 24,
@@ -564,11 +581,12 @@ class _CardState extends State<_Card> {
     final c = context.ui;
     final l10n = context.l10n;
     final col = d.block.color;
-    final total = math.max(1, d.block.atoms.length);
+    final atoms = d.block.primaryAtoms;
+    final total = math.max(1, atoms.length);
     final cur = d.seqIndex.clamp(0, total - 1);
     final current = d.drawn.isNotEmpty
         ? d.drawn
-        : [BlockDrawn(d.block.atoms.isEmpty ? '' : d.block.atoms[cur])];
+        : [BlockDrawn(atoms.isEmpty ? '' : atoms[cur])];
     Widget step(String glyph, int delta, Key key, String tip) => UiPressable(
       key: key,
       onTap: () => a.onStep(delta),
@@ -907,7 +925,7 @@ class _RulesPanelState extends State<_RulesPanel> {
     final l10n = context.l10n;
     final b = widget.data.block;
     final s = _s;
-    final pool = b.atoms.length;
+    final pool = b.primaryAtoms.length;
 
     Widget section(List<Widget> children, {Color? color, Key? key}) =>
         Container(
@@ -1629,7 +1647,11 @@ class _WeightRangeState extends State<_WeightRange> {
             padding: const EdgeInsets.only(bottom: 10),
             child: CustomPaint(
               size: Size(w, 30),
-              painter: _RangePainter(widget.settings, c),
+              painter: _RangePainter(
+                widget.settings,
+                c,
+                MediaQuery.textScalerOf(context),
+              ),
             ),
           ),
         );
@@ -1639,9 +1661,10 @@ class _WeightRangeState extends State<_WeightRange> {
 }
 
 class _RangePainter extends CustomPainter {
-  _RangePainter(this.s, this.c);
+  _RangePainter(this.s, this.c, this.textScaler);
   final BlockRollSettings s;
   final UiColors c;
+  final TextScaler textScaler;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1694,11 +1717,14 @@ class _RangePainter extends CustomPainter {
           style: UiText.mono(10, color: c.faint, height: 1.2),
         ),
         textDirection: TextDirection.ltr,
+        textScaler: textScaler,
       )..layout();
       tp.paint(canvas, Offset(x(t.toDouble()) - tp.width / 2, 18));
+      tp.dispose();
     }
   }
 
   @override
-  bool shouldRepaint(_RangePainter old) => old.s != s || old.c != c;
+  bool shouldRepaint(_RangePainter old) =>
+      old.s != s || old.c != c || old.textScaler != textScaler;
 }

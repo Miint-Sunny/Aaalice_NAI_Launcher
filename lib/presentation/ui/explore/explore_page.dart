@@ -198,6 +198,7 @@ class _StyleExplorePageState extends State<StyleExplorePage>
   String? _dialogId;
 
   String? _detailKey;
+  var _detailHistory = false;
   var _detailIndex = 0;
   Timer? _undoTimer;
   bool? _captionOver;
@@ -215,6 +216,7 @@ class _StyleExplorePageState extends State<StyleExplorePage>
   @override
   void didUpdateWidget(covariant StyleExplorePage old) {
     super.didUpdateWidget(old);
+    final hadDetail = _detailKey != null;
     if (old.data.editorWidth != _data.editorWidth) _committedWidth = null;
     final run = _run;
     if (old.data.run?.id != run?.id) {
@@ -257,6 +259,11 @@ class _StyleExplorePageState extends State<StyleExplorePage>
       _detailKey = list.isEmpty
           ? null
           : list[_detailIndex.clamp(0, list.length - 1)];
+    }
+    if (hadDetail && _detailKey == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _detailKey == null) _closeDetail();
+      });
     }
     _syncUndo(old.data.undo);
   }
@@ -410,9 +417,22 @@ class _StyleExplorePageState extends State<StyleExplorePage>
   // ---------- 弹层 / 弹窗 / 大图 ----------
 
   List<String> get _detailList {
-    final source = _tab == ExploreTab.evolution ? _kidKeys : visibleKeys;
+    final List<String> source;
+    if (_tab == ExploreTab.candidates) {
+      source = visibleKeys;
+    } else if (_detailHistory) {
+      source = [
+        for (final generation
+            in _activeLine?.generations ?? <ExploreGeneration>[]) ...[
+          for (final parent in generation.parents) ?parent.candidateKey,
+          ...generation.childKeys,
+        ],
+      ];
+    } else {
+      source = _kidKeys;
+    }
     return [
-      for (final k in source)
+      for (final k in source.toSet())
         if (_isDone(k)) k,
     ];
   }
@@ -423,6 +443,7 @@ class _StyleExplorePageState extends State<StyleExplorePage>
     setState(() {
       _focus = key;
       _detailKey = key;
+      _detailHistory = _tab == ExploreTab.evolution && !_kidKeys.contains(key);
       _detailIndex = _detailList.indexOf(key);
       _popAnchor = null;
     });
@@ -430,6 +451,7 @@ class _StyleExplorePageState extends State<StyleExplorePage>
 
   void _closeDetail() {
     setState(() => _detailKey = null);
+    if (_data.fullscreen) _actions.onFullscreenChanged(false);
     _reportCaption(false);
     _focusNode.requestFocus();
   }

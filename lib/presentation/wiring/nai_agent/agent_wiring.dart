@@ -34,6 +34,7 @@ import '../../providers/nai_agent/nai_agent_model_provider.dart';
 import '../../providers/nai_agent/nai_agent_questions.dart';
 import '../../providers/nai_agent/nai_agent_quick_messages.dart';
 import '../../providers/nai_agent/nai_agent_skills_provider.dart';
+import '../../providers/nai_agent/nai_agent_commands_provider.dart';
 import '../../providers/nai_agent/nai_agent_window_controller.dart';
 import '../../providers/nai_agent/nai_agent_workspace_controller.dart';
 import '../../providers/nai_agent/nai_agent_workspace_provider.dart';
@@ -64,6 +65,10 @@ import 'agent_quick.dart';
 import 'agent_pending_mapper.dart';
 import 'agent_resources.dart';
 import 'agent_thread_mapper.dart';
+import 'agent_history_mapper.dart';
+import '../../../core/nai_agent/prompt_set_tools.dart';
+import 'agent_prompt_set_actions.dart';
+import 'agent_prompt_set_mapper.dart';
 
 /// The only provider-aware adapter for the sidebar. The controller and Dart
 /// paid gates retain ownership; AgentPanel receives read-only projections.
@@ -81,6 +86,119 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
   var _revision = 0;
   AgentThreadMapping? _mapping;
   final _recentImages = <String, AgentImage>{};
+  final _promptImports = <String, AgentPromptSetImport>{};
+  final _promptBusy = <String, int>{};
+  final _promptTokens = <NaiAgentCancellation>{};
+  String? _promptOwner;
+
+  String _promptKey(AgentChatRuntime r, String id) =>
+      '${r.workspace.id}/${r.chat.id}/$id';
+
+  Future<bool> _promptAction(
+    AgentChatRuntime r,
+    String id,
+    int index,
+    AgentPromptSetAction action,
+  ) async {
+    final key = _promptKey(r, id);
+    final service = ref.read(agentPromptSetActionsProvider);
+    void toast(String text) {
+      if (mounted) AppToast.info(context, text);
+    }
+
+    if (action == AgentPromptSetAction.undo) {
+      final entry = _promptImports[key];
+      if (entry == null) return false;
+      final ok = await ref
+          .read(agentDiffUndoProvider)
+          .restoreAll(entry.restores, r.workspace.agentDirectory);
+      if (ok) {
+        _promptImports.remove(key);
+        if (mounted) setState(() => _revision++);
+      }
+      return ok;
+    }
+    if (_promptBusy.containsKey(key)) return false;
+    final set = await NaiAgentPromptSets(r.workspace.agentDirectory).read(id);
+    if (!mounted ||
+        !identical(controller.selected, r) ||
+        set == null ||
+        index >= (set['items'] as List).length) {
+      return false;
+    }
+    if (_promptBusy.containsKey(key)) return false;
+    switch (action) {
+      case AgentPromptSetAction.import:
+      case AgentPromptSetAction.generate:
+        final token = NaiAgentCancellation();
+        _promptTokens.add(token);
+        setState(() => _promptBusy[key] = index);
+        try {
+          final imported = await service.importItem(
+            r.workspace,
+            set,
+            index,
+            toast,
+            check: token.check,
+          );
+          if (imported == null) return false;
+          _promptImports[key] = imported;
+          if (mounted) setState(() => _revision++);
+          if (action == AgentPromptSetAction.generate) {
+            token.check();
+            await ref.read(promptBlockLibraryNotifierProvider.future);
+            final generation = ref.read(
+              agentPromptSetGenerationProvider((
+                r.workspace.directory.path,
+                r.workspace.id,
+                r.chat.id,
+              )),
+            );
+            final response = await generation.requestUserGeneration(token);
+            if (agentMap(response['details'])['status'] == 'cancelled' &&
+                mounted) {
+              toast(context.l10n.ag_cancel);
+            }
+            await recordAgentPromptSetImages(
+              workspace: r.workspace,
+              setId: id,
+              index: index,
+              result: agentMap(response['details']),
+              check: token.check,
+            );
+            _resources.refreshPromptSets();
+          }
+          return true;
+        } on NaiAgentToolError catch (error) {
+          if (mounted) AppToast.error(context, error.message);
+          return true; // Already presented the native generation error.
+        } finally {
+          _promptTokens.remove(token);
+          _promptBusy.remove(key);
+          if (mounted) setState(() => _revision++);
+        }
+      case AgentPromptSetAction.saveBlock:
+        await service.saveBlock(set);
+        if (!mounted) return true;
+        toast(
+          context.l10n.ag_psSavedBlock(
+            set['title'] as String,
+            (set['items'] as List).length,
+          ),
+        );
+        return true;
+      case AgentPromptSetAction.copyItem:
+      case AgentPromptSetAction.copyAll:
+        await service.copy(
+          set,
+          action == AgentPromptSetAction.copyItem ? index : null,
+        );
+        if (mounted) toast(context.l10n.ag_copied);
+        return true;
+      case AgentPromptSetAction.undo:
+        return false;
+    }
+  }
 
   void _resourceChanged() {
     if (mounted) setState(() => _revision++);
@@ -109,6 +227,9 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    for (final token in _promptTokens) {
+      token.cancel();
+    }
     _resources.dispose();
     super.dispose();
   }
@@ -176,10 +297,34 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
           // Native clipboard failure must not swallow ordinary text.
         }
         controller.checkImageImportTarget(target);
+        final fileReaders = readers.where((r) => r.canProvide(Formats.fileUri));
+        final paths = <String>{};
+        for (final reader in fileReaders) {
+          paths.add((await readAgentFileUri(reader)).toFilePath());
+        }
+        controller.checkImageImportTarget(target);
+        final textPaths = paths
+            .where((path) => !isAgentImagePath(path))
+            .toList();
+        // A file list may also advertise a synthesized bitmap. Import the files
+        // only, just as a single reader prefers its URI over its bitmap.
         final report = await importAgentImageSources(controller, target, [
-          for (final reader in readers)
-            () => readAgentImage(reader, clipboard: true),
+          if (paths.isNotEmpty)
+            for (final path in paths.where(isAgentImagePath))
+              () => readAgentImageFile(path)
+          else
+            for (final reader in readers.where(
+              (reader) =>
+                  agentImageReadFormats.any(reader.canProvide) ||
+                  reader.rawReader != null,
+            ))
+              () => readAgentImage(reader, clipboard: true),
         ]);
+        if (textPaths.isNotEmpty) {
+          if (!mounted || !identical(controller.selected, target)) return null;
+          presentAgentImageImport(context, report);
+          return textPaths.join('\n');
+        }
         if (report.added > 0 || report.failures.isNotEmpty) {
           if (mounted && identical(controller.selected, target)) {
             presentAgentImageImport(context, report);
@@ -275,6 +420,25 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
               : null;
         },
       ).perform(_mapping?.images[id] ?? _recentImages[id], action);
+
+  Future<bool> _slashAction(String name) async {
+    if (name == 'export') return _export();
+    if (name == 'copy') {
+      final runtime = ref.read(naiAgentControllerProvider).selected;
+      final message = runtime?.messages
+          .where((m) => m['role'] == 'assistant')
+          .lastOrNull;
+      if (message == null) return false;
+      final text = agentMaps(message['content'])
+          .where((p) => p['type'] == 'text')
+          .map((p) => p['text'] as String)
+          .join('');
+      if (text.isEmpty) return false;
+      await Clipboard.setData(ClipboardData(text: text));
+      return true;
+    }
+    return false;
+  }
 
   Future<bool> _export() async {
     final runtime = controller.selected;
@@ -373,6 +537,31 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
   Widget build(BuildContext context) {
     final c = ref.watch(naiAgentControllerProvider), r = c.selected;
     final l = context.l10n;
+    final ownerKey = r == null ? null : '${r.workspace.id}/${r.chat.id}';
+    if (_promptOwner != ownerKey) {
+      for (final token in _promptTokens) {
+        token.cancel();
+      }
+      _promptOwner = ownerKey;
+    }
+    int? promptPrice;
+    if (r != null && ref.exists(generationParamsNotifierProvider)) {
+      final generation = ref.watch(
+        agentPromptSetGenerationProvider((
+          r.workspace.directory.path,
+          r.workspace.id,
+          r.chat.id,
+        )),
+      );
+      try {
+        promptPrice = generation.readInput({
+          'requests': 1,
+          'images_per_request': 1,
+        }).estimate;
+      } catch (_) {
+        /* Unknown quote: no price pill. */
+      }
+    }
     final questions = ref.watch(naiAgentQuestionsProvider);
     final generations = ref.watch(naiAgentGenerationApprovalsProvider);
     final imageApprovals = ref.watch(naiAgentImageApprovalsProvider);
@@ -405,7 +594,10 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
     final efforts = provider == null || model == null
         ? <String>[]
         : naiAgentReasoningEfforts(provider, model);
-    final blocked = model == null
+    final localCommand = NaiAgentWorkspaceController.isBuiltinSlashCommand(
+      r?.composer.text ?? '',
+    );
+    final blocked = model == null && !localCommand
         ? AgentSendBlock.noModel
         : r?.starting == true
         ? AgentSendBlock.starting
@@ -446,6 +638,52 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
             draftVersion: version,
             waitingUser: pending.isNotEmpty,
             preferences: ref.watch(agentPreferencesProvider),
+            promptSetView: (value, images) {
+              final id = value['set_id'] as String;
+              final imported = _promptImports[_promptKey(r, id)];
+              return agentPromptSetData(
+                value,
+                r.workspace,
+                _resources,
+                images,
+                unitAnlas: promptPrice,
+                aspect:
+                    draft?.width != null &&
+                        draft?.height != null &&
+                        draft!.height! > 0
+                    ? draft.width! / draft.height!
+                    : null,
+                importedIndex: imported?.index,
+                canUndoImport: imported != null && imported.version == version,
+                busyIndex: _promptBusy[_promptKey(r, id)],
+              );
+            },
+          );
+    final historyMessages = r?.historyMessages ?? <Map<String, dynamic>>[];
+    final archive = r == null || historyMessages.isEmpty
+        ? null
+        : _mapper.map(
+            r,
+            historyMessages: [
+              for (final old in historyMessages)
+                r.messages
+                        .where(
+                          (m) =>
+                              m['role'] == old['role'] &&
+                              m['timestamp'] == old['timestamp'],
+                        )
+                        .firstOrNull ??
+                    old,
+              ...r.messages.where(
+                (m) => !historyMessages.any(
+                  (old) => m['role'] == 'compactionSummary'
+                      ? old['role'] == m['role'] &&
+                            old['summary'] == m['summary']
+                      : old['role'] == m['role'] &&
+                            old['timestamp'] == m['timestamp'],
+                ),
+              ),
+            ],
           );
     _mapping = mapping;
     final recent = <String, AgentImage>{};
@@ -501,6 +739,11 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
     final skills = r == null
         ? null
         : ref.watch(naiAgentSkillsProvider(r.workspace.id)).valueOrNull;
+    final templates = r == null
+        ? <Map<String, dynamic>>[]
+        : r.client != null
+        ? r.commands
+        : ref.watch(naiAgentCommandsProvider(r.workspace.id)).valueOrNull ?? [];
     final active =
         skills?.skills
             .where(
@@ -557,7 +800,12 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
           AgentWorkspaceInfo(id: w.id, name: w.name),
       ],
       chats: c.chats.map(chatInfo).toList(),
+      localAction: AgentLocalAction.values
+          .where((a) => a.name == r?.localAction)
+          .firstOrNull,
+      localActionRevision: r?.localActionRevision ?? 0,
       composer: AgentComposerData(
+        suggestion: r?.composer.text.isEmpty == true ? r?.suggestion : null,
         text: r?.composer.text ?? '',
         attachments: [
           if (r != null)
@@ -591,11 +839,15 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
             r != null &&
             (r.composer.text.trim().isNotEmpty ||
                 r.composer.attachments.isNotEmpty),
-        importing: r?.importingImages ?? 0,
+        importing: r?.pendingImageCount ?? 0,
         canAttachCanvas: _selectedImage()?.canDrag == true,
         enterSends: c.settings.enterToSend,
       ),
       thread: mapping?.turns ?? [],
+      history: agentHistoryEntries(
+        mapping?.turns ?? [],
+        archive: archive?.turns ?? [],
+      ),
       shelf: mapping?.shelf ?? const AgentShelfData(),
       memory: AgentMemoryData(
         globalInstructions: c.settings.globalInstructions,
@@ -616,6 +868,7 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
         assistantMessages: agentInt(r?.stats['assistantMessages']),
         toolCalls: agentInt(r?.stats['toolCalls']),
         anlas: mapping?.estimatedAnlas,
+        cacheWarming: AgentCacheWarmingData.fromJson(r?.cacheWarming ?? {}),
       ),
       models: [
         for (final p in config.providers.where((p) => p.enabled))
@@ -656,6 +909,64 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
         for (final s in skillOptions)
           AgentSkillOption(name: s.name, description: s.displayDescription(l)),
       ],
+      slashCommands: [
+        for (final s in skillOptions)
+          AgentSlashCommand(
+            kind: AgentSlashCommandKind.skill,
+            name: s.name,
+            description: s.displayDescription(l),
+          ),
+        for (final t in templates)
+          AgentSlashCommand(
+            kind: AgentSlashCommandKind.template,
+            name: t['name'] as String,
+            description: t['description'] as String,
+            argumentHint: t['argumentHint'] as String?,
+            source: t['source'] as String?,
+          ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'new',
+          description: l.ag_commandNew,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'compact',
+          description: l.ag_commandCompact,
+          argumentHint: l.ag_commandCompactArgs,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'model',
+          description: l.ag_commandModel,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'thinking',
+          description: l.ag_commandThinking,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'history',
+          description: l.ag_commandHistory,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'rename',
+          description: l.ag_commandRename,
+          argumentHint: l.ag_commandRenameArgs,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'copy',
+          description: l.ag_commandCopy,
+        ),
+        AgentSlashCommand(
+          kind: AgentSlashCommandKind.builtin,
+          name: 'export',
+          description: l.ag_commandExport,
+        ),
+      ],
       draft: draft,
       status: r?.starting == true
           ? AgentRunStatus.starting
@@ -690,6 +1001,8 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
       ),
     );
     final actions = AgentActions(
+      onPromptSetAction: (id, index, action) async =>
+          r != null && await _promptAction(r, id, index, action),
       onClose: () =>
           _background(ref.read(naiAgentWindowControllerProvider).close),
       onNewChat: () => _run(c.createChat),
@@ -758,7 +1071,7 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
           });
         }
       },
-      onCompact: () => _run(c.compact),
+      onCompact: () => _run(() => c.compact()),
       onExport: _export,
       onOpenSettings: _settings,
       onOpenSettingAt: (section, anchor) => context.go(
@@ -767,10 +1080,29 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
           queryParameters: {'section': section, 'anchor': anchor},
         ).toString(),
       ),
+      onSelectSlashCommand: (command) async {
+        if (command.executesOnSelect) {
+          return _run(
+            () => c.sendSlashCommand(
+              '/${command.name}',
+              clearComposer: true,
+              onAction: _slashAction,
+            ),
+          );
+        }
+        return _run(() => c.saveComposer(command.insertion));
+      },
+      onAcceptSuggestion: () => _run(c.acceptSuggestion),
       onComposerChanged: (text) => _background(() => c.saveComposer(text)),
-      onSend: ({required steer}) => data.composer.canSend
-          ? _run(() => c.send(steer: steer))
-          : Future.value(false),
+      onSend: ({required steer}) async {
+        if (!data.composer.canSend) return false;
+        final text = c.selected?.composer.text ?? '';
+        if (NaiAgentWorkspaceController.isBuiltinSlashCommand(text)) {
+          return await c.sendSlashCommand(text, onAction: _slashAction) ??
+              false;
+        }
+        return _run(() => c.send(steer: steer));
+      },
       onContinue: () async {
         try {
           return await c.sendText(context.l10n.ag_continueMessage);

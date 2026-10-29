@@ -11,6 +11,7 @@ import 'agent_resources.dart';
 import 'agent_settings_card.dart';
 import 'agent_gallery_card.dart';
 import 'agent_tag_hits.dart';
+import 'agent_prompt_set_mapper.dart';
 
 Map<String, dynamic> agentMap(Object? value) =>
     value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
@@ -208,10 +209,14 @@ class AgentThreadMapper {
 
   AgentThreadMapping map(
     AgentChatRuntime runtime, {
+    List<Map<String, dynamic>>? historyMessages,
     String? draftVersion,
     bool waitingUser = false,
     Map<String, Object?>? preferences,
+    AgentPromptSet Function(Map<String, dynamic>, Map<String, AgentImage>)?
+    promptSetView,
   }) {
+    final messages = historyMessages ?? runtime.messages;
     final turns = <AgentTurn>[];
     final images = <String, AgentImage>{};
     final files = <String, String>{};
@@ -227,7 +232,7 @@ class AgentThreadMapper {
     int? userTimestamp, assistantTimestamp, inputTokens, outputTokens;
     var toolCalls = 0;
     final results = {
-      for (final m in runtime.messages)
+      for (final m in messages)
         if (m['role'] == 'toolResult') m['toolCallId']: m,
     };
 
@@ -329,8 +334,8 @@ class AgentThreadMapper {
       shelfFiles.add(AgentFile(id: id, name: path, bytes: bytes ?? info.$2));
     }
 
-    for (var mi = 0; mi < runtime.messages.length; mi++) {
-      final message = runtime.messages[mi];
+    for (var mi = 0; mi < messages.length; mi++) {
+      final message = messages[mi];
       if (message['role'] == 'compactionSummary') {
         flushSteps();
         final divider = AgentCompactionBlock(
@@ -402,7 +407,7 @@ class AgentThreadMapper {
                 {'type': 'text', 'text': message['content']},
               ]
             : agentMaps(message['content']);
-        final streaming = runtime.running && mi == runtime.messages.length - 1;
+        final streaming = runtime.running && mi == messages.length - 1;
         for (final (pi, part) in parts.indexed) {
           if (part['type'] == 'thinking') {
             final text = (part['thinking'] as String? ?? '').trim();
@@ -454,6 +459,41 @@ class AgentThreadMapper {
                 : waitingUser
                 ? AgentStepStatus.waitingUser
                 : AgentStepStatus.running;
+            if (tool == 'ask_user' &&
+                done &&
+                !failed &&
+                details['status'] == 'answered') {
+              flushSteps();
+              final questions = agentMaps(args['questions']);
+              blocks.add(
+                AgentAnsweredQuestionsBlock(
+                  at: agentInt(results[id]?['timestamp']) != null
+                      ? DateTime.fromMillisecondsSinceEpoch(
+                          agentInt(results[id]?['timestamp'])!,
+                        ).toLocal()
+                      : at,
+                  questions: [
+                    for (final answer in agentMaps(details['answers']))
+                      AgentAnsweredQuestion(
+                        question: answer['question'] as String,
+                        answer: answer['answer'] as String,
+                        kind:
+                            questions.any(
+                              (q) =>
+                                  q['id'] == answer['id'] &&
+                                  (q['options'] as List? ?? []).contains(
+                                    answer['answer'],
+                                  ),
+                            )
+                            ? AgentAnswerKind.option
+                            : AgentAnswerKind.free,
+                        optionLabel: answer['answer'] as String,
+                      ),
+                  ],
+                ),
+              );
+              continue;
+            }
             final nested = agentMaps(
               agentMap(
                     value['nestedCalls'] ??
@@ -518,6 +558,36 @@ class AgentThreadMapper {
                 details['studio_results'],
               ).where((projection) => projection['tool_call_id'] is! String),
             ];
+            for (final projection in [
+              if (tool == 'prompt_set' && args['action'] != 'read') details,
+              ...projections.where(
+                (p) =>
+                    agentToolName(p['tool'] as String? ?? '') == 'prompt_set',
+              ),
+            ]) {
+              if (!done ||
+                  (tool == 'prompt_set' && failed) ||
+                  agentMap(projection['arguments'])['action'] == 'read' ||
+                  projection['items'] is List ||
+                  projection['ok'] == false ||
+                  projection['set_id'] is! String ||
+                  projection['count'] is! int) {
+                continue;
+              }
+              flushSteps();
+              final setId = projection['set_id'] as String;
+              final revision = agentInt(projection['revision']) ?? 1;
+
+              blocks.add(
+                AgentPromptSetBlock(
+                  setId: setId,
+                  revision: revision,
+                  changedItems: (projection['changed_items'] as List? ?? [])
+                      .whereType<int>()
+                      .toList(),
+                ),
+              );
+            }
             final resultImages = [
               for (final (index, imagePart) in agentMaps(
                 value['content'],
@@ -919,8 +989,63 @@ class AgentThreadMapper {
         ),
       );
     }
+    // Whole-chat post-pass: highest revision wins; ties keep only the latest call.
+    final latest = <String, AgentPromptSetBlock>{};
+    for (final turn in turns) {
+      for (final block in turn.reply?.blocks ?? <AgentBlock>[]) {
+        if (block is AgentPromptSetBlock &&
+            block.revision >= (latest[block.setId]?.revision ?? 0)) {
+          latest[block.setId] = block;
+        }
+      }
+    }
+    AgentBlock loadSet(AgentBlock block) {
+      if (block is! AgentPromptSetBlock) return block;
+      final data = resources.promptSet(
+        runtime.workspace,
+        block.setId,
+        revision: block.revision,
+      );
+      return AgentPromptSetBlock(
+        setId: block.setId,
+        revision: block.revision,
+        changedItems: block.changedItems,
+        data: data == null
+            ? null
+            : promptSetView?.call(data, images) ??
+                  agentPromptSetData(
+                    data,
+                    runtime.workspace,
+                    resources,
+                    images,
+                  ),
+      );
+    }
+
+    final visibleTurns = [
+      for (final turn in turns)
+        AgentTurn(
+          id: turn.id,
+          user: turn.user,
+          reply: turn.reply == null
+              ? null
+              : AgentReply(
+                  blocks: turn.reply!.blocks
+                      .where(
+                        (b) =>
+                            b is! AgentPromptSetBlock ||
+                            identical(latest[b.setId], b),
+                      )
+                      .map(loadSet)
+                      .toList(),
+                  summary: turn.reply!.summary,
+                  live: turn.reply!.live,
+                  canRegenerate: turn.reply!.canRegenerate,
+                ),
+        ),
+    ];
     return AgentThreadMapping(
-      turns,
+      visibleTurns,
       AgentShelfData(
         groups: [
           for (final turn in turns.reversed)

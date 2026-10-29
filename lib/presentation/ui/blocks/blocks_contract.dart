@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import '../../../data/models/prompt_block/pill_document.dart';
 
 import '../kit/ui_block_pill.dart';
 
@@ -61,6 +62,10 @@ class BlockParams {
     this.width,
     this.height,
     this.incompatible,
+    this.qualityPreset,
+    this.qualityCustomBlockId,
+    this.ucPreset,
+    this.ucCustomBlockId,
   });
 
   final String? model;
@@ -71,6 +76,10 @@ class BlockParams {
   final String? noiseSchedule;
   final int? width;
   final int? height;
+  final String? qualityPreset;
+  final String? qualityCustomBlockId;
+  final int? ucPreset;
+  final String? ucCustomBlockId;
 
   /// 和当前生图模型不兼容时的说明（沿用 `promptBlockLibrary_settingsIncompatible`）；
   /// 非 null 时“应用”按钮不可点，旁边显示这句话。
@@ -82,7 +91,11 @@ class BlockParams {
       scale == null &&
       cfgRescale == null &&
       sampler == null &&
-      noiseSchedule == null;
+      noiseSchedule == null &&
+      qualityPreset == null &&
+      qualityCustomBlockId == null &&
+      ucPreset == null &&
+      ucCustomBlockId == null;
 
   BlockParams copyWith({
     String? model,
@@ -91,6 +104,12 @@ class BlockParams {
     double? cfgRescale,
     String? sampler,
     String? noiseSchedule,
+    String? qualityPreset,
+    String? qualityCustomBlockId,
+    bool clearQualityCustom = false,
+    int? ucPreset,
+    String? ucCustomBlockId,
+    bool clearUcCustom = false,
   }) => BlockParams(
     model: model ?? this.model,
     steps: steps ?? this.steps,
@@ -98,6 +117,14 @@ class BlockParams {
     cfgRescale: cfgRescale ?? this.cfgRescale,
     sampler: sampler ?? this.sampler,
     noiseSchedule: noiseSchedule ?? this.noiseSchedule,
+    qualityPreset: qualityPreset ?? this.qualityPreset,
+    qualityCustomBlockId: clearQualityCustom
+        ? null
+        : qualityCustomBlockId ?? this.qualityCustomBlockId,
+    ucPreset: ucPreset ?? this.ucPreset,
+    ucCustomBlockId: clearUcCustom
+        ? null
+        : ucCustomBlockId ?? this.ucCustomBlockId,
     width: width,
     height: height,
   );
@@ -110,12 +137,22 @@ class BlockParamCatalog {
     this.models = const {},
     this.samplers = const {},
     this.noiseSchedules = const {},
+    this.customPresets = const {},
+    this.customPresetContents = const {},
+    this.currentModel,
   });
 
   /// 存储值 → 显示名，按下拉里的顺序。
   final Map<String, String> models;
   final Map<String, String> samplers;
   final Map<String, String> noiseSchedules;
+
+  /// 可作自定义质量词 / 负面预设的块：id → 显示名。
+  final Map<String, String> customPresets;
+
+  /// 同上：id → 正文（预览用）。
+  final Map<String, String> customPresetContents;
+  final String? currentModel;
 
   String model(String id) => models[id] ?? id;
   String sampler(String id) => samplers[id] ?? id;
@@ -220,7 +257,10 @@ class BlockData {
   final bool readingNeedsReview;
 
   /// 项数：正面原子数；只有负面的块（负面词块）算负面原子数。
-  int get itemCount => atoms.isEmpty ? negativeAtoms.length : atoms.length;
+  int get itemCount => primaryAtoms.length;
+
+  /// 实例实际抽取的内容：纯负面块（负面词块）只在负面一侧插入并抽取负面原子。
+  List<String> get primaryAtoms => atoms.isEmpty ? negativeAtoms : atoms;
   bool get hasNegative => negativeAtoms.isNotEmpty;
   bool get hasParams => params != null && !params!.isEmpty;
 
@@ -1030,6 +1070,17 @@ class BlockInstanceViewData {
     this.drawn = const [],
     this.send = '',
     this.skipped = false,
+    this.temporary = false,
+    this.standalone = false,
+    this.tempContent,
+    this.tempNegativeContent,
+    this.tempTranslations = const [],
+    this.tempNegativeTranslations = const [],
+    this.originalContent,
+    this.originalNegativeContent,
+    this.editedAt,
+    this.editedBy,
+    this.folders = const [],
     this.seqIndex = 0,
     this.seqCount = 1,
     this.prevText,
@@ -1059,9 +1110,27 @@ class BlockInstanceViewData {
 
   /// 出现概率没通过，这次整个块没出场。
   final bool skipped;
+  final bool temporary;
+
+  /// 临时块没有原块（不依赖块库直接建的）：没有可还原 / 对比的内容，[block] 的标题、
+  /// 颜色、图标来自临时块自身。
+  final bool standalone;
+  final String? tempContent;
+  final String? tempNegativeContent;
+  final List<TranslationPill> tempTranslations;
+  final List<TranslationPill> tempNegativeTranslations;
+  final String? originalContent;
+  final String? originalNegativeContent;
+  final DateTime? editedAt;
+
+  /// 谁改成临时块的：`agent` / `user`。
+  final String? editedBy;
+
+  /// 临时块“另存为新块”可选的文件夹（树序拍平）。
+  final List<BlocksFolder> folders;
 
   /// 顺序模式：当前这批的起点（`sequenceCursor − lastRollCount`，0 起）和这批的项数；
-  /// 池长是 `block.atoms.length`。
+  /// 池长是 `block.primaryAtoms.length`。
   final int seqIndex;
   final int seqCount;
 
@@ -1094,6 +1163,11 @@ class BlockInstanceActions {
     required this.onShowInLibrary,
     required this.onCopySend,
     this.onEvolutionChanged,
+    this.onExpand,
+    this.onExpandTempContent,
+    this.onEditTempContent,
+    this.onRevertTemp,
+    this.onSaveTempAsNewBlock,
   });
 
   final VoidCallback onReroll;
@@ -1123,6 +1197,14 @@ class BlockInstanceActions {
 
   /// 复制实际发送的文本。
   final VoidCallback onCopySend;
+  final VoidCallback? onExpand;
+  final Future<void> Function(String content, String? negativeContent)?
+  onExpandTempContent;
+  final Future<void> Function(String content, String? negativeContent)?
+  onEditTempContent;
+  final Future<void> Function()? onRevertTemp;
+  final Future<void> Function(String title, String? folderId)?
+  onSaveTempAsNewBlock;
   final ValueChanged<bool>? onEvolutionChanged;
 }
 

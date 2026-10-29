@@ -111,6 +111,8 @@ String settingsShortcutLabel(AppLocalizations l10n, String key) {
       return minimizeToTrayLabel(l10n);
     case 'shortcut_action_quit_app':
       return l10n.shortcut_action_quit_app;
+    case 'shortcut_action_open_resource_window':
+      return l10n.shortcut_action_open_resource_window;
     case 'shortcut_action_toggle_theme':
       return l10n.shortcut_action_toggle_theme;
     default:

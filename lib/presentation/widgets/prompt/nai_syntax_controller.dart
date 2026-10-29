@@ -1,8 +1,10 @@
 import 'package:nai_launcher/presentation/widgets/common/studio_material.dart';
 
 import '../../../core/utils/alias_parser.dart';
+import '../../../core/utils/weight_tier.dart';
 import '../../../core/utils/pill_document_editor.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../ui/kit/ui_colors.dart';
 
 /// 药丸 span 构建器：把文本中的块标记字符渲染为内联 widget。
 ///
@@ -115,41 +117,90 @@ class NaiSyntaxController extends TextEditingController {
   }) {
     final baseStyle = style ?? const TextStyle();
 
+    // Material TextField paints the Windows caret below text, so opaque syntax
+    // backgrounds hide it. TextField does not expose this EditableText option
+    // and resets it on rebuild; apply it after that render update. Measurement
+    // and read-only Text.rich callers do not have an EditableText state.
+    if (context case StatefulElement(state: final EditableTextState editor)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (editor.mounted) {
+          editor.renderEditable.paintCursorAboveText = true;
+        }
+      });
+    }
+
     final theme = Theme.of(context);
     final colors = NaiSyntaxColors.fromTheme(theme);
 
-    // 检查缓存是否有效（文本未变化且主题未变化）
-    if (_cachedText == text &&
-        _cachedColorSignature == colors.cacheSignature &&
-        _cachedBaseStyle == baseStyle &&
-        _cachedFinalSpans != null) {
-      return TextSpan(style: baseStyle, children: _cachedFinalSpans);
+    // 缓存语法和药丸；选区变化只处理下方的显示副本，不重新解析或重建药丸。
+    if (_cachedText != text ||
+        _cachedColorSignature != colors.cacheSignature ||
+        _cachedBaseStyle != baseStyle ||
+        _cachedFinalSpans == null) {
+      // 官网的竖线提示独立于“高亮强调”开关，搜索高亮也需要继续叠加。
+      final spans = _parseAndHighlight(
+        text,
+        baseStyle,
+        colors,
+        includeEmphasis: highlightEnabled,
+      );
+      final resolvedSpans = _applySearchHighlights(spans, baseStyle, colors);
+
+      final builder = pillBuilder;
+      _cachedFinalSpans = builder == null || !_containsPillMarker(text)
+          ? resolvedSpans
+          : _splicePillSpans(resolvedSpans, context, builder);
+      _cachedText = text;
+      _cachedColorSignature = colors.cacheSignature;
+      _cachedBaseStyle = baseStyle;
     }
 
-    // 官网的竖线提示独立于“高亮强调”开关，搜索高亮也需要继续叠加。
-    final spans = _parseAndHighlight(
-      text,
-      baseStyle,
-      colors,
-      includeEmphasis: highlightEnabled,
-    );
-    final resolvedSpans = _applySearchHighlights(spans, baseStyle, colors);
-
-    final builder = pillBuilder;
-    final List<InlineSpan> finalSpans;
-    if (builder == null || !_containsPillMarker(text)) {
-      finalSpans = resolvedSpans;
-    } else {
-      finalSpans = _splicePillSpans(resolvedSpans, context, builder);
+    final finalSpans = _cachedFinalSpans!;
+    final selected = selection;
+    final editor = context.widget;
+    if (!selected.isValid ||
+        selected.isCollapsed ||
+        editor is EditableText && editor.selectionColor == null) {
+      return TextSpan(style: baseStyle, children: finalSpans);
     }
 
-    // 更新缓存
-    _cachedText = text;
-    _cachedColorSignature = colors.cacheSignature;
-    _cachedBaseStyle = baseStyle;
-    _cachedFinalSpans = finalSpans;
+    // RenderEditable 先画选区，再画文字底色。只清除选中文字的语法／搜索
+    // 底色，让原生选区完整显现；未选中部分和缓存中的配色保持原样。
+    final selectedSpans = <InlineSpan>[];
+    var offset = 0;
+    for (final span in finalSpans) {
+      final start = offset;
+      offset += span.toPlainText().length;
+      if (span is! TextSpan ||
+          span.text == null ||
+          span.style?.backgroundColor == null ||
+          selected.start >= offset ||
+          selected.end <= start) {
+        selectedSpans.add(span);
+        continue;
+      }
+      final value = span.text!;
+      final from = (selected.start - start).clamp(0, value.length);
+      final to = (selected.end - start).clamp(0, value.length);
+      if (from > 0) {
+        selectedSpans.add(
+          TextSpan(text: value.substring(0, from), style: span.style),
+        );
+      }
+      selectedSpans.add(
+        TextSpan(
+          text: value.substring(from, to),
+          style: span.style!.copyWith(backgroundColor: Colors.transparent),
+        ),
+      );
+      if (to < value.length) {
+        selectedSpans.add(
+          TextSpan(text: value.substring(to), style: span.style),
+        );
+      }
+    }
 
-    return TextSpan(style: baseStyle, children: finalSpans);
+    return TextSpan(style: baseStyle, children: selectedSpans);
   }
 
   /// 药丸拼接后的 span 缓存（与 [_cachedSpans] 同生命周期）。
@@ -416,7 +467,8 @@ class NaiSyntaxController extends TextEditingController {
   }
 
   _HighlightMark? _markForEmphasis(double emphasis) {
-    if ((emphasis - 1.0).abs() < 0.01) return null;
+    final tier = weightTier(emphasis);
+    if (tier == WeightTier.none) return null;
 
     final normalizationDistance = emphasis > 0 ? 1.0 : 0.5;
     final intensity = ((emphasis - 1.0).abs() / normalizationDistance).clamp(
@@ -424,10 +476,14 @@ class NaiSyntaxController extends TextEditingController {
       1.0,
     );
     final opacityClass = (40 * (0.2 + 0.4 * intensity)).round();
-    return _HighlightMark(
-      emphasis > 1.0 ? _HighlightTone.high : _HighlightTone.low,
-      opacityClass / 40,
-    );
+    return _HighlightMark(switch (tier) {
+      WeightTier.top => _HighlightTone.top,
+      WeightTier.high => _HighlightTone.high,
+      WeightTier.low => _HighlightTone.low,
+      WeightTier.bottom => _HighlightTone.bottom,
+      WeightTier.negative => _HighlightTone.negative,
+      WeightTier.none => throw StateError('Neutral weight has no tint'),
+    }, opacityClass / 40);
   }
 
   void _fillMarks(
@@ -504,7 +560,7 @@ class NaiSyntaxController extends TextEditingController {
   }
 }
 
-enum _HighlightTone { high, low, mid, alias }
+enum _HighlightTone { top, high, low, bottom, negative, mid, alias }
 
 enum _PipeMark { single, double }
 
@@ -541,24 +597,48 @@ class _SpanDecoration {
 /// 官网强调高亮的默认主题色。
 class NaiSyntaxColors {
   final bool isDark;
-  final Color highIntensityColor;
-  final Color lowIntensityColor;
+
+  /// 权重档：浅底 + 字色（与大图色板一致，见 [UiColors]）。
+  final Color weightTop, weightTopInk;
+  final Color weightHigh, weightHighInk;
+  final Color weightLow, weightLowInk;
+  final Color weightBottom, weightBottomInk;
+  final Color weightNegative, weightNegativeInk;
+
+  /// `::` 语法标记。
   final Color midIntensityColor;
   final Color pipeColor;
 
   const NaiSyntaxColors._({
     required this.isDark,
-    required this.highIntensityColor,
-    required this.lowIntensityColor,
+    required this.weightTop,
+    required this.weightTopInk,
+    required this.weightHigh,
+    required this.weightHighInk,
+    required this.weightLow,
+    required this.weightLowInk,
+    required this.weightBottom,
+    required this.weightBottomInk,
+    required this.weightNegative,
+    required this.weightNegativeInk,
     required this.midIntensityColor,
     required this.pipeColor,
   });
 
   factory NaiSyntaxColors.fromTheme(ThemeData theme) {
+    final c = UiColors.fromTheme(theme);
     return NaiSyntaxColors._(
       isDark: theme.brightness == Brightness.dark,
-      highIntensityColor: const Color(0xFFED5807),
-      lowIntensityColor: const Color(0xFF079CED),
+      weightTop: c.weightTop,
+      weightTopInk: c.weightTopInk,
+      weightHigh: c.weightUp,
+      weightHighInk: c.weightUpInk,
+      weightLow: c.weightDown,
+      weightLowInk: c.weightDownInk,
+      weightBottom: c.weightBottom,
+      weightBottomInk: c.weightBottomInk,
+      weightNegative: c.weightNeg,
+      weightNegativeInk: c.weightNegInk,
       midIntensityColor: const Color(0xFF7ACC29),
       pipeColor: theme.colorScheme.onSurface,
     );
@@ -566,8 +646,18 @@ class NaiSyntaxColors {
 
   int get cacheSignature => Object.hash(
     isDark,
-    highIntensityColor,
-    lowIntensityColor,
+    Object.hashAll([
+      weightTop,
+      weightTopInk,
+      weightHigh,
+      weightHighInk,
+      weightLow,
+      weightLowInk,
+      weightBottom,
+      weightBottomInk,
+      weightNegative,
+      weightNegativeInk,
+    ]),
     midIntensityColor,
     pipeColor,
   );
@@ -580,7 +670,10 @@ class NaiSyntaxColors {
     var style = baseStyle.copyWith(height: lineHeight ?? 1.35);
     final mark = decoration.background;
     if (mark != null) {
-      style = style.copyWith(backgroundColor: _getBackgroundColor(mark));
+      style = style.copyWith(
+        backgroundColor: _getBackgroundColor(mark),
+        color: _getInkColor(mark) ?? style.color,
+      );
     }
     if (decoration.pipe != null) {
       style = style.copyWith(color: pipeColor, fontWeight: FontWeight.w800);
@@ -588,21 +681,31 @@ class NaiSyntaxColors {
     return style;
   }
 
-  Color _getBackgroundColor(_HighlightMark mark) {
-    final baseColor = switch (mark.tone) {
-      _HighlightTone.high => highIntensityColor,
-      _HighlightTone.low => lowIntensityColor,
-      _HighlightTone.mid => midIntensityColor,
-      _HighlightTone.alias => HSLColor.fromAHSL(
-        isDark ? 0.55 : 0.50,
-        180,
-        0.60,
-        0.35,
-      ).toColor(),
-    };
-    if (mark.tone == _HighlightTone.alias) return baseColor;
-    return baseColor.withAlpha((mark.opacity * 255).round());
-  }
+  Color _getBackgroundColor(_HighlightMark mark) => switch (mark.tone) {
+    _HighlightTone.top => weightTop,
+    _HighlightTone.high => weightHigh,
+    _HighlightTone.low => weightLow,
+    _HighlightTone.bottom => weightBottom,
+    _HighlightTone.negative => weightNegative,
+    _HighlightTone.mid => midIntensityColor.withAlpha(
+      (mark.opacity * 255).round(),
+    ),
+    _HighlightTone.alias => HSLColor.fromAHSL(
+      isDark ? 0.55 : 0.50,
+      180,
+      0.60,
+      0.35,
+    ).toColor(),
+  };
+
+  Color? _getInkColor(_HighlightMark mark) => switch (mark.tone) {
+    _HighlightTone.top => weightTopInk,
+    _HighlightTone.high => weightHighInk,
+    _HighlightTone.low => weightLowInk,
+    _HighlightTone.bottom => weightBottomInk,
+    _HighlightTone.negative => weightNegativeInk,
+    _ => null,
+  };
 
   Color _getSearchColor(bool active) {
     if (active) {

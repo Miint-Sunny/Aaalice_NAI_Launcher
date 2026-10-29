@@ -1,5 +1,10 @@
+import 'dart:async';
+
+import 'resource_window_wiring.dart';
+
 import 'nai_agent_generation_host.dart';
 import 'package:flutter/material.dart';
+import '../widgets/common/text_editing_shortcuts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,10 +21,12 @@ import '../providers/image_generation_provider.dart';
 import '../providers/image_save_settings_provider.dart';
 import '../providers/krita/krita_bridge_notifier.dart';
 import '../providers/prompt_translation_provider.dart';
+import '../widgets/common/undo_snack_bar.dart';
 import '../providers/subscription_provider.dart';
 import '../router/app_router.dart';
 import '../ui/gen/gen_contract.dart';
 import '../ui/gen/gen_page.dart';
+import 'translation_adjustment_overlay.dart';
 import '../widgets/bridge/agent_bridge_indicator.dart';
 import 'generation_backend.dart';
 import 'generation_canvas_wiring.dart';
@@ -32,6 +39,8 @@ import 'generation_operations.dart';
 import 'generation_references.dart';
 import 'generation_settings.dart';
 import '../providers/simple_output_viewer_provider.dart';
+import '../ui/gen/gen_canvas.dart';
+import 'simple_viewer_wiring.dart';
 import '../providers/nai_agent/nai_agent_window_controller.dart';
 import '../providers/nai_agent/nai_agent_workspace_provider.dart';
 import 'nai_agent/agent_toggle_wiring.dart';
@@ -171,14 +180,30 @@ class GenerationWiring extends ConsumerStatefulWidget {
 }
 
 class _GenerationWiringState extends ConsumerState<GenerationWiring> {
+  final _translationAdjustment = TranslationAdjustmentOverlay();
   GenActions? _actions;
   GenSlots? _slots;
   Object? _slotInputs;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(
+          ref
+              .read(generationParamsNotifierProvider.notifier)
+              .restoreGenerationState(),
+        );
+      }
+    });
+  }
+
+  @override
   void dispose() {
     // 积木悬浮窗不随页面点击关闭；离开生成页时一并收起。
     PromptBlockPaletteButton.closeFloating();
+    _translationAdjustment.close();
     super.dispose();
   }
 
@@ -251,9 +276,14 @@ class _GenerationWiringState extends ConsumerState<GenerationWiring> {
         agentToggle: agentAvailable ? const AgentToggleWiring() : null,
         historyCaptionInset: !agentExpanded,
         preserveHistory: agentExpanded,
+        viewerControls: simpleViewer ? const SimpleViewerGroupControl() : null,
         canvas: simpleViewer
-            ? null
-            : (context, tile) => GenerationCanvasWiring(tileBuilder: tile),
+            ? (context, tile) => const PromptUndoBoundary(
+                child: SimpleViewerNavigation(child: GenSimpleStage()),
+              )
+            : (context, tile) => PromptUndoBoundary(
+                child: GenerationCanvasWiring(tileBuilder: tile),
+              ),
         editor: (context, target) => GenerationEditorWiring(
           target: target,
           explore: widget.explore,
@@ -264,7 +294,9 @@ class _GenerationWiringState extends ConsumerState<GenerationWiring> {
         dock: operations.dock(data.prompt.negative),
         drop: operations.drop,
         historyDrag: operations.historyDrag,
-        toolSheet: const ToolsGenerationSheetWiring(),
+        toolSheet: const PromptUndoBoundary(
+          child: ToolsGenerationSheetWiring(),
+        ),
       );
     }
     final page = widget.builder(
@@ -299,6 +331,8 @@ class _GenerationWiringState extends ConsumerState<GenerationWiring> {
         onPromptTool: (tool, value) =>
             run(() => settings.promptTool(tool, value)),
         onOpenPalette: (rect) => run(() => operations.openPalette(rect)),
+        onOpenResourceWindow: (kind) =>
+            run(() => ref.read(resourceWindowOpenerProvider).open(kind)),
         onTranslate: () => run(() async {
           await ref
               .read(promptTranslationCoordinatorProvider)
@@ -307,6 +341,23 @@ class _GenerationWiringState extends ConsumerState<GenerationWiring> {
         onToggleTranslation: () => ref
             .read(promptTranslationCoordinatorProvider)
             .toggleAll(currentData().prompt.negative),
+        onTranslationAdjust: (rect) => _translationAdjustment.toggle(
+          context,
+          rect,
+          currentData().prompt.negative,
+        ),
+        onClearTranslations: () {
+          final negative = currentData().prompt.negative;
+          final coordinator = ref.read(promptTranslationCoordinatorProvider);
+          if (coordinator.clearTranslations(negative) == 0) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            undoSnackBar(
+              content: Text(context.l10n.gen_translateCleared),
+              undoLabel: context.l10n.common_undo,
+              onUndo: () => coordinator.restoreTranslations(negative),
+            ),
+          );
+        },
         onTranslationSettings: () =>
             context.go('${AppRoutes.settings}?section=promptAssistant'),
         onOpenBridge: (rect) => run(

@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -17,6 +18,7 @@ import '../../data/models/gallery/nai_image_metadata.dart';
 import '../../core/database/datasources/gallery_data_source.dart';
 import '../../data/repositories/gallery_folder_repository.dart';
 import '../../data/services/gallery/gallery_filter_service.dart';
+import '../../data/services/gallery/gallery_file_changes.dart';
 import '../../data/services/gallery/gallery_group_mode.dart';
 import '../../data/services/gallery/gallery_thumbnail_quality_store.dart';
 import '../../data/services/gallery/gallery_sort.dart';
@@ -31,9 +33,34 @@ import '../../core/rag/rag_gallery_search.dart';
 import 'rag_provider.dart';
 import 'gallery_rag_query_provider.dart';
 import 'collection_provider.dart';
+import 'gallery_category_provider.dart';
 
 part 'local_gallery_provider.freezed.dart';
 part 'local_gallery_provider.g.dart';
+
+final galleryFileMonitorProvider = Provider<GalleryFileMonitor>((ref) {
+  final folders = GalleryFolderRepository.instance;
+  final monitor = GalleryFileMonitor(
+    loadRoots: folders.getAllRootDirs,
+    rootsChanged: folders.rootsChanged,
+    apply: (changes) async {
+      await ref
+          .read(localGalleryNotifierProvider.notifier)
+          .applyFileChanges(changes);
+      await ref
+          .read(galleryCategoryNotifierProvider.notifier)
+          .applyFileChanges(changes);
+    },
+    onError: (error, stack) {
+      AppLogger.e('Gallery file update failed', error, stack, 'LocalGallery');
+      ref
+          .read(localGalleryNotifierProvider.notifier)
+          .reportFileChangeError(error);
+    },
+  );
+  ref.onDispose(() => unawaited(monitor.dispose()));
+  return monitor;
+});
 
 enum LocalGalleryErrorCode {
   permissionDenied,
@@ -302,6 +329,7 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
             _reloadTimeline(
               newDataset: false,
               preserveSemantic: preserveSemantic,
+              contentChanged: false,
             ),
           );
         }
@@ -518,6 +546,7 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
   Future<void> _reloadTimeline({
     required bool newDataset,
     bool preserveSemantic = false,
+    bool contentChanged = true,
   }) async {
     final serial = ++_timelineSerial;
     _ragCancellation?.cancel();
@@ -556,7 +585,9 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
             ),
             filteredCount: service.filteredCount,
             totalCount: service.totalCount,
-            contentRevision: state.contentRevision + 1,
+            // Browsing/filter/sort changes are not library mutations.
+            contentRevision:
+                state.contentRevision + (!newDataset && contentChanged ? 1 : 0),
             isLoading: false,
           ),
         );
@@ -677,7 +708,6 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
             semanticRanked: ranked,
           ),
           filteredCount: result.length,
-          contentRevision: state.contentRevision + 1,
         ),
       );
     } catch (_) {
@@ -884,6 +914,32 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
         ),
       );
     }
+  }
+
+  /// Update event paths while keeping the dataset and unrelated record caches.
+  Future<void> applyFileChanges(GalleryFileChanges changes) async {
+    final service = await getService();
+    final changed = await service.applyFileChanges(changes);
+    if (changed.isEmpty) return;
+    _recordGeneration++;
+    for (final path in changed) {
+      await FileImage(File(path)).evict();
+      final key = galleryFilePathKey(path);
+      _staleRecordKeys.add(key);
+      _unavailableRecordKeys.remove(key);
+    }
+    await _reloadTimeline(newDataset: false);
+  }
+
+  void reportFileChangeError(Object error) {
+    _setState(
+      state.copyWith(
+        error: LocalGalleryError(
+          LocalGalleryErrorCode.refreshFailed,
+          details: error.toString(),
+        ),
+      ),
+    );
   }
 
   /// 添加新生成的图像到画廊（即时显示优化）
@@ -1308,11 +1364,11 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
   Future<void> _applyFilters() async {
     if (!state.isInitialized) return;
 
-    _setState(state.copyWith(isLoading: true));
+    final criteria = state.filterCriteria;
+    final requestSerial = ++_filterRequestSerial;
+    _setState(state.copyWith(isLoading: true, error: null));
     try {
       final service = await getService();
-      final criteria = state.filterCriteria;
-      final requestSerial = ++_filterRequestSerial;
 
       AppLogger.d(
         'Applying filters: hasFilters=${criteria.hasFilters}, search="${criteria.searchQuery}", '
@@ -1330,7 +1386,6 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
           'Ignoring stale filter result: search="${criteria.searchQuery}", tags=${criteria.selectedTags}',
           'LocalGalleryNotifier',
         );
-        _setState(state.copyWith(isLoading: false));
         return;
       }
 
@@ -1349,6 +1404,10 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
 
       await _reloadTimeline(newDataset: true);
     } on GalleryFilterException catch (e) {
+      if (requestSerial != _filterRequestSerial ||
+          state.filterCriteria != criteria) {
+        return;
+      }
       AppLogger.e('Filter failed', e, null, 'LocalGalleryNotifier');
       _setState(
         state.copyWith(
@@ -1360,6 +1419,10 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
         ),
       );
     } catch (e) {
+      if (requestSerial != _filterRequestSerial ||
+          state.filterCriteria != criteria) {
+        return;
+      }
       AppLogger.e('Failed to apply filters', e, null, 'LocalGalleryNotifier');
       _setState(state.copyWith(isLoading: false));
     }
@@ -1659,6 +1722,7 @@ class LocalGalleryNotifier extends _$LocalGalleryNotifier {
     _updateCachedRecords({
       galleryFilePathKey(filePath),
     }, (record) => record.copyWith(tags: tags));
+    _setState(state.copyWith(contentRevision: state.contentRevision + 1));
   }
 
   /// Re-read externally changed metadata without resetting the visible dataset.

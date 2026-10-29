@@ -8,6 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/database/datasources/gallery_data_source.dart';
 import '../../../core/database/database.dart';
+import '../../../core/cache/thumbnail_cache_service.dart';
 import '../../../core/exceptions/gallery_exceptions.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../../core/utils/gallery_path_utils.dart';
@@ -16,6 +17,7 @@ import '../../models/gallery/nai_image_metadata.dart';
 import '../../repositories/gallery_folder_repository.dart';
 import '../image_metadata_service.dart';
 import 'gallery_filter_service.dart';
+import 'gallery_file_changes.dart';
 import 'gallery_sort.dart';
 import 'gallery_stream_scanner.dart';
 import 'scan_state_manager.dart';
@@ -33,12 +35,14 @@ class GalleryTimelineEntry {
   final DateTime modifiedAt;
   final int? width;
   final int? height;
+  final int? size;
 
   const GalleryTimelineEntry({
     required this.path,
     required this.modifiedAt,
     this.width,
     this.height,
+    this.size,
   });
 
   bool get hasDimensions =>
@@ -153,6 +157,7 @@ abstract class LocalGalleryService {
     FilterCriteria criteria, {
     int offset = 0,
     int limit = 50,
+    GallerySort sort = const GallerySort.modifiedAtDesc(),
   });
 
   /// Resolve only tracked library files, without changing the visible dataset.
@@ -166,8 +171,9 @@ abstract class LocalGalleryService {
 
   /// Read-only scope query; does not change visible filters or sort state.
   Future<List<GalleryTimelineEntry>> getTimelineForFilter(
-    FilterCriteria criteria,
-  );
+    FilterCriteria criteria, {
+    GallerySort? sort,
+  });
 
   /// 按路径批量加载完整记录（复用排序 stat 缓存，按传入顺序返回；
   /// 已不存在的文件跳过）。
@@ -228,6 +234,9 @@ abstract class LocalGalleryService {
   /// 可能抛出：
   /// - [GalleryScanException] 扫描失败
   Future<void> refresh({bool scan = true});
+
+  /// Reconcile native filesystem events without enumerating other directories.
+  Future<Set<String>> applyFileChanges(GalleryFileChanges changes);
 
   /// 立即添加新图像到画廊（不触发全量扫描）
   ///
@@ -408,7 +417,10 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
   /// 初始化（[_getAllImageFiles]）时所有条目都以 area: 0 入缓存。
   /// 仅当当前排序字段为 [GallerySortField.imageDimensions] 时才发起 DB 尺寸补齐；
   /// 查过 DB 但无尺寸（宽/高为空或 0）的文件标记为 [_sentinelArea] 哨兵，避免死循环补查。
-  Future<void> _ensureFileStats(List<File> files) async {
+  Future<void> _ensureFileStats(
+    List<File> files, {
+    GallerySort? querySort,
+  }) async {
     // 1. stat 只补完全缺失的条目（所有排序都依赖 modified/size 等基础属性）
     final missingStatFiles = files
         .where((file) => !_fileStats.containsKey(file.path))
@@ -433,7 +445,7 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
     }
 
     // 2. 仅当按尺寸排序时才执行 DB 面积补齐；其他排序直接跳过
-    if (_sort.field != GallerySortField.imageDimensions) return;
+    if ((querySort ?? _sort).field != GallerySortField.imageDimensions) return;
 
     // 3. 面积过滤：仅查未补齐过的条目（entry.area == 0 表示尚未查过；_sentinelArea 表示已查过确认无尺寸）
     final needArea = files.where((file) {
@@ -491,11 +503,11 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
       _lowerBaseNames[path] ??= p.basename(path).toLowerCase();
 
   /// 当前排序下的比较（与旧 [_sortFileListByCache] 内联比较器逐项同义）
-  int _compareBySortKey(File a, File b) {
+  int _compareBySortKey(File a, File b, {GallerySort? sort}) {
     sortComparisonsForTesting++;
     final keyA = _fileStats[a.path] ?? _missingSortStats;
     final keyB = _fileStats[b.path] ?? _missingSortStats;
-    return _sort.compareFiles(
+    return (sort ?? _sort).compareFiles(
       modifiedAtA: keyA.modified,
       modifiedAtB: keyB.modified,
       fileSizeA: keyA.size,
@@ -509,9 +521,9 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
     );
   }
 
-  void _sortFileListByCache(List<File> files) {
+  void _sortFileListByCache(List<File> files, {GallerySort? sort}) {
     _precomputeLowerBaseNames(files);
-    files.sort(_compareBySortKey);
+    files.sort((a, b) => _compareBySortKey(a, b, sort: sort));
   }
 
   /// 把 [file] 移到当前排序下的正确位置（二分查找插入点 + O(N) 位移）。
@@ -945,14 +957,16 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
           modifiedAt: (_fileStats[file.path] ?? _missingSortStats).modified,
           width: _dimensions[file.path]?.$1,
           height: _dimensions[file.path]?.$2,
+          size: (_fileStats[file.path] ?? _missingSortStats).size,
         ),
     ];
   }
 
   @override
   Future<List<GalleryTimelineEntry>> getTimelineForFilter(
-    FilterCriteria criteria,
-  ) async {
+    FilterCriteria criteria, {
+    GallerySort? sort,
+  }) async {
     _ensureInitialized();
     final deleted = await _dataSource.getDeletedImagePaths();
     final roots = await GalleryFolderRepository.instance.getAllRootDirs();
@@ -963,9 +977,11 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
           file,
     ];
     final filter = GalleryFilterService(_dataSource);
-    filter.setSort(_filterService.sort);
+    final order = sort ?? _filterService.sort;
+    filter.setSort(order);
     final result = await filter.applyFilters(tracked, criteria);
-    await _ensureFileStats(result.files);
+    await _ensureFileStats(result.files, querySort: order);
+    _sortFileListByCache(result.files, sort: order);
     await _ensureDimensions(result.files);
     return [
       for (final file in result.files)
@@ -974,6 +990,7 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
           modifiedAt: (_fileStats[file.path] ?? _missingSortStats).modified,
           width: _dimensions[file.path]?.$1,
           height: _dimensions[file.path]?.$2,
+          size: (_fileStats[file.path] ?? _missingSortStats).size,
         ),
     ];
   }
@@ -983,6 +1000,7 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
     FilterCriteria criteria, {
     int offset = 0,
     int limit = 50,
+    GallerySort sort = const GallerySort.modifiedAtDesc(),
   }) async {
     _ensureInitialized();
     if (offset < 0 || limit < 1 || limit > 100) {
@@ -1000,23 +1018,11 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
           f,
     ];
     final filter = GalleryFilterService(_dataSource);
-    filter.setSort(const GallerySort.modifiedAtDesc());
+    filter.setSort(sort);
     final result = await filter.applyFilters(files, criteria);
     final candidates = List<File>.of(result.files);
-    await _ensureFileStats(candidates);
-    const order = GallerySort.modifiedAtDesc();
-    candidates.sort((a, b) {
-      final ka = _fileStats[a.path] ?? _missingSortStats;
-      final kb = _fileStats[b.path] ?? _missingSortStats;
-      return order.compareFiles(
-        modifiedAtA: ka.modified,
-        modifiedAtB: kb.modified,
-        fileSizeA: ka.size,
-        fileSizeB: kb.size,
-        fileNameKeyA: _lowerBaseNameOf(a.path),
-        fileNameKeyB: _lowerBaseNameOf(b.path),
-      );
-    });
+    await _ensureFileStats(candidates, querySort: sort);
+    _sortFileListByCache(candidates, sort: sort);
     final batch = candidates.skip(offset).take(limit).toList();
     return GalleryQueryPage(
       records: await _loadExistingLibraryRecords(batch),
@@ -1032,14 +1038,16 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
     List<String> paths,
   ) async {
     _ensureInitialized();
-    final wanted = paths.toSet();
-    final deleted = await _dataSource.getDeletedImagePaths();
+    final wanted = paths.map(galleryFilePathKey).toSet();
+    final deleted = (await _dataSource.getDeletedImagePaths())
+        .map(galleryFilePathKey)
+        .toSet();
     final roots = await GalleryFolderRepository.instance.getAllRootDirs();
     return _loadExistingLibraryRecords([
       for (final file in _allFiles)
-        if (wanted.contains(file.path) &&
-            !deleted.contains(file.path) &&
-            roots.any((root) => p.isWithin(root.path, file.path)))
+        if (wanted.contains(galleryFilePathKey(file.path)) &&
+            !deleted.contains(galleryFilePathKey(file.path)) &&
+            roots.any((root) => galleryPathIsWithin(root.path, file.path)))
           file,
     ]);
   }
@@ -1728,6 +1736,105 @@ class LocalGalleryServiceImpl implements LocalGalleryService {
   // ============================================================
 
   @override
+  Future<Set<String>> applyFileChanges(GalleryFileChanges changes) async {
+    _ensureInitialized();
+    final folders = GalleryFolderRepository.instance;
+    final roots = [
+      (await folders.getRootPath())!,
+      ...await folders.getExtraRootPaths(),
+    ];
+    bool inLibrary(String path) =>
+        roots.any((root) => galleryPathIsWithin(root, path));
+    final candidates = {
+      for (final path in changes.files)
+        if (inLibrary(path)) galleryFilePathKey(path): path,
+    };
+    final directories = changes.directories
+        .where(
+          (directory) =>
+              inLibrary(directory) &&
+              !changes.directories.any(
+                (parent) =>
+                    parent != directory &&
+                    galleryPathIsWithin(parent, directory),
+              ),
+        )
+        .toList();
+    for (final directory in directories) {
+      for (final file in _allFiles) {
+        if (galleryPathIsWithin(directory, file.path)) {
+          candidates[galleryFilePathKey(file.path)] = file.path;
+        }
+      }
+      if (!await Directory(directory).exists()) continue;
+      await for (final entity in Directory(
+        directory,
+      ).list(recursive: true, followLinks: false)) {
+        if (entity is File &&
+            const ScanConfig().isSupportedExtension(entity.path) &&
+            !const ScanConfig().isThumbnailPath(entity.path)) {
+          candidates[galleryFilePathKey(entity.path)] = entity.path;
+        }
+      }
+    }
+    final tracked = {
+      for (final file in _allFiles) galleryFilePathKey(file.path): file.path,
+    };
+    final paths = [
+      for (final entry in candidates.entries) tracked[entry.key] ?? entry.value,
+    ];
+    final index = await GalleryStreamScanner.instance(dataSource: _dataSource)
+        .indexChangedPaths(
+          paths,
+          directoryMoves: {
+            for (final move in changes.directoryMoves.entries)
+              if (inLibrary(move.key) && inLibrary(move.value))
+                move.key: move.value,
+          },
+        );
+    final changed = index.changed.toSet();
+    for (final path in paths) {
+      if (tracked.containsKey(galleryFilePathKey(path)) !=
+          index.files.containsKey(path)) {
+        changed.add(path);
+      }
+    }
+    if (changed.isEmpty) return changed;
+    removeImagesFromMemory(changed.toList());
+    for (final path in changed) {
+      _dimensions.remove(path);
+      _dimensionsChecked.remove(path);
+      await ThumbnailCacheService.instance.deleteThumbnail(path);
+    }
+    final added = <File>[];
+    for (final path in changed) {
+      final stat = index.files[path];
+      if (stat == null) continue;
+      final file = File(path);
+      _fileStats[path] = (
+        modified: stat.modified,
+        created: stat.modified,
+        size: stat.size,
+        area: 0,
+      );
+      added.add(file);
+    }
+    await _ensureFileStats(added);
+    if (_allFilesNeedsResort) {
+      _allFiles.addAll(added);
+      await _sortFileList(_allFiles);
+      _allFilesNeedsResort = false;
+    } else {
+      for (final file in added) {
+        _allFiles.add(file);
+        _moveFileToSortedPosition(file);
+      }
+    }
+    await applyFilter(_currentFilter);
+    return changed;
+  }
+
+  @override
   Future<void> refresh({bool scan = true}) async {
     _ensureInitialized();
 
@@ -1931,6 +2038,7 @@ class ErrorGalleryService implements LocalGalleryService {
     FilterCriteria criteria, {
     int offset = 0,
     int limit = 50,
+    GallerySort sort = const GallerySort.modifiedAtDesc(),
   }) => _throwError();
 
   @override
@@ -1942,8 +2050,9 @@ class ErrorGalleryService implements LocalGalleryService {
   Future<List<GalleryTimelineEntry>> getTimelineEntries() => _throwError();
   @override
   Future<List<GalleryTimelineEntry>> getTimelineForFilter(
-    FilterCriteria criteria,
-  ) => _throwError();
+    FilterCriteria criteria, {
+    GallerySort? sort,
+  }) => _throwError();
 
   @override
   Future<List<LocalImageRecord>> getRecordsForPaths(List<String> paths) =>
@@ -1969,6 +2078,10 @@ class ErrorGalleryService implements LocalGalleryService {
 
   @override
   Future<void> refresh({bool scan = true}) => _throwError();
+
+  @override
+  Future<Set<String>> applyFileChanges(GalleryFileChanges changes) =>
+      _throwError();
 
   @override
   Future<bool> addNewImageImmediately(
@@ -2039,6 +2152,7 @@ class _PlaceholderGalleryService implements LocalGalleryService {
     FilterCriteria criteria, {
     int offset = 0,
     int limit = 50,
+    GallerySort sort = const GallerySort.modifiedAtDesc(),
   }) => _throwNotInitialized();
 
   @override
@@ -2051,8 +2165,9 @@ class _PlaceholderGalleryService implements LocalGalleryService {
       _throwNotInitialized();
   @override
   Future<List<GalleryTimelineEntry>> getTimelineForFilter(
-    FilterCriteria criteria,
-  ) => _throwNotInitialized();
+    FilterCriteria criteria, {
+    GallerySort? sort,
+  }) => _throwNotInitialized();
 
   @override
   Future<List<LocalImageRecord>> getRecordsForPaths(List<String> paths) =>
@@ -2080,6 +2195,10 @@ class _PlaceholderGalleryService implements LocalGalleryService {
 
   @override
   Future<void> refresh({bool scan = true}) => _throwNotInitialized();
+
+  @override
+  Future<Set<String>> applyFileChanges(GalleryFileChanges changes) =>
+      _throwNotInitialized();
 
   @override
   Future<bool> addNewImageImmediately(

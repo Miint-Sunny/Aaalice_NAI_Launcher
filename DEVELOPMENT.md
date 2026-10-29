@@ -117,6 +117,6 @@ README 中英文同批同步，保留相互切换和上游归属链接。截图�
 
 本地高级放大宿主构建入口为 `tool/local_upscale/build_worker.ps1`；源码、组件固定版本与用户暂缓大模型下载的边界见 `docs/advanced-upscale-2026-10-05.md`。
 
-## NAI Agent E5D 开发验证（2026-10-07）
+## NAI Agent 当前交付
 
-物理目录／文件管理与扫描互斥、索引／删除池路径同步完成。695 + 101 + 14 + 4 = 814 项不同检查通过，3 项 Vulkan 审计跳过；13 文件 analyze 无诊断。ARB 与生成的台湾正体／l10n 已更新，未改依赖／数据库结构／Riverpod 生成输入。E/F 尚未完成且未安装；见 [E5D 记录](docs/nai-agent-stage-e5d-2026-10-07.md)。
+本机 2.2.0+60（编译 `bc745f5af`）已累计安装完整 Agent 域工具、MCP／CodeMode、Node 24.18.0／Pi 1.3.0、Skill 管理、框内块操作与内部翻译／页脚快捷入口，上述 Agent 增量均已安装；[本轮实现与交付](docs/temp-block-translations-2026-10-28.md)。当前安装、待安装修复与恢复入口见 [工作区接手说明](../../../04_工具/启动器接手说明.md)，实机验收见 [Agent 进度](../../../04_工具/NAI_Agent_开发/06_实施进度.md)。E5D 的文件管理与扫描互斥已累计包含，原验证结果保留于 [历史阶段报告](docs/nai-agent-stage-e5d-2026-10-07.md)，不再作为未完成项。

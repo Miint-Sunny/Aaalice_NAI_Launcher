@@ -1,5 +1,6 @@
 import 'package:nai_launcher/presentation/widgets/common/translation_icon.dart';
 import 'package:flutter/foundation.dart';
+import 'package:nai_launcher/presentation/utils/prompt_block_bundle_insertion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nai_launcher/presentation/wiring/blocks_platform.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
+import 'package:nai_launcher/core/autocomplete/completion_models.dart';
+import 'package:nai_launcher/core/autocomplete/prompt_autocomplete_controller.dart';
+import 'package:nai_launcher/core/tag_expansion/local_tag_expansion_service.dart';
+import 'package:nai_launcher/core/tag_expansion/tag_expansion_providers.dart';
+import 'package:nai_launcher/presentation/providers/workspace_text_settings_provider.dart';
+import 'package:nai_launcher/presentation/widgets/prompt/prompt_autocomplete_binding.dart';
+import 'package:nai_launcher/presentation/widgets/common/workspace_text_scale_scope.dart';
+import '../../../../core/autocomplete/prompt_autocomplete_controller_test.dart'
+    show candidates;
 import 'package:nai_launcher/data/models/character/character_prompt.dart';
 import 'package:nai_launcher/presentation/providers/character_prompt_provider.dart';
 import 'package:nai_launcher/data/models/prompt_block/pill_document.dart';
@@ -26,6 +36,15 @@ import 'package:nai_launcher/presentation/ui/blocks/blocks_instance.dart';
 import 'package:nai_launcher/presentation/widgets/prompt/pills/prompt_pill_editor.dart';
 import 'package:nai_launcher/presentation/widgets/prompt/pills/translation_pill_view.dart';
 import 'package:nai_launcher/presentation/widgets/prompt/unified/unified_prompt_config.dart';
+
+class _AutocompleteSource implements CompletionSource {
+  final queries = <CompletionQuery>[];
+  @override
+  Future<List<CompletionCandidate>> search(CompletionQuery query) async {
+    queries.add(query);
+    return candidates;
+  }
+}
 
 class _MemorySettings extends LocalStorageService {
   @override
@@ -58,6 +77,308 @@ class _ControlClickTestBinding extends AutomatedTestWidgetsFlutterBinding
 void main() {
   _ControlClickTestBinding();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  for (final scope in [
+    PillScopes.main,
+    PillScopes.charPos('autocomplete-character'),
+    PillScopes.charNeg('autocomplete-character'),
+  ]) {
+    testWidgets(
+      'typed completion is opt-in and replaces current token in $scope',
+      (tester) async {
+        var services = 0;
+        final source = _AutocompleteSource();
+        PromptAutocompleteController? completion;
+        ValueChanged<int>? accept;
+        final container = await _pump(
+          tester,
+          libraryState: PromptBlockLibraryState(
+            blocks: const [],
+            folders: const [],
+          ),
+          pillScope: scope,
+          overrides: [
+            localTagExpansionServiceProvider.overrideWith((ref) {
+              services++;
+              return LocalTagExpansionService(
+                catalog: source,
+                relatedTags: source,
+                substringSearch: (_, {int limit = 40}) async => [],
+                popularSearch: ({int limit = 12}) async => [],
+                semanticNames: (input, {int limit = 80}) async =>
+                    input == '蓝眼' ? [candidates.first] : [],
+              );
+            }),
+            promptAutocompleteBuilderProvider.overrideWithValue((
+              context,
+              controller,
+              onAccept,
+              child,
+            ) {
+              completion = controller;
+              accept = onAccept;
+              return child;
+            }),
+          ],
+        );
+        final field = find
+            .descendant(
+              of: find.byType(PromptPillEditor),
+              matching: find.byType(TextField),
+            )
+            .first;
+        await tester.tap(field);
+        await tester.enterText(field, 'bl');
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(services, 0);
+        expect(source.queries, isEmpty);
+        await container
+            .read(promptAutocompleteEnabledProvider.notifier)
+            .setEnabled(true);
+        await tester.pump();
+        await tester.enterText(field, '2.5::bl::');
+        tester.widget<TextField>(field).controller!.selection =
+            const TextSelection.collapsed(offset: 7);
+        await tester.pump(const Duration(milliseconds: 120));
+        expect(services, 1);
+        expect(completion!.value.visible, true);
+        expect(source.queries.last.token, 'bl');
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expect(
+          container.read(pillWorkspaceProvider(scope)).document.text,
+          '2.5::blue eyes::, ',
+        );
+        expect(
+          tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
+          true,
+        );
+        await tester.enterText(field, 'bl');
+        await tester.pump(const Duration(milliseconds: 120));
+        accept!(1);
+        await tester.pump();
+        expect(
+          container.read(pillWorkspaceProvider(scope)).document.text,
+          'blue hair, ',
+        );
+        // A composing-only notification must restart completion after IME
+        // commit, even when the text and selection did not change.
+        tester.testTextInput.updateEditingValue(
+          const TextEditingValue(
+            text: '蓝眼',
+            selection: TextSelection.collapsed(offset: 2),
+            composing: TextRange(start: 0, end: 2),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(completion!.value.visible, false);
+        tester.testTextInput.updateEditingValue(
+          const TextEditingValue(
+            text: '蓝眼',
+            selection: TextSelection.collapsed(offset: 2),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(completion!.value.candidates.single.canonicalTag, 'blue_eyes');
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        expect(
+          container.read(pillWorkspaceProvider(scope)).document.text,
+          'blue eyes, ',
+        );
+        expect(
+          tester.widget<TextField>(field).focusNode!.hasPrimaryFocus,
+          true,
+        );
+        await tester.enterText(field, 'bl');
+        await tester.pump(const Duration(milliseconds: 150));
+        await completion!.openRelated(0);
+        accept!(1);
+        await tester.pump();
+        expect(
+          container.read(pillWorkspaceProvider(scope)).document.text,
+          'blue eyes, blue hair, ',
+        );
+        expect(completion!.value.relatedFor, isNotNull);
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expect(
+          container.read(pillWorkspaceProvider(scope)).document.text,
+          'blue eyes, blue hair, ',
+        );
+        expect(completion!.value.relatedAdded, {'blue_hair'});
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        expect(completion!.value.visible, true);
+        expect(completion!.value.relatedFor, isNull);
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        expect(completion!.value.visible, false);
+        await container
+            .read(promptAutocompleteEnabledProvider.notifier)
+            .setEnabled(false);
+        await tester.pump();
+        final queries = source.queries.length;
+        await tester.enterText(field, 're');
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(source.queries.length, queries);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
+  testWidgets('default popup shows candidates under the token; click accepts', (
+    tester,
+  ) async {
+    final source = _AutocompleteSource();
+    final container = await _pump(
+      tester,
+      libraryState: PromptBlockLibraryState(
+        blocks: const [],
+        folders: const [],
+      ),
+      overrides: [
+        localTagExpansionServiceProvider.overrideWith(
+          (ref) => LocalTagExpansionService(
+            catalog: source,
+            relatedTags: source,
+            substringSearch: (_, {int limit = 40}) async => [],
+            popularSearch: ({int limit = 12}) async => [],
+          ),
+        ),
+      ],
+    );
+    await container
+        .read(promptAutocompleteEnabledProvider.notifier)
+        .setEnabled(true);
+    await tester.pump();
+    final field = find
+        .descendant(
+          of: find.byType(PromptPillEditor),
+          matching: find.byType(TextField),
+        )
+        .first;
+    await tester.tap(field);
+    await tester.enterText(field, 'bl');
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+    final popup = find.byKey(const Key('prompt-autocomplete'));
+    expect(popup, findsOneWidget);
+    expect(
+      tester.getTopLeft(popup).dy,
+      greaterThan(tester.getTopLeft(field).dy),
+    );
+    await tester.tap(find.byKey(const Key('prompt-autocomplete-1')));
+    await tester.pump();
+    expect(
+      container.read(pillWorkspaceProvider(PillScopes.main)).document.text,
+      'blue hair, ',
+    );
+    expect(popup, findsNothing);
+    expect(tester.widget<TextField>(field).focusNode!.hasPrimaryFocus, true);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'E01 popup: arrow right opens related, enter adds, arrow left closes; click completes',
+    (tester) async {
+      final source = _AutocompleteSource();
+      final container = await _pump(
+        tester,
+        libraryState: PromptBlockLibraryState(
+          blocks: const [],
+          folders: const [],
+        ),
+        overrides: [
+          localTagExpansionServiceProvider.overrideWith(
+            (ref) => LocalTagExpansionService(
+              catalog: source,
+              relatedTags: source,
+              substringSearch: (_, {int limit = 40}) async => [],
+              popularSearch: ({int limit = 12}) async => [],
+            ),
+          ),
+        ],
+      );
+      await container
+          .read(promptAutocompleteEnabledProvider.notifier)
+          .setEnabled(true);
+      await tester.pump();
+      final field = find
+          .descendant(
+            of: find.byType(PromptPillEditor),
+            matching: find.byType(TextField),
+          )
+          .first;
+      await tester.tap(field);
+      await tester.enterText(field, 'bl');
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.pump();
+      final popup = find.byKey(const Key('prompt-autocomplete'));
+      final narrow = tester.getSize(popup).width;
+      expect(
+        find.byKey(const Key('prompt-autocomplete-related')),
+        findsNothing,
+      );
+      // 2026-10-28：方向键 → 开关联、← 关；在右栏里 ↑↓ 移动、回车追加。
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('prompt-autocomplete-related')), findsOne);
+      expect(tester.getSize(popup).width, greaterThan(narrow + 200));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      // 先补全 blue eyes，再在其后追加关联的 blue_hair。
+      expect(
+        container.read(pillWorkspaceProvider(PillScopes.main)).document.text,
+        'blue eyes, blue hair, ',
+      );
+      expect(find.byKey(const Key('prompt-autocomplete-related')), findsOne);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(
+        find.byKey(const Key('prompt-autocomplete-related')),
+        findsNothing,
+      );
+      // 关联栏关闭后 ← 交还编辑器（移动光标），不再被补全层吞掉。
+      expect(
+        container.read(pillWorkspaceProvider(PillScopes.main)).document.text,
+        'blue eyes, blue hair, ',
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('creative scale updates editor and inline chips exactly once', (
+    tester,
+  ) async {
+    final block = _block('scale', 'Scale chip', 'blue eyes');
+    final container = await _pump(
+      tester,
+      libraryState: PromptBlockLibraryState(blocks: [block], folders: const []),
+    );
+    container
+        .read(pillWorkspaceProvider(PillScopes.main).notifier)
+        .insertBlockAt(offset: 0, blockId: block.id);
+    await tester.pump();
+    await tester.pump();
+    final before = tester.getRect(find.text('Scale chip')).height;
+    await container.read(workspaceFontScaleProvider.notifier).setFontScale(1.5);
+    await tester.pump();
+    await tester.pump();
+    final field = find
+        .descendant(
+          of: find.byType(PromptPillEditor),
+          matching: find.byType(TextField),
+        )
+        .first;
+    expect(MediaQuery.textScalerOf(tester.element(field)).scale(10), 15);
+    expect(
+      tester.getRect(find.text('Scale chip')).height,
+      closeTo(before * 1.5, .001),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   const markerA = '\uE000';
   const markerB = '\uE001';
 
@@ -226,6 +547,274 @@ void main() {
       );
     },
   );
+
+  for (final scope in [
+    PillScopes.main,
+    PillScopes.negative,
+    PillScopes.charPos('c1'),
+    PillScopes.charNeg('c1'),
+  ]) {
+    testWidgets('text reconciliation removes reading bundle from $scope', (
+      tester,
+    ) async {
+      final block = _block(
+        'reading-pair',
+        '双面',
+        'bright',
+      ).copyWith(negativeContent: 'muted', readingTranslationZh: '明亮');
+      final container = await _pump(
+        tester,
+        pillScope: scope,
+        libraryState: PromptBlockLibraryState(
+          blocks: [block],
+          folders: const [],
+        ),
+        overrides: [
+          generationParamsNotifierProvider.overrideWith(
+            _FakeGenerationParamsNotifier.new,
+          ),
+        ],
+      );
+      insertPromptBlockBundleWithReader(
+        container.read,
+        scope: scope,
+        offset: 0,
+        blockId: block.id,
+      );
+      final positiveScope = scope.startsWith('char:')
+          ? PillScopes.charPos('c1')
+          : PillScopes.main;
+      final negativeScope = scope.startsWith('char:')
+          ? PillScopes.charNeg('c1')
+          : PillScopes.negative;
+      final pos = container
+          .read(pillWorkspaceProvider(positiveScope))
+          .document
+          .instances
+          .values
+          .single;
+      final neg = container
+          .read(pillWorkspaceProvider(negativeScope))
+          .document
+          .instances
+          .values
+          .single;
+      expect(pos.translation, isNotNull);
+      expect(pos.bundleId, neg.bundleId);
+      expect(pos.rollScopeMask, neg.rollScopeMask);
+      await tester.pump();
+      // TextField's edit path is also used by cut and selection replacement.
+      await tester.enterText(find.byType(TextField).first, 'replacement');
+      await tester.pumpAndSettle();
+      for (final lane in [positiveScope, negativeScope]) {
+        expect(
+          container.read(pillWorkspaceProvider(lane)).document.instances,
+          isEmpty,
+        );
+        expect(
+          container.read(pillWorkspaceProvider(lane)).projection,
+          lane == scope ? 'replacement' : '',
+        );
+      }
+    });
+  }
+
+  testWidgets(
+    'menu expands selected shared occurrence and paired UC in place',
+    (tester) async {
+      final block = _block(
+        'pair-expand',
+        'Pair',
+        '1.2::bright::',
+      ).copyWith(negativeContent: 'muted');
+      final container = await _pump(
+        tester,
+        libraryState: PromptBlockLibraryState(
+          blocks: [block],
+          folders: const [],
+        ),
+        overrides: [
+          generationParamsNotifierProvider.overrideWith(
+            _FakeGenerationParamsNotifier.new,
+          ),
+        ],
+      );
+      insertPromptBlockBundleWithReader(
+        container.read,
+        scope: PillScopes.main,
+        offset: 0,
+        blockId: block.id,
+      );
+      container
+          .read(pillWorkspaceProvider(PillScopes.main).notifier)
+          .setText('$markerA / $markerA');
+      container
+          .read(pillWorkspaceProvider(PillScopes.negative).notifier)
+          .setText('$markerA / $markerA');
+      await tester.pump();
+      final posSend = container
+          .read(pillWorkspaceProvider(PillScopes.main))
+          .projection;
+      final negSend = container
+          .read(pillWorkspaceProvider(PillScopes.negative))
+          .projection;
+      await tester.tap(find.byType(UiBlockPill).at(1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('block-card-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('block-card-expand')));
+      await tester.pumpAndSettle();
+      final pos = container.read(pillWorkspaceProvider(PillScopes.main));
+      final neg = container.read(pillWorkspaceProvider(PillScopes.negative));
+      expect(pos.document.text, '$markerA / 1.2::bright::');
+      expect(neg.document.text, '$markerA / muted');
+      expect(pos.projection, posSend);
+      expect(neg.projection, negSend);
+      expect(find.byType(BlockInstanceCard), findsNothing);
+    },
+  );
+
+  for (final key in [LogicalKeyboardKey.backspace, LogicalKeyboardKey.delete]) {
+    testWidgets('keyboard ${key.keyLabel} removes both bundle sides', (
+      tester,
+    ) async {
+      final block = _block(
+        'keys',
+        'Pair',
+        'bright',
+      ).copyWith(negativeContent: 'muted');
+      final container = await _pump(
+        tester,
+        libraryState: PromptBlockLibraryState(
+          blocks: [block],
+          folders: const [],
+        ),
+        overrides: [
+          generationParamsNotifierProvider.overrideWith(
+            _FakeGenerationParamsNotifier.new,
+          ),
+        ],
+      );
+      insertPromptBlockBundleWithReader(
+        container.read,
+        scope: PillScopes.main,
+        offset: 0,
+        blockId: block.id,
+      );
+      await tester.pump();
+      final field = find.byType(TextField).first;
+      await tester.tap(field);
+      final controller = tester.widget<TextField>(field).controller!;
+      controller.selection = TextSelection.collapsed(
+        offset: key == LogicalKeyboardKey.backspace ? 1 : 0,
+      );
+      await tester.sendKeyEvent(key);
+      await tester.pumpAndSettle();
+      expect(
+        container.read(pillWorkspaceProvider(PillScopes.main)).document.text,
+        isEmpty,
+      );
+      expect(
+        container
+            .read(pillWorkspaceProvider(PillScopes.negative))
+            .document
+            .text,
+        isEmpty,
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
+
+  testWidgets(
+    'temporary pill exposes fixed send and card integration callbacks',
+    (tester) async {
+      final block = _block('temp-view', 'Temporary view', 'library');
+      final container = await _pump(
+        tester,
+        libraryState: PromptBlockLibraryState(
+          blocks: [block],
+          folders: const [],
+        ),
+        overrides: [
+          generationParamsNotifierProvider.overrideWith(
+            _FakeGenerationParamsNotifier.new,
+          ),
+        ],
+      );
+      final notifier = container.read(
+        pillWorkspaceProvider(PillScopes.main).notifier,
+      );
+      notifier.insertBlockAt(offset: 0, blockId: block.id);
+      notifier.editTempContent(markerA, 'temporary', null);
+      await tester.pump();
+      expect(
+        tester.widget<UiBlockPill>(find.byType(UiBlockPill).first).temporary,
+        isTrue,
+      );
+      await tester.tap(find.byType(UiBlockPill).first);
+      await tester.pumpAndSettle();
+      final card = tester.widget<BlockInstanceCard>(
+        find.byType(BlockInstanceCard),
+      );
+      expect(card.data.temporary, isTrue);
+      expect(card.data.tempContent, 'temporary');
+      expect(card.data.originalContent, 'library');
+      expect(card.data.editedBy, 'user');
+      expect(card.data.editedAt, isNotNull);
+      expect(card.data.send, 'temporary');
+      expect(card.actions.onEditTempContent, isNotNull);
+      expect(card.actions.onRevertTemp, isNotNull);
+      expect(card.actions.onSaveTempAsNewBlock, isNotNull);
+    },
+  );
+
+  testWidgets('cutting one side removes the paired marker and projection', (
+    tester,
+  ) async {
+    final block = _block(
+      'cut-pair',
+      'Pair',
+      'bright',
+    ).copyWith(negativeContent: 'muted');
+    final container = await _pump(
+      tester,
+      libraryState: PromptBlockLibraryState(blocks: [block], folders: const []),
+      overrides: [
+        generationParamsNotifierProvider.overrideWith(
+          _FakeGenerationParamsNotifier.new,
+        ),
+      ],
+    );
+    insertPromptBlockBundleWithReader(
+      container.read,
+      scope: PillScopes.main,
+      offset: 0,
+      blockId: block.id,
+    );
+    await tester.pump();
+    final field = find.byType(TextField).first;
+    await tester.tap(field);
+    tester.widget<TextField>(field).controller!.selection = const TextSelection(
+      baseOffset: 0,
+      extentOffset: 1,
+    );
+    await _controlKey(tester, LogicalKeyboardKey.keyX);
+    await tester.pumpAndSettle();
+    expect(
+      container.read(pillWorkspaceProvider(PillScopes.main)).document.instances,
+      isEmpty,
+    );
+    expect(
+      container
+          .read(pillWorkspaceProvider(PillScopes.negative))
+          .document
+          .instances,
+      isEmpty,
+    );
+    expect(
+      container.read(pillWorkspaceProvider(PillScopes.negative)).projection,
+      '',
+    );
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
   testWidgets('stale post-frame projection callbacks are discarded', (
     tester,
@@ -1601,14 +2190,16 @@ Future<ProviderContainer> _pump(
         body: SizedBox(
           width: editorWidth,
           height: 360,
-          child: PromptPillEditor(
-            pillScope: pillScope,
-            config: UnifiedPromptConfig(
-              enableSyntaxHighlight: false,
-              enableAutoFormat: autoFormat,
+          child: WorkspaceTextScaleHost(
+            child: PromptPillEditor(
+              pillScope: pillScope,
+              config: UnifiedPromptConfig(
+                enableSyntaxHighlight: false,
+                enableAutoFormat: autoFormat,
+              ),
+              allowEvolutionToggle: allowEvolutionToggle,
+              onChanged: onChanged,
             ),
-            allowEvolutionToggle: allowEvolutionToggle,
-            onChanged: onChanged,
           ),
         ),
       ),

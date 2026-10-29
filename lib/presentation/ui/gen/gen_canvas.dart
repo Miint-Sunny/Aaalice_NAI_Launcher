@@ -94,7 +94,7 @@ class _GenCanvasState extends State<GenCanvas> {
               if (scope.slots.canvas case final b?)
                 b(context, GenCanvas._tile)
               else if (!empty)
-                const _Stage(),
+                const GenSimpleStage(),
               if (empty && cv.error == null)
                 if (scope.slots.emptyCanvas case final welcome?)
                   welcome(context)
@@ -113,6 +113,8 @@ class _GenCanvasState extends State<GenCanvas> {
                 child: const WindowDragArea(key: Key('gen-canvas-window-drag')),
               ),
             if (!cv.positioning) ...[
+              if (scope.slots.viewerControls case final controls?)
+                Positioned(top: 10, right: 10, child: controls),
               if (bar) ...[
                 Positioned(
                   top: 10,
@@ -279,8 +281,8 @@ class GenBackdropPainter extends CustomPainter {
 
 /// 自带舞台：把焦点组摆在画布中间。一张按原型留白缩放（不放大小图，除非“放大填满”）；
 /// 多张试 1–N 列，取每张最大的排法，间距 16。
-class _Stage extends StatelessWidget {
-  const _Stage();
+class GenSimpleStage extends StatelessWidget {
+  const GenSimpleStage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1495,70 +1497,79 @@ class _DisplayPopover extends StatelessWidget {
     final channel = cv.channel;
     final onChannel = scope.actions.onChannelChanged;
     final showChannel = channel != null && onChannel != null;
+    // 窗口矮时弹层被限高（浮层可用高度 − 8）：内容改为内部滚动，
+    // 不再被裁掉底部几节（10-25 反馈）。
     return UiPopoverSurface(
       key: const Key('gen-display-popover'),
       width: showChannel ? 316 : 260,
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
-        children: [
-          if (cv.backdrop case final bd?) ...[
-            Text(
-              l.gen_backdrop,
-              style: UiText.sans(12, weight: FontWeight.w600, color: c.muted),
-            ),
-            Text(
-              l.gen_backdropSub,
-              style: UiText.sans(11.5, color: c.faint, height: 1.35),
-            ),
-            Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                for (final b in GenBackdrop.presets) swatch(b),
-                if (bd.startsWith('#')) swatch(bd),
-              ],
-            ),
-            _HexField(current: bd),
-            Container(height: 1, color: c.line),
-          ],
-          UiPressable(
-            key: const Key('gen-zoom-fill'),
-            onTap: () => scope.actions.onZoomToFillChanged(!cv.zoomToFill),
-            builder: (context, _) => Row(
-              spacing: 10,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.gen_zoomToFill,
-                        style: UiText.sans(13, color: c.ink),
-                      ),
-                      Text(
-                        l.gen_zoomToFillSub,
-                        style: UiText.sans(11.5, color: c.muted, height: 1.35),
-                      ),
-                    ],
+      child: SingleChildScrollView(
+        key: const Key('gen-display-scroll'),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 10,
+          children: [
+            if (cv.backdrop case final bd?) ...[
+              Text(
+                l.gen_backdrop,
+                style: UiText.sans(12, weight: FontWeight.w600, color: c.muted),
+              ),
+              Text(
+                l.gen_backdropSub,
+                style: UiText.sans(11.5, color: c.faint, height: 1.35),
+              ),
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  for (final b in GenBackdrop.presets) swatch(b),
+                  if (bd.startsWith('#')) swatch(bd),
+                ],
+              ),
+              _HexField(current: bd),
+              Container(height: 1, color: c.line),
+            ],
+            UiPressable(
+              key: const Key('gen-zoom-fill'),
+              onTap: () => scope.actions.onZoomToFillChanged(!cv.zoomToFill),
+              builder: (context, _) => Row(
+                spacing: 10,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.gen_zoomToFill,
+                          style: UiText.sans(13, color: c.ink),
+                        ),
+                        Text(
+                          l.gen_zoomToFillSub,
+                          style: UiText.sans(
+                            11.5,
+                            color: c.muted,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                UiSwitch(value: cv.zoomToFill),
-              ],
+                  UiSwitch(value: cv.zoomToFill),
+                ],
+              ),
             ),
-          ),
-          if (showChannel) ...[
-            Container(height: 1, color: c.line),
-            ChannelSettingsSection(
-              settings: channel,
-              onChanged: onChannel,
-              anchorY: cv.channelTop,
-              generating: scope.data.generate.state == GenRunState.generating,
-            ),
+            if (showChannel) ...[
+              Container(height: 1, color: c.line),
+              ChannelSettingsSection(
+                settings: channel,
+                onChanged: onChannel,
+                anchorY: cv.channelTop,
+                generating: scope.data.generate.state == GenRunState.generating,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

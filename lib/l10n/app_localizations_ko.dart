@@ -2745,9 +2745,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get localGallery_copyPrompt => '프롬프트 복사';
 
   @override
-  String get localGallery_copySeed => '시드 복사';
-
-  @override
   String get localGallery_dragToShare => '끌어서 공유';
 
   @override
@@ -14606,9 +14603,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get gen_translateNeedsModel => '번역 모델이 없습니다. 클릭하여 설정';
 
   @override
-  String get gen_translateRestore => '원문 보기';
-
-  @override
   String gen_translateWith(Object route) {
     return '번역 ($route)';
   }
@@ -14977,7 +14971,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String gen_repeatTotal(Object times, Object total) {
-    return '$times회, 총 $total장 (휠로도 조절)';
+    return '$times회, 총 $total장 · 누른 채 좌우로 드래그하여 조절';
   }
 
   @override
@@ -20976,9 +20970,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ag_mentionSearchBlocks => '블록 검색';
 
   @override
-  String get ag_skillsTitle => '스킬';
-
-  @override
   String get ag_keySelect => '선택';
 
   @override
@@ -21362,4 +21353,672 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get mp_errorRateLimit => '요청 한도 초과';
+
+  @override
+  String get ag_tool_prompt_set => '프롬프트 세트';
+
+  @override
+  String ag_psCount(int count, String unit) {
+    return '$count $unit';
+  }
+
+  @override
+  String ag_psPosition(int index, int count, String unit) {
+    return '$unit $index / $count';
+  }
+
+  @override
+  String get ag_psOverview => '전체 보기';
+
+  @override
+  String get ag_psSingle => '하나씩 보기';
+
+  @override
+  String get ag_psPrompt => '프롬프트';
+
+  @override
+  String get ag_psShared => '공통 설정';
+
+  @override
+  String ag_psThisItem(String unit) {
+    return '이 $unit';
+  }
+
+  @override
+  String get ag_psMain => '메인 프롬프트';
+
+  @override
+  String ag_psCharacter(int index) {
+    return '캐릭터 $index';
+  }
+
+  @override
+  String get ag_psNegative => '네거티브';
+
+  @override
+  String get ag_psImport => '캔버스로 가져오기';
+
+  @override
+  String get ag_psImportTip => '메인 프롬프트, 캐릭터, 네거티브만 씁니다. 파라미터와 참조 이미지는 그대로입니다';
+
+  @override
+  String ag_psImported(String title) {
+    return '‘$title’을(를) 프롬프트에 넣었습니다';
+  }
+
+  @override
+  String get ag_psGenerate => '생성';
+
+  @override
+  String get ag_psGenerating => '생성 중';
+
+  @override
+  String ag_psRevision(int revision, int count) {
+    return 'v$revision · $count개 수정';
+  }
+
+  @override
+  String get ag_psSaveBlock => '블록으로 저장';
+
+  @override
+  String ag_psSavedBlock(String title, int count) {
+    return '블록 ‘$title’ 저장 · $count개';
+  }
+
+  @override
+  String ag_psCopyItem(String unit) {
+    return '이 $unit의 프롬프트 복사';
+  }
+
+  @override
+  String get ag_psCopyAll => '모두 복사';
+
+  @override
+  String ag_psEditItem(String unit) {
+    return '이 $unit 수정을 Agent에 요청';
+  }
+
+  @override
+  String ag_psEditDraft(String title, int index, String unit, String item) {
+    return '‘$title’ $unit $index($item) 수정: ';
+  }
+
+  @override
+  String ag_psTooManyCharacters(int count) {
+    return '현재 모델은 캐릭터를 최대 $count명까지 지원합니다';
+  }
+
+  @override
+  String get ag_psNoCharacters => '현재 모델은 캐릭터 프롬프트를 지원하지 않습니다';
+
+  @override
+  String get ag_psMissing => '이 카드의 데이터를 찾을 수 없습니다';
+
+  @override
+  String get startup_dataTitle => '앱 데이터를 준비하지 못했습니다';
+
+  @override
+  String get startup_dataHelp =>
+      '앱 데이터가 아직 준비되지 않았습니다. 기존 파일을 보존하세요. 내용이 다른 파일은 병합하거나 덮어쓰지 않습니다. 데이터 폴더를 백업하고 확인한 뒤 디스크 여유 공간과 접근 권한을 점검하고 다시 시도하세요.';
+
+  @override
+  String get startup_dataCurrent => '현재 데이터 폴더';
+
+  @override
+  String get startup_dataLegacy => '이전 데이터 폴더';
+
+  @override
+  String get startup_dataOpenCurrent => '현재 폴더 열기';
+
+  @override
+  String get startup_dataOpenLegacy => '이전 폴더 열기';
+
+  @override
+  String get startup_dataDetails => '오류 세부 정보';
+
+  @override
+  String startup_dataActionFailed(String error) {
+    return '작업 실패: $error';
+  }
+
+  @override
+  String get blocks_expandToText => '텍스트로 펼치기';
+
+  @override
+  String get ag_answeredTitle => '사용자에게 질문 · 답변 완료';
+
+  @override
+  String get ag_historyButton => '기록';
+
+  @override
+  String get ag_historyTitle => '대화 기록';
+
+  @override
+  String get ag_historySearch => '메시지 및 카드 검색…';
+
+  @override
+  String get ag_historyAll => '전체';
+
+  @override
+  String get ag_historyMine => '내 메시지';
+
+  @override
+  String get ag_historyCards => '카드';
+
+  @override
+  String get ag_historyQuestions => '질문과 답변';
+
+  @override
+  String get ag_historyEmpty => '일치하는 항목 없음';
+
+  @override
+  String get ag_historyBeforeCompaction => '압축 이전의 내용입니다. 눌러 요약을 확인하세요.';
+
+  @override
+  String get ag_historyAuto => '자동 압축';
+
+  @override
+  String get ag_historyManual => '수동 압축';
+
+  @override
+  String get ag_historyImageMessage => '이미지 메시지';
+
+  @override
+  String ag_historyAnswer(String answer) {
+    return '내 답변: $answer';
+  }
+
+  @override
+  String get ag_historyPromptSet => '프롬프트 세트';
+
+  @override
+  String ag_historyImages(int count) {
+    return '생성 카드 · $count장';
+  }
+
+  @override
+  String get ag_historyPromptChange => '프롬프트 변경';
+
+  @override
+  String get ag_historyParams => '생성 설정';
+
+  @override
+  String get ag_historyPositions => '캐릭터 위치';
+
+  @override
+  String get ag_historySettings => '설정 변경';
+
+  @override
+  String get ag_historyGallery => '갤러리 카드';
+
+  @override
+  String get ag_historyChanges => '변경 요약';
+
+  @override
+  String get gen_translateTapOriginal => '클릭: 원문 표시';
+
+  @override
+  String get gen_translateTapTranslated => '클릭: 번역문 표시';
+
+  @override
+  String get gen_translateClearRestore => '번역 블록 해제 및 원문 복원';
+
+  @override
+  String get gen_translateClearRestoreSub => '일반 원문으로 복원하며 실행 취소 가능';
+
+  @override
+  String get gen_translateCleared => '번역 블록을 원문으로 복원했습니다';
+
+  @override
+  String get gen_translateAdjust => '추가 번역 조정';
+
+  @override
+  String get gen_translateAdjustSub => '이번 번역을 이어서 분할, 재번역, 병합';
+
+  @override
+  String get gen_translateAdjustTitle => '번역 조정';
+
+  @override
+  String gen_translateAdjustContext(int count) {
+    return '이번 번역 이어가기 · $count개 블록';
+  }
+
+  @override
+  String gen_translateAdjustSelected(int count) {
+    return '$count개 블록 선택됨';
+  }
+
+  @override
+  String get gen_translateAdjustCollapse => '접기 / 펼치기';
+
+  @override
+  String get gen_translateAdjustIntro =>
+      '이번 번역을 이어갑니다. 왼쪽 블록을 클릭해 참조하세요. 변경은 실행 취소할 수 있습니다.';
+
+  @override
+  String get gen_translateAdjustSplit => '다시 분할';
+
+  @override
+  String get gen_translateAdjustRetranslate => '선택 재번역';
+
+  @override
+  String get gen_translateAdjustMerge => '선택 병합';
+
+  @override
+  String get gen_translateAdjustSplitTemplate =>
+      '현재 블록을 읽고 참조 블록을 의미 단위로 나누세요. 정확한 원문을 보존하세요.';
+
+  @override
+  String get gen_translateAdjustRetranslateTemplate =>
+      '현재 블록을 읽고 원문을 바꾸지 않고 참조 블록을 다시 번역하세요.';
+
+  @override
+  String get gen_translateAdjustMergeTemplate =>
+      '현재 블록을 읽고 참조 블록을 지정한 원문 순서로 병합하세요. 관련 없는 블록은 유지하세요.';
+
+  @override
+  String get gen_translateAdjustMarkers =>
+      'translation_blocks_read의 marker 목록을 사용하세요.';
+
+  @override
+  String get gen_translateAdjustHint => '번역 블록 조정 방법 입력…';
+
+  @override
+  String get gen_translateAdjustStartFailed =>
+      '조정을 시작할 수 없습니다. 모델과 Agent 런타임을 확인하세요.';
+
+  @override
+  String get gen_translateAdjustRunFailed =>
+      '조정이 중단되었거나 실패했습니다. 다시 시도하기 전에 블록을 읽으세요.';
+
+  @override
+  String gen_repeatDragTotal(int times, int total) {
+    return '$times회 · 총 $total장';
+  }
+
+  @override
+  String get set_cvGroupBatches => '일괄 생성 결과를 그룹으로 표시';
+
+  @override
+  String get set_cvGroupBatchesSub =>
+      '간단 뷰어와 무한 캔버스 모두에 적용됩니다. 끄면 이미지를 한 장씩 표시하며 기록 썸네일로 각 이미지를 선택할 수 있습니다.';
+
+  @override
+  String get gen_groupBatches => '그룹';
+
+  @override
+  String get gen_translateAdjustPickHint => '왼쪽 블록을 클릭해 참조';
+
+  @override
+  String get gen_translateAdjustClearRefs => '참조 지우기';
+
+  @override
+  String gen_translateAdjustSplitInto(String source, int count) {
+    return '$source → $count개 블록';
+  }
+
+  @override
+  String get gen_translateAdjustContextNote => '컨텍스트: 이번 번역의 원문, 블록, 번역문';
+
+  @override
+  String ag_historyStats(int messages, int cards) {
+    return '발언 $messages · 카드 $cards';
+  }
+
+  @override
+  String get ag_historyKeySelect => '선택';
+
+  @override
+  String get ag_historyKeyJump => '대화로 이동';
+
+  @override
+  String get ag_historyKeyClose => '닫기';
+
+  @override
+  String get blocks_tempLabel => '임시 블록';
+
+  @override
+  String blocks_tempEditedByAgent(String time) {
+    return 'Agent가$time 여기를 수정했습니다.';
+  }
+
+  @override
+  String blocks_tempEditedByYou(String time) {
+    return '$time 여기를 수정했습니다.';
+  }
+
+  @override
+  String blocks_tempExplain(String title) {
+    return '라이브러리의 「$title」와 분리되어 변경은 이 위치에만 남습니다. 라이브러리와 다른 프롬프트의 같은 블록에는 영향이 없습니다.';
+  }
+
+  @override
+  String get blocks_tempEdit => '편집';
+
+  @override
+  String get blocks_tempCompare => '원본과 비교';
+
+  @override
+  String get blocks_tempAdded => '추가';
+
+  @override
+  String blocks_tempAddedCount(int count) {
+    return '$count개 단어 추가';
+  }
+
+  @override
+  String get blocks_tempAddedNone => '추가 없음';
+
+  @override
+  String get blocks_tempRemoved => '삭제';
+
+  @override
+  String blocks_tempRemovedHint(int count) {
+    return '$count개 삭제';
+  }
+
+  @override
+  String get blocks_tempRemovedNone => '삭제 없음';
+
+  @override
+  String get blocks_tempRevert => '원본으로 복원';
+
+  @override
+  String get blocks_tempKeepEditing => '계속 편집';
+
+  @override
+  String get blocks_tempApply => '적용';
+
+  @override
+  String get blocks_tempSaveAs => '새 블록으로 저장';
+
+  @override
+  String get blocks_tempSaveAsHint => '저장하면 이 위치가 새 블록으로 바뀌고 원본은 그대로 유지됩니다';
+
+  @override
+  String get blocks_tempSaveConfirm => '저장';
+
+  @override
+  String get blocks_tempShowOriginal => '라이브러리에서 원본 보기';
+
+  @override
+  String get gen_menuNew => '신규';
+
+  @override
+  String get gen_repeatDragHint => '숫자를 좌우로 드래그 · 더블클릭하여 입력';
+
+  @override
+  String get gen_groupBatchesOn => '배치별 묶음 · 클릭하면 한 장씩';
+
+  @override
+  String get gen_groupBatchesOff => '한 장씩 표시 · 클릭하면 배치별 묶음';
+
+  @override
+  String get blocks_presetCustom => '사용자 지정';
+
+  @override
+  String get blocks_presetHint =>
+      '부가 매개변수를 적용하면 품질 태그와 네거티브 프리셋도 함께 복원됩니다. 다른 모델에서는 단계를 자동 환산하며 Turbo는 기존 처리를 따릅니다.';
+
+  @override
+  String get gen_vibeInpaintUnsupported =>
+      'Vibe는 부분 다시 그리기(Inpainting)를 지원하지 않으므로 이번 생성에는 적용되지 않습니다.';
+
+  @override
+  String get set_stThumbnailCacheLimit => '썸네일 캐시 한도';
+
+  @override
+  String get set_stThumbnailCacheLimitSub =>
+      '모든 갤러리 폴더 합계입니다. 시작할 때나 수동 정리 시 오래된 썸네일부터 한도의 80%까지 삭제하며 원본은 건드리지 않습니다.';
+
+  @override
+  String get ag_slashGroupSkills => '스킬';
+
+  @override
+  String get ag_slashGroupTemplates => '프롬프트 템플릿';
+
+  @override
+  String get ag_slashGroupBuiltin => 'Studio 명령';
+
+  @override
+  String get ag_commandNew => '새 대화 시작';
+
+  @override
+  String get ag_commandCompact => '컨텍스트 압축';
+
+  @override
+  String get ag_commandModel => '모델 선택';
+
+  @override
+  String get ag_commandThinking => '사고 수준 선택';
+
+  @override
+  String get ag_commandHistory => '세션 기록 열기';
+
+  @override
+  String get ag_commandRename => '대화 이름 변경';
+
+  @override
+  String get ag_commandCopy => '마지막 답변 복사';
+
+  @override
+  String get ag_commandExport => '세션 내보내기';
+
+  @override
+  String get ag_commandCompactArgs => '[지침]';
+
+  @override
+  String get ag_commandRenameArgs => '<이름>';
+
+  @override
+  String get set_agNextSuggestion => '다음 메시지 제안';
+
+  @override
+  String get set_agNextSuggestionSub =>
+      '현재 대화 모델로 다음 메시지를 예측합니다. 추가 토큰을 사용하며 Tab으로 채택합니다.';
+
+  @override
+  String get set_agCacheWarming => '프롬프트 캐시 예열';
+
+  @override
+  String get set_agCacheWarmingSub =>
+      '프롬프트 캐시가 만료되기 직전 1토큰 요청으로 연장합니다(수명 5분, 모든 모델). 다음 단계는 전체 컨텍스트를 다시 보내지 않고 캐시를 읽습니다.';
+
+  @override
+  String get set_agCacheOff => '끄기';
+
+  @override
+  String get set_agCacheStreaming => 'Agent 실행 중에만';
+
+  @override
+  String get set_agCacheIdle => '대기 중에도 예열';
+
+  @override
+  String get set_agCacheIdleCost => '대기 중 예열(최대 30분)은 추가 모델 비용이 발생합니다.';
+
+  @override
+  String get ag_suggestionAccept => 'Tab으로 이 제안 입력';
+
+  @override
+  String get ag_cacheWarmTitle => '캐시 예열';
+
+  @override
+  String get ag_cacheWarmOff => '꺼짐';
+
+  @override
+  String get ag_cacheWarmRefreshing => '캐시 연장 중…';
+
+  @override
+  String get ag_cacheWarmIdle => '대기 중 — 다음 실행 시 시작';
+
+  @override
+  String ag_cacheWarmNext(String time) {
+    return '$time 후 연장';
+  }
+
+  @override
+  String get set_stOther => '기타 파일';
+
+  @override
+  String get set_stIncomplete =>
+      '일부 폴더를 읽지 못해 합계가 불완전합니다. 분류에 마우스를 올리면 출처 폴더가 표시됩니다.';
+
+  @override
+  String get set_stSliceIncomplete => '일부만 읽음';
+
+  @override
+  String get localGallery_searchHistoryTitle => '최근 검색';
+
+  @override
+  String get localGallery_searchHistoryClear => '지우기';
+
+  @override
+  String get localGallery_searchHistoryRemove => '기록에서 삭제';
+
+  @override
+  String ag_cacheWarmCount(int count) {
+    return '연장 $count회';
+  }
+
+  @override
+  String ag_cacheWarmLast(String time) {
+    return '최근 $time';
+  }
+
+  @override
+  String ag_cacheWarmTtl(int minutes) {
+    return '캐시 수명 $minutes분';
+  }
+
+  @override
+  String get set_workspaceFontScale => '창작 영역 글자 크기';
+
+  @override
+  String get set_promptAutocomplete => '프롬프트 자동 완성';
+
+  @override
+  String get shortcut_action_open_resource_window => '리소스 창 열기';
+
+  @override
+  String get set_workspaceFontScaleSub =>
+      '프롬프트 칸, 캐릭터 칸, 블록, 뷰어 프롬프트의 글자. 위 인터페이스 글자 크기와 별도로 조절합니다.';
+
+  @override
+  String get set_promptAutocompleteSub =>
+      '프롬프트 칸과 캐릭터 칸에 입력할 때 로컬 태그 사전에서 후보를 보여 줍니다. ↑↓ 선택, Tab 또는 Enter 적용, Esc 닫기.';
+
+  @override
+  String get floating_open => '리소스 창';
+
+  @override
+  String get floating_searchGallery => '검색 (전체 구문 / 정확한 태그)';
+
+  @override
+  String get floating_searchName => '이름 검색';
+
+  @override
+  String get floating_collapse => '제목 표시줄로 접기';
+
+  @override
+  String get floating_expand => '펼치기';
+
+  @override
+  String get floating_empty => '항목 없음';
+
+  @override
+  String get floating_loadFailed => '불러오지 못했습니다';
+
+  @override
+  String get floating_loadMore => '더 불러오기';
+
+  @override
+  String set_stThumbQuotaTip(int count, String time) {
+    return '썸네일 $count개 · $time 집계';
+  }
+
+  @override
+  String get prompt_autocompleteTitle => '자동 완성';
+
+  @override
+  String get prompt_autocompleteHint =>
+      '↑↓ 선택 · → 연관 · ← 돌아가기 · Tab / Enter 완성 · Esc 닫기';
+
+  @override
+  String get prompt_autocompleteHintRelated =>
+      '↑↓ 선택 · ← 돌아가기 · Enter / 클릭 추가 · Esc 연관 닫기';
+
+  @override
+  String get resourceWindow_pin => '항상 위에';
+
+  @override
+  String get resourceWindow_newWindow => '리소스 창 하나 더 열기';
+
+  @override
+  String get resourceWindow_rowHeight => '행 높이';
+
+  @override
+  String get resourceWindow_cardSize => '카드 크기';
+
+  @override
+  String get resourceWindow_dragHint => '생성 페이지의 해당 영역으로 끌어다 놓기';
+
+  @override
+  String get resourceWindow_dragHintBlocks => '프롬프트로 끌어다 삽입';
+
+  @override
+  String get resourceWindow_keyDrag => '드래그';
+
+  @override
+  String get resourceWindow_keyDouble => '더블클릭';
+
+  @override
+  String get resourceWindow_hintDrag => '생성 페이지에서 사용';
+
+  @override
+  String get resourceWindow_hintView => '크게 보기';
+
+  @override
+  String get resourceWindow_hintPrimary => '기본 작업';
+
+  @override
+  String get resourceWindow_connected => '메인 창 연결됨';
+
+  @override
+  String get resourceWindow_disconnected => '메인 창 연결 끊김';
+
+  @override
+  String get resourceWindow_currentModelUsable => '현재 모델에서 사용 가능';
+
+  @override
+  String get resourceWindow_insertPositive => '긍정 프롬프트에 삽입';
+
+  @override
+  String get resourceWindow_insertNegative => '부정 프롬프트에 삽입';
+
+  @override
+  String get resourceWindow_errorNotFound => '이 항목은 더 이상 없습니다. 목록을 새로 고쳤습니다';
+
+  @override
+  String get resourceWindow_errorNotReady =>
+      '메인 창이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요';
+
+  @override
+  String get resourceWindow_errorUnsupported => '현재 모델은 이 작업을 지원하지 않습니다';
+
+  @override
+  String get resourceWindow_errorFailed => '작업에 실패했습니다';
+
+  @override
+  String get blocks_tempStandaloneExplain =>
+      '이 프롬프트에만 있고 라이브러리에는 저장되지 않았습니다. 남기려면 새 블록으로 저장하세요.';
+
+  @override
+  String blocks_tempCreatedByAgent(String time) {
+    return 'Agent가$time 이 블록을 만들었습니다.';
+  }
+
+  @override
+  String blocks_tempCreatedByYou(String time) {
+    return '$time 이 블록을 만들었습니다.';
+  }
 }

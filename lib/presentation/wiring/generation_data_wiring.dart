@@ -28,6 +28,8 @@ import '../providers/generation/image_workflow_controller.dart';
 import '../providers/generation/local_upscale_provider.dart';
 import '../providers/generation/preview_selection_provider.dart';
 import '../providers/image_generation_provider.dart';
+import '../providers/history_click_behavior_provider.dart';
+import '../providers/simple_viewer_group_batches_provider.dart';
 import '../providers/image_save_settings_provider.dart';
 import '../providers/krita/bridge_agent_feedback.dart';
 import '../providers/krita/bridge_draft_snapshot.dart';
@@ -136,6 +138,7 @@ final generationFocusViewProvider = Provider<GenGroup?>((ref) {
     focus: ref.watch(generationCanvasGroupSelectionProvider),
     selectedImage: ref.watch(generationPreviewSelectionProvider),
     pinned: ref.read(canvasPinnedNotifierProvider.notifier).images,
+    singleImages: ref.watch(simpleViewerSingleImagesProvider),
   );
 });
 
@@ -166,6 +169,7 @@ final generationHistoryBatchesProvider = Provider<List<GenBatch>>((ref) {
     favorites:
         ref.watch(generationFavoriteImagesProvider).valueOrNull ?? const {},
     now: ref.read(generationClockProvider)(),
+    singleImages: ref.watch(simpleViewerSingleImagesProvider),
   ).batches;
 });
 
@@ -396,15 +400,14 @@ final generationViewDataProvider = Provider.autoDispose
           ),
         ),
         for (final role in projectedCharacters)
-          if (role.enabled)
-            PillDocument.fromJson(
-              Map<String, dynamic>.from(
-                draft.documents['characters']['lanes'][role.id][negative
-                        ? 'negative'
-                        : 'positive']
-                    as Map,
-              ),
+          PillDocument.fromJson(
+            Map<String, dynamic>.from(
+              draft.documents['characters']['lanes'][role.id][negative
+                      ? 'negative'
+                      : 'positive']
+                  as Map,
             ),
+          ),
       ];
       final translations = [
         for (final document in translationDocuments)
@@ -491,6 +494,7 @@ final generationViewDataProvider = Provider.autoDispose
           negativePreview: sections(PromptTokenCountTarget.negative),
           tools: GenPromptTools(
             palettePinned: layout.blockPaletteToolPinned,
+            resourceWindowsPinned: layout.resourceWindowsPinned,
             dockPinned: layout.blockLibraryPanelToolPinned,
             translatePinned: layout.translationToolPinned,
             agentPinned: layout.naiAgentToolPinned,
@@ -502,6 +506,9 @@ final generationViewDataProvider = Provider.autoDispose
           translate: GenTranslate(
             busy: translating,
             showing: translations.any((pill) => !pill.showOriginal),
+            hasTranslations: translations.isNotEmpty,
+            canAdjust:
+                ref.watch(promptTranslationContextsProvider)[negative] != null,
             route: translationRoute,
           ),
           bridge: feedback == null
@@ -654,6 +661,9 @@ final generationViewDataProvider = Provider.autoDispose
           selected: focus?.id,
           autoSave: ref.watch(imageSaveSettingsNotifierProvider).autoSave,
           pinned: pins.length,
+          openDetailOnClick:
+              ref.watch(historyClickBehaviorNotifierProvider) ==
+              HistoryClickBehavior.openDetail,
         ),
         now: now,
       );

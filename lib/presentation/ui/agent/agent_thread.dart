@@ -1,7 +1,9 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 
 import '../../../core/utils/localization_extension.dart';
 import '../../../core/utils/platform_shortcut_text.dart';
@@ -12,11 +14,17 @@ import '../kit/ui_colors.dart';
 import '../kit/ui_preview_image.dart';
 import '../kit/ui_text.dart';
 import 'agent_activity.dart';
+import 'agent_answered_questions.dart';
 import 'agent_cards.dart';
 import 'agent_contract.dart';
+import 'agent_prompt_set_card.dart';
+import 'agent_position_board.dart';
+import 'agent_tag_window.dart';
+export 'agent_tag_window.dart' show agentDiffWindow;
 import 'agent_glyphs.dart';
 import 'agent_parts.dart';
 import 'agent_scope.dart';
+import 'agent_thread_navigation.dart';
 
 /// 对话页：每轮 = 左侧黑线的用户句 + 一张任务卡；最后是待处理卡片。
 /// 内容从上往下排；停在底部时跟随最新内容，往上翻就停止跟随，右下角出现
@@ -40,6 +48,98 @@ class _AgentThreadState extends State<AgentThread> {
   var _jumpQueued = false;
   int? _revision;
   String? _chat;
+  AgentThreadNavigation? _navigation;
+  var _navigationEpoch = 0;
+
+  void _reportVisible() {
+    final nav = _navigation;
+    if (nav == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_navigation, nav)) return;
+      final viewport = context.findRenderObject() as RenderBox?;
+      if (viewport == null || !viewport.hasSize) return;
+      final rect = viewport.localToGlobal(Offset.zero) & viewport.size;
+      final visible = <String>{};
+      for (final e in AgentScope.of(context).data.history) {
+        final turn = AgentScope.of(
+          context,
+        ).data.thread.where((t) => t.id == e.turnId).firstOrNull;
+        final block = e.blockIndex == null
+            ? null
+            : turn?.reply?.blocks.elementAtOrNull(e.blockIndex!);
+        final box =
+            (block == null
+                        ? nav.users[e.turnId]
+                        : nav.blocks[(e.turnId, e.blockIndex!)])
+                    ?.currentContext
+                    ?.findRenderObject()
+                as RenderBox?;
+        if (box != null &&
+            box.attached &&
+            box.hasSize &&
+            rect.overlaps(box.localToGlobal(Offset.zero) & box.size)) {
+          visible.add(e.id);
+        }
+      }
+      if (!setEquals(nav.visible.value, visible)) nav.visible.value = visible;
+    });
+  }
+
+  Future<bool> _jumpHistory(AgentHistoryEntry entry) async {
+    final epoch = ++_navigationEpoch;
+    final d = AgentScope.of(context).data;
+    final index = d.thread.indexWhere((t) => t.id == entry.turnId);
+    final nav = _navigation;
+    if (index < 0 || nav == null || !_scroll.hasClients) return false;
+    _follow = false;
+    // Walk viewport-sized chunks through the lazy list until the target mounts.
+    // Unlike estimated index offsets, this also handles very tall mixed cards.
+    while (mounted &&
+        epoch == _navigationEpoch &&
+        nav.turns[entry.turnId]?.currentContext == null) {
+      final built = [
+        for (final (i, t) in d.thread.indexed)
+          if (nav.turns[t.id]?.currentContext != null) i,
+      ];
+      final forward = built.isEmpty || index > built.last;
+      final position = _scroll.position;
+      final next =
+          (_scroll.offset +
+                  (forward ? 1 : -1) * position.viewportDimension * .85)
+              .clamp(0.0, position.maxScrollExtent);
+      if (next == _scroll.offset) return false;
+      _auto = true;
+      _scroll.jumpTo(next);
+      _auto = false;
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted || epoch != _navigationEpoch) return false;
+    final block = entry.blockIndex == null
+        ? null
+        : d.thread[index].reply?.blocks.elementAtOrNull(entry.blockIndex!);
+    final Object target = block == null
+        ? entry.turnId
+        : (entry.turnId, entry.blockIndex!);
+    final anchor = block == null
+        ? nav.users[entry.turnId]
+        : nav.blocks[(entry.turnId, entry.blockIndex!)];
+    final targetContext = anchor?.currentContext;
+    if (targetContext == null || !targetContext.mounted) return false;
+    _auto = true;
+    await Scrollable.ensureVisible(
+      targetContext,
+      alignment: .12,
+      duration: const Duration(milliseconds: 180),
+    );
+    _auto = false;
+    if (!mounted || epoch != _navigationEpoch) return false;
+    nav.highlight.value = target;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && epoch == _navigationEpoch) nav.highlight.value = null;
+    });
+    _reportVisible();
+    return true;
+  }
 
   /// 打开 / 换聊天后的第一帧不做进场动画（已有内容直接显示），之后新内容才动。
   var _armed = false;
@@ -86,11 +186,13 @@ class _AgentThreadState extends State<AgentThread> {
     // 用户自己滚（拖动、滚轮、拖滚动条）才改跟随状态；程序跳底不算。
     if (n is ScrollUpdateNotification && !_auto) _follow = _atBottom;
     _syncAway();
+    _reportVisible();
     return false;
   }
 
   bool _onMetrics(ScrollMetricsNotification n) {
     if (n.depth != 0) return false;
+    _reportVisible();
     // 内容变高（新消息、流式文字、卡片展开）：跟随中就贴到底。
     if (_follow) {
       _queueJump();
@@ -121,8 +223,12 @@ class _AgentThreadState extends State<AgentThread> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final d = AgentScope.of(context).data;
+    _navigation = AgentNavigationScope.of(context);
+    _navigation?.jump = _jumpHistory;
+    _reportVisible();
     final r = d.revision;
     if (_chat != null && d.chat.id != _chat) {
+      _navigationEpoch++;
       // 换了聊天：从最新处开始看。
       _follow = true;
       _fresh = false;
@@ -143,6 +249,8 @@ class _AgentThreadState extends State<AgentThread> {
 
   @override
   void dispose() {
+    _navigationEpoch++;
+    _navigation?.jump = null;
     _scroll.dispose();
     super.dispose();
   }
@@ -154,11 +262,21 @@ class _AgentThreadState extends State<AgentThread> {
     final c = context.ui;
     final items = <Widget>[
       for (final (i, turn) in d.thread.indexed)
-        _Turn(
-          key: ValueKey('turn-${turn.id}'),
-          turn: turn,
-          last: i == d.thread.length - 1,
-        ),
+        if (_navigation case final nav?)
+          KeyedSubtree(
+            key: nav.turns.putIfAbsent(turn.id, GlobalKey.new),
+            child: _Turn(
+              key: ValueKey('turn-${turn.id}'),
+              turn: turn,
+              last: i == d.thread.length - 1,
+            ),
+          )
+        else
+          _Turn(
+            key: ValueKey('turn-${turn.id}'),
+            turn: turn,
+            last: i == d.thread.length - 1,
+          ),
       for (final p in d.composer.pending)
         AgentAppear(
           key: ValueKey('pending-${p.id}'),
@@ -406,6 +524,19 @@ class _ErrorLine extends StatelessWidget {
   }
 }
 
+Widget _userAnchor(BuildContext context, AgentTurn turn) {
+  final nav = AgentNavigationScope.of(context);
+  final child = _UserLine(message: turn.user);
+  return nav == null
+      ? child
+      : AgentNavigationAnchor(
+          navigation: nav,
+          target: turn.id,
+          anchor: nav.users.putIfAbsent(turn.id, GlobalKey.new),
+          child: child,
+        );
+}
+
 class _Turn extends StatelessWidget {
   const _Turn({super.key, required this.turn, required this.last});
   final AgentTurn turn;
@@ -414,27 +545,31 @@ class _Turn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reply = turn.reply;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: 10,
-      children: [
-        AgentAppear(
-          id: '${turn.id}/user',
-          enabled: last,
-          child: _UserLine(message: turn.user),
-        ),
-        if (reply != null && (reply.blocks.isNotEmpty || reply.live))
+    return AgentTurnNavigationScope(
+      turnId: turn.id,
+      blocks: reply?.blocks ?? const [],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 10,
+        children: [
           AgentAppear(
-            id: '${turn.id}/card',
+            id: '${turn.id}/user',
             enabled: last,
-            child: _TaskCard(
-              turnId: turn.id,
-              reply: reply,
-              last: last,
-              since: turn.user.at,
-            ),
+            child: _userAnchor(context, turn),
           ),
-      ],
+          if (reply != null && (reply.blocks.isNotEmpty || reply.live))
+            AgentAppear(
+              id: '${turn.id}/card',
+              enabled: last,
+              child: _TaskCard(
+                turnId: turn.id,
+                reply: reply,
+                last: last,
+                since: turn.user.at,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -744,6 +879,61 @@ class _TaskCard extends StatelessWidget {
     final s = AgentScope.of(context);
     final l = context.l10n;
     final c = context.ui;
+    // Prompt sets are standalone cards (not a card nested in the task shell).
+    // Leave all existing block-only replies on their original rendering path.
+    if (reply.blocks.any(
+      (block) =>
+          block is AgentPromptSetBlock || block is AgentAnsweredQuestionsBlock,
+    )) {
+      final groups = <Widget>[];
+      var ordinary = <AgentBlock>[];
+      void flush({bool tail = false}) {
+        if (ordinary.isEmpty && !tail) return;
+        if (ordinary.isEmpty && reply.summary == null && !reply.canRegenerate) {
+          return;
+        }
+        groups.add(
+          _TaskCard(
+            turnId: '$turnId/part-${groups.length}',
+            last: last && tail,
+            since: since,
+            reply: AgentReply(
+              blocks: List.of(ordinary),
+              live: reply.live && tail,
+              summary: tail ? reply.summary : null,
+              canRegenerate: tail && reply.canRegenerate,
+            ),
+          ),
+        );
+        ordinary = [];
+      }
+
+      for (final block in reply.blocks) {
+        if (block is AgentPromptSetBlock) {
+          flush();
+          groups.add(
+            agentBlockAnchor(context, block, _promptSetView(context, block)),
+          );
+        } else if (block is AgentAnsweredQuestionsBlock) {
+          flush();
+          groups.add(
+            agentBlockAnchor(
+              context,
+              block,
+              AgentAnsweredQuestionsView(block: block),
+            ),
+          );
+        } else {
+          ordinary.add(block);
+        }
+      }
+      flush(tail: true);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 12,
+        children: groups,
+      );
+    }
     final segs = _segments(reply.blocks);
     final finalText = !reply.live && segs.lastOrNull is _OutSeg
         ? (segs.last as _OutSeg).item is AgentTextBlock
@@ -780,25 +970,35 @@ class _TaskCard extends StatelessWidget {
               AgentImagesBlock() => 'images',
               _ => 'card',
             }}',
-            switch (item) {
-              _ReadGroup() => _ReadGroupView(
-                key: ValueKey('read-$i'),
-                group: item,
-              ),
-              AgentTextBlock(:final markdown) => AgentMarkdown(markdown),
-              AgentDiffBlock(:final diff) => AgentDiffView(diff: diff),
-              AgentPositionBlock() => AgentPositionView(block: item),
-              AgentParamBlock() => AgentParamView(block: item),
-              AgentSettingsBlock() => AgentSettingsView(block: item),
-              AgentGalleryBlock() => AgentGalleryView(block: item),
-              AgentCompactionBlock() => AgentCompactionView(
-                key: ValueKey('compaction-$i'),
-                block: item,
-              ),
-              AgentChangeSummaryBlock() => AgentChangeSummaryView(block: item),
-              AgentImagesBlock() => AgentOutputs(block: item),
-              _ => const SizedBox.shrink(),
-            },
+            agentBlockAnchor(
+              context,
+              item is AgentBlock ? item : null,
+              switch (item) {
+                _ReadGroup() => _ReadGroupView(
+                  key: ValueKey('read-$i'),
+                  group: item,
+                ),
+                AgentTextBlock(:final markdown) => AgentMarkdown(markdown),
+                AgentPromptSetBlock() => _promptSetView(context, item),
+                AgentAnsweredQuestionsBlock() => AgentAnsweredQuestionsView(
+                  block: item,
+                ),
+                AgentDiffBlock(:final diff) => AgentDiffView(diff: diff),
+                AgentPositionBlock() => AgentPositionView(block: item),
+                AgentParamBlock() => AgentParamView(block: item),
+                AgentSettingsBlock() => AgentSettingsView(block: item),
+                AgentGalleryBlock() => AgentGalleryView(block: item),
+                AgentCompactionBlock() => AgentCompactionView(
+                  key: ValueKey('compaction-$i'),
+                  block: item,
+                ),
+                AgentChangeSummaryBlock() => AgentChangeSummaryView(
+                  block: item,
+                ),
+                AgentImagesBlock() => AgentOutputs(block: item),
+                _ => const SizedBox.shrink(),
+              },
+            ),
             item is _ReadGroup
                 ? proc
                 : item is AgentCompactionBlock
@@ -900,6 +1100,22 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
+Widget _promptSetView(BuildContext context, AgentPromptSetBlock block) =>
+    AgentPromptSetCard(
+      key: ValueKey('prompt-set-${block.setId}'),
+      data: block.data,
+      onAction: (index, action) async {
+        final scope = AgentScope.of(context),
+            callback = AgentScope.of(context).actions.onPromptSetAction;
+        if (callback != null) {
+          await scope.run(() => callback(block.setId, index, action));
+        }
+      },
+      onEdit: (text) => AgentScope.of(context).insert(text),
+      onImage: (image, group) =>
+          AgentScope.of(context).zoom(image, group: group),
+    );
+
 /// 一轮小结：淡色一行「用时 1m 12s · 48 Anlas · 改动 5 处」，悬停看明细（含工具次数、token）。
 class _TurnSummary extends StatelessWidget {
   const _TurnSummary({super.key, required this.summary});
@@ -985,12 +1201,12 @@ class _LiveLine extends StatelessWidget {
 
 /// Markdown 正文：13.5 / 1.72，可选中，链接交给转接层。
 class AgentMarkdown extends StatelessWidget {
-  const AgentMarkdown(this.markdown, {super.key});
+  const AgentMarkdown(this.markdown, {super.key, this.onOpenLink});
   final String markdown;
+  final ValueChanged<String>? onOpenLink;
 
   @override
   Widget build(BuildContext context) {
-    final s = AgentScope.of(context);
     final c = context.ui;
     final body = UiText.sans(13.5, color: c.ink, height: 1.72);
     return MarkdownBody(
@@ -1014,10 +1230,11 @@ class AgentMarkdown extends StatelessWidget {
           border: Border(left: BorderSide(color: c.border, width: 3)),
         ),
         blockquotePadding: const EdgeInsets.only(left: 10),
+        // 行内代码底色半透明，框选时不盖住选区（10-24 反馈）。
         code: UiText.mono(
           12,
           color: c.ink,
-        ).copyWith(backgroundColor: c.control),
+        ).copyWith(backgroundColor: uiSelectableTint(c.control, c.panel)),
         codeblockPadding: const EdgeInsets.all(10),
         codeblockDecoration: BoxDecoration(
           color: agentSunk(c),
@@ -1033,13 +1250,111 @@ class AgentMarkdown extends StatelessWidget {
         pPadding: EdgeInsets.zero,
         blockSpacing: 8,
       ),
+      builders: {'pre': _AgentCodeBlockBuilder(c)},
       imageBuilder: (uri, title, alt) => Tooltip(
         message: uri.toString(),
         child: AgentIcon(AgentGlyphs.image, size: 16, color: c.faint),
       ),
       onTapLink: (_, href, _) {
-        if (href != null) s.actions.onOpenLink(href);
+        if (href != null) {
+          (onOpenLink ?? AgentScope.of(context).actions.onOpenLink)(href);
+        }
       },
+    );
+  }
+}
+
+/// 围栏代码块：自动换行（不再横向滚动）+ 右上角单块复制。
+/// 复制的是块内原文（不含围栏、语言名），软换行不插入换行符。
+class _AgentCodeBlockBuilder extends MarkdownElementBuilder {
+  _AgentCodeBlockBuilder(this.c);
+  final UiColors c;
+
+  @override
+  bool isBlockElement() => true;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final code = element.children?.firstOrNull;
+    final lang = code is md.Element
+        ? (code.attributes['class'] ?? '').replaceFirst('language-', '')
+        : '';
+    var text = element.textContent;
+    if (text.endsWith('\n')) {
+      text = text.substring(0, text.length - 1);
+    }
+    return AgentCodeBlock(text: text, language: lang);
+  }
+}
+
+class AgentCodeBlock extends StatefulWidget {
+  const AgentCodeBlock({super.key, required this.text, this.language = ''});
+  final String text;
+  final String language;
+
+  @override
+  State<AgentCodeBlock> createState() => _AgentCodeBlockState();
+}
+
+class _AgentCodeBlockState extends State<AgentCodeBlock> {
+  var _copied = false;
+  var _serial = 0;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.text));
+    if (!mounted) return;
+    final serial = ++_serial;
+    setState(() => _copied = true);
+    await Future<void>.delayed(const Duration(milliseconds: 1400));
+    if (mounted && serial == _serial) setState(() => _copied = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    final l = context.l10n;
+    final lang = widget.language;
+    return Container(
+      key: const Key('agent-code-block'),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: agentSunk(c),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: c.line),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 34, 10),
+            child: Text(
+              widget.text,
+              softWrap: true,
+              style: UiText.mono(12, color: c.ink, height: 1.55),
+            ),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: AgentIconButton(
+              key: const Key('agent-code-copy'),
+              small: true,
+              glyph: _copied ? AgentGlyphs.check : AgentGlyphs.copy,
+              color: _copied ? c.ok : null,
+              tooltip: _copied
+                  ? l.ag_copied
+                  : lang.isEmpty
+                  ? l.ag_copy
+                  : '${l.ag_copy} · $lang',
+              onPressed: _copy,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1281,7 +1596,7 @@ class _ProcessState extends State<_Process> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _AgentStepRow(
+        AgentStepRow(
           step: step,
           rail: rail && !open,
           open: open,
@@ -1465,8 +1780,9 @@ class _AgentThinkingState extends State<AgentThinking> {
 }
 
 /// 一个工具步骤的行：类型图标 + 动作名 + 等宽工具名 + 右侧耗时。
-class _AgentStepRow extends StatelessWidget {
-  const _AgentStepRow({
+class AgentStepRow extends StatelessWidget {
+  const AgentStepRow({
+    super.key,
     required this.step,
     this.rail = false,
     this.open = false,
@@ -1548,7 +1864,7 @@ class _ReadGroupViewState extends State<_ReadGroupView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (single)
-          _AgentStepRow(step: first, open: _open, onTap: toggle)
+          AgentStepRow(step: first, open: _open, onTap: toggle)
         else
           _StepRow(
             key: Key('agent-read-group-${first.id}'),
@@ -1976,6 +2292,7 @@ class _StepDetail extends StatelessWidget {
 String agentToolLabel(AppLocalizations l, String tool) => switch (tool) {
   'studio_context' => l.ag_tool_studio_context,
   'image_read' => l.ag_tool_image_read,
+  'prompt_set' => l.ag_tool_prompt_set,
   'prompt_update' => l.ag_tool_prompt_update,
   'snapshot' => l.ag_tool_snapshot,
   'wiki_query' => l.ag_tool_wiki_query,
@@ -2007,59 +2324,6 @@ String agentToolLabel(AppLocalizations l, String tool) => switch (tool) {
 
 /// 提示词改动卡的正文窗口：按逗号切成 tag，只留改动附近（前后各 [context] 个），
 /// 两处改动中间隔太远、开头结尾没改的长段都换成「…」。
-@visibleForTesting
-List<AgentDiffSegment?> agentDiffWindow(
-  List<AgentDiffSegment> segments, {
-  int context = 3,
-}) {
-  // 切成一个个 tag：每个 tag 是若干小段（同一个 tag 里可能有删有加）。
-  final tags = <List<AgentDiffSegment>>[[]];
-  for (final seg in segments) {
-    var rest = seg.text;
-    while (rest.isNotEmpty) {
-      final comma = rest.indexOf(',');
-      if (comma < 0) {
-        tags.last.add(AgentDiffSegment(rest, seg.kind));
-        break;
-      }
-      tags.last.add(AgentDiffSegment(rest.substring(0, comma + 1), seg.kind));
-      tags.add([]);
-      rest = rest.substring(comma + 1);
-    }
-  }
-  if (tags.last.isEmpty) tags.removeLast();
-  final changed = [
-    for (final t in tags)
-      t.any((x) => x.kind != AgentDiffKind.same && x.text.trim().isNotEmpty),
-  ];
-  if (!changed.contains(true)) return segments;
-  final show = List.filled(tags.length, false);
-  for (var i = 0; i < tags.length; i++) {
-    if (!changed[i]) continue;
-    for (var j = i - context; j <= i + context; j++) {
-      if (j >= 0 && j < tags.length) show[j] = true;
-    }
-  }
-  // 只藏一个 tag 换成「…」不划算：直接显示。
-  for (var i = 0; i < tags.length; i++) {
-    if (show[i]) continue;
-    var j = i;
-    while (j < tags.length && !show[j]) {
-      j++;
-    }
-    if (j - i == 1) show[i] = true;
-    i = j;
-  }
-  final out = <AgentDiffSegment?>[];
-  for (var i = 0; i < tags.length; i++) {
-    if (show[i]) {
-      out.addAll(tags[i]);
-    } else if (i == 0 || show[i - 1]) {
-      out.add(null);
-    }
-  }
-  return out;
-}
 
 class AgentDiffView extends StatefulWidget {
   const AgentDiffView({super.key, required this.diff});
@@ -2874,18 +3138,9 @@ class AgentPositionView extends StatelessWidget {
 
   /// 与生成页定位板 `GenPositionBoard.palette` 一致：同一角色在两处颜色相同。
   /// 人多时颜色循环，靠圆点里的编号区分。
-  static const palette = [
-    Color(0xFFE5484D),
-    Color(0xFF0090FF),
-    Color(0xFF30A46C),
-    Color(0xFFF76B15),
-    Color(0xFF8E4EC6),
-    Color(0xFF12A594),
-    Color(0xFFD6409F),
-    Color(0xFFAD7F58),
-  ];
+  static const palette = AgentPositionBoard.palette;
 
-  static Color colorOf(int index) => palette[index % palette.length];
+  static Color colorOf(int index) => AgentPositionBoard.colorOf(index);
 
   @override
   Widget build(BuildContext context) {
@@ -2949,7 +3204,7 @@ class AgentPositionView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 14,
             children: [
-              _MiniBoard(block: block),
+              AgentPositionBoard(block: block),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.only(top: 2),
@@ -3003,225 +3258,6 @@ class _ModePill extends StatelessWidget {
   }
 }
 
-/// 迷你定位板：按画面比例，最长边 150（7 人以上 180）；人越多圆点越小，
-/// 挨得太近的圆点互相推开一点，保证编号看得清。
-class _MiniBoard extends StatelessWidget {
-  const _MiniBoard({required this.block});
-  final AgentPositionBlock block;
-
-  static double dotFor(int count) => count <= 6
-      ? 18
-      : count <= 12
-      ? 15
-      : 13;
-
-  /// 把落点互相推开到至少 [gap]（几轮简单松弛，夹在板内）。
-  static List<Offset> spread(List<Offset> points, Size size, double gap) {
-    final p = [...points];
-    final half = gap / 2;
-    for (var round = 0; round < 8; round++) {
-      var moved = false;
-      for (var i = 0; i < p.length; i++) {
-        for (var j = i + 1; j < p.length; j++) {
-          final d = p[j] - p[i];
-          final dist = d.distance;
-          if (dist >= gap) continue;
-          final u = dist < .01
-              ? Offset(1, (i + j).isEven ? .3 : -.3)
-              : d / dist;
-          final push = u * ((gap - dist) / 2 + .1);
-          p[i] -= push;
-          p[j] += push;
-          moved = true;
-        }
-      }
-      for (var i = 0; i < p.length; i++) {
-        p[i] = Offset(
-          p[i].dx.clamp(half, size.width - half),
-          p[i].dy.clamp(half, size.height - half),
-        );
-      }
-      if (!moved) break;
-    }
-    return p;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.ui;
-    final aspect = (block.aspect ?? 2 / 3).clamp(.5, 2.0);
-    final placed = block.marks.where((m) => m.after != null).toList();
-    final long = placed.length > 6 ? 180.0 : 150.0;
-    final size = aspect >= 1
-        ? Size(long, long / aspect)
-        : Size(long * aspect, long);
-    final dot = dotFor(placed.length);
-    final centers = spread(
-      [
-        for (final m in placed)
-          Offset(m.after!.dx * size.width, m.after!.dy * size.height),
-      ],
-      size,
-      dot + 1,
-    );
-    return Container(
-      key: Key('agent-position-board-${block.id}'),
-      width: size.width,
-      height: size.height,
-      decoration: BoxDecoration(
-        color: agentSunk(c),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: c.line),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _MiniBoardPainter(line: c.line, marks: block.marks),
-            ),
-          ),
-          // 没动的先画、动过的后画，动过的在上面。
-          for (final (i, m) in placed.indexed.where((e) => !e.$2.moved))
-            _place(m, centers[i], dot),
-          for (final (i, m) in placed.indexed.where((e) => e.$2.moved))
-            _place(m, centers[i], dot),
-        ],
-      ),
-    );
-  }
-
-  Widget _place(AgentPositionMark m, Offset center, double dot) => Positioned(
-    left: center.dx - dot / 2,
-    top: center.dy - dot / 2,
-    child: _Dot(
-      key: Key('agent-position-dot-${m.index}'),
-      index: m.index,
-      size: dot,
-      dim: !m.moved,
-    ),
-  );
-}
-
-class _Dot extends StatelessWidget {
-  const _Dot({
-    super.key,
-    required this.index,
-    required this.size,
-    this.dim = false,
-  });
-  final int index;
-  final double size;
-  final bool dim;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = AgentPositionView.colorOf(index);
-    final label = '${index + 1}';
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: dim ? Color.lerp(color, Colors.white, .5) : color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
-        boxShadow: dim
-            ? null
-            : const [
-                BoxShadow(
-                  color: Color(0x33000000),
-                  blurRadius: 4,
-                  offset: Offset(0, 1),
-                ),
-              ],
-      ),
-      child: Text(
-        label,
-        style: UiText.mono(
-          size * (label.length > 1 ? .48 : .55),
-          weight: FontWeight.w700,
-          color: Colors.white,
-          height: 1,
-        ),
-      ),
-    );
-  }
-}
-
-/// 板上只画淡淡的中线作参照（无极定位不分格），以及动过的角色的原位置虚线圈和箭头。
-class _MiniBoardPainter extends CustomPainter {
-  _MiniBoardPainter({required this.line, required this.marks});
-  final Color line;
-  final List<AgentPositionMark> marks;
-
-  static const _pi = 3.141592653589793;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final guide = Paint()
-      ..color = line.withValues(alpha: .7)
-      ..strokeWidth = 1;
-    void dashed(Offset a, Offset b) {
-      final d = b - a, len = d.distance, u = d / len;
-      for (var t = 0.0; t < len; t += 7) {
-        canvas.drawLine(a + u * t, a + u * (t + 3.5).clamp(0, len), guide);
-      }
-    }
-
-    dashed(Offset(size.width / 2, 0), Offset(size.width / 2, size.height));
-    dashed(Offset(0, size.height / 2), Offset(size.width, size.height / 2));
-    for (final m in marks) {
-      final from = m.before, to = m.after;
-      if (!m.moved || from == null) continue;
-      final color = AgentPositionView.colorOf(m.index);
-      final a = Offset(from.dx * size.width, from.dy * size.height);
-      // 原位置：虚线圈。
-      final ring = Paint()
-        ..color = color.withValues(alpha: .8)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.3;
-      const r = 7.0;
-      for (var k = 0; k < 12; k += 2) {
-        canvas.drawArc(
-          Rect.fromCircle(center: a, radius: r),
-          k * _pi / 6,
-          _pi / 6,
-          false,
-          ring,
-        );
-      }
-      if (to == null) continue;
-      final b = Offset(to.dx * size.width, to.dy * size.height);
-      final d = b - a;
-      final len = d.distance;
-      if (len < 22) continue;
-      final u = d / len;
-      final start = a + u * (r + 2), end = b - u * 10;
-      final paint = Paint()
-        ..color = color.withValues(alpha: .85)
-        ..strokeWidth = 1.5
-        ..strokeCap = StrokeCap.round;
-      canvas.drawLine(start, end, paint);
-      final n = Offset(-u.dy, u.dx);
-      final tip = end + u;
-      final back = end - u * 5;
-      canvas.drawPath(
-        Path()
-          ..moveTo(tip.dx, tip.dy)
-          ..lineTo(back.dx + n.dx * 3.5, back.dy + n.dy * 3.5)
-          ..lineTo(back.dx - n.dx * 3.5, back.dy - n.dy * 3.5)
-          ..close(),
-        Paint()..color = color.withValues(alpha: .85),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MiniBoardPainter old) =>
-      old.line != line || old.marks != marks;
-}
-
 /// 图例一行：彩色编号点 + 名字 + 方位变化（「左上 → 中下」）；同一方位里微调时
 /// 写「正中 · 微调」。悬停看精确坐标。
 class _Legend extends StatelessWidget {
@@ -3260,7 +3296,7 @@ class _Legend extends StatelessWidget {
         key: Key('agent-position-legend-${m.index}'),
         spacing: 7,
         children: [
-          _Dot(index: m.index, size: 16),
+          AgentPositionDot(index: m.index, size: 16),
           Expanded(
             child: Text(
               (m.name?.trim().isNotEmpty ?? false)

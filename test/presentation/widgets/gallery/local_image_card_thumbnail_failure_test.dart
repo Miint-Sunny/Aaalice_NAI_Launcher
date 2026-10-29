@@ -96,6 +96,115 @@ void main() {
     return result;
   }
 
+  testWidgets('portrait square card decodes one cover axis from the large tier', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    late File original;
+    late Directory temp;
+    await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('card-cover-');
+      original = File('${temp.path}/portrait.png');
+      await original.writeAsString('original is not decoded');
+      final thumbs = Directory(
+        '${temp.path}/${ThumbnailCacheService.thumbsDirName}',
+      );
+      await thumbs.create();
+      for (final tier in ThumbnailSize.values) {
+        await File(
+          '${thumbs.path}/${ThumbnailCacheService.buildThumbnailFileNameForTest(original.path, size: tier)}',
+        ).writeAsBytes(img.encodeJpg(img.Image(width: 602, height: 880)));
+      }
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: LocalImageCard(
+              record: record(original.path),
+              width: 250,
+              height: 250,
+              imageWidth: 832,
+              imageHeight: 1216,
+            ),
+          ),
+        ),
+      ),
+    );
+    await settleUntil(tester, () => find.byType(Image).evaluate().isNotEmpty);
+    final image = tester.widget<Image>(find.byType(Image).first);
+    final resize = image.image as ResizeImage;
+    expect(resize.width, 375);
+    expect(resize.height, isNull);
+    expect((resize.imageProvider as FileImage).file.path, contains('.large.'));
+    await tester.pumpWidget(const SizedBox.shrink());
+    ThumbnailService.instance.cancelAll();
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    await tester.runAsync(() => temp.delete(recursive: true));
+  });
+
+  testWidgets('same-path content change replaces the decoded thumbnail', (
+    tester,
+  ) async {
+    late Directory temp;
+    late File original;
+    Future<void> writeThumbs(img.Color color) async {
+      final folder = await Directory(
+        '${temp.path}/${ThumbnailCacheService.thumbsDirName}',
+      ).create();
+      final image = img.Image(width: 300, height: 300);
+      img.fill(image, color: color);
+      for (final tier in ThumbnailSize.values) {
+        await File(
+          '${folder.path}/${ThumbnailCacheService.buildThumbnailFileNameForTest(original.path, size: tier)}',
+        ).writeAsBytes(img.encodeJpg(image));
+      }
+    }
+
+    await tester.runAsync(() async {
+      temp = await Directory.systemTemp.createTemp('card-file-change-');
+      original = await File('${temp.path}/same.png').writeAsString('original');
+      await writeThumbs(img.ColorRgb8(255, 0, 0));
+    });
+    bool decoded() => find
+        .byType(RawImage)
+        .evaluate()
+        .any((element) => (element.widget as RawImage).image != null);
+    Future<List<int>> pixel() async {
+      final image = tester
+          .widgetList<RawImage>(find.byType(RawImage))
+          .firstWhere((w) => w.image != null)
+          .image!;
+      return (await tester.runAsync(
+        () => image.toByteData(),
+      ))!.buffer.asUint8List().take(3).toList();
+    }
+
+    await tester.pumpWidget(wrap(record(original.path)));
+    await settleUntil(tester, decoded);
+    expect((await pixel()).first, greaterThan(200));
+    await tester.runAsync(() => writeThumbs(img.ColorRgb8(0, 0, 255)));
+    await tester.pumpWidget(
+      wrap(
+        record(
+          original.path,
+        ).copyWith(modifiedAt: DateTime(2026, 9, 11), size: 43),
+      ),
+    );
+    await settleUntil(tester, decoded);
+    expect((await pixel()).last, greaterThan(200));
+    expect((await pixel()).first, lessThan(20));
+    await tester.pumpWidget(const SizedBox.shrink());
+    ThumbnailService.instance.cancelAll();
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    await tester.runAsync(() => temp.delete(recursive: true));
+  });
+
   testWidgets('缩略图生成失败：显示失败占位，不解码原图', (tester) async {
     late final File original;
 

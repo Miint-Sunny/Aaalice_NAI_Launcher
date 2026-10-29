@@ -16,6 +16,7 @@ import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
+import '../kit/ui_new_badge.dart';
 import '../kit/ui_text.dart';
 import '../../utils/platform_labels.dart';
 import 'settings_contract.dart';
@@ -572,6 +573,26 @@ class SettingsAppearancePage extends StatelessWidget {
                 label: (x) => '${(x * 100).round()}%',
               ),
             ),
+            SettingKeyRow(
+              SettingKey.workspaceFontScale,
+              title: l.set_workspaceFontScale,
+              subtitle: l.set_workspaceFontScaleSub,
+              badges: [
+                if (uiNewBadge(
+                      context,
+                      'settings.workspaceFontScale',
+                      l.gen_menuNew,
+                    )
+                    case final b?)
+                  UiMini(b, tone: UiMiniTone.accent),
+              ],
+              control: SetSlider(
+                SettingKey.workspaceFontScale,
+                width: 180,
+                ticks: 7,
+                label: (x) => '${(x * 100).round()}%',
+              ),
+            ),
             SettingsBlock(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: Container(
@@ -907,6 +928,12 @@ class SettingsCanvasPage extends StatelessWidget {
           children: [
             choose(SettingKey.historyClick, l.set_cvHistoryClick),
             choose(SettingKey.outputViewer, l.set_cvViewer),
+            SettingKeyRow(
+              SettingKey.simpleViewerGroupBatches,
+              title: l.set_cvGroupBatches,
+              subtitle: SettingsFormat.simpleViewerGroupDescription(context),
+              control: const SetSwitch(SettingKey.simpleViewerGroupBatches),
+            ),
           ],
         ),
         SettingsSection(

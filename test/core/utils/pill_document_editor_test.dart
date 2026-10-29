@@ -7,6 +7,129 @@ void main() {
   const markerB = '\uE001';
   const markerC = '\uE002';
 
+  test('disabled translations unwrap without starting to send source', () {
+    const document = PillDocument(
+      text: 'start$markerA,$markerB end',
+      instances: {
+        markerA: PillInstance(
+          blockId: '',
+          translation: TranslationPill(source: 'latest source', zh: 'reading'),
+        ),
+        markerB: PillInstance(
+          blockId: '',
+          enabled: false,
+          translation: TranslationPill(source: 'must not send', zh: 'hidden'),
+        ),
+      },
+    );
+    final projected = PillDocumentEditor.project(document, (_) => null);
+    final all = PillDocumentEditor.unwrapAllTranslations(document);
+    expect(all.text, 'startlatest source, end');
+    expect(all.instances, isEmpty);
+    expect(PillDocumentEditor.project(all, (_) => null), projected);
+    final single = PillDocumentEditor.unwrapTranslation(
+      document,
+      markerB,
+      source: 'must not send',
+    );
+    expect(PillDocumentEditor.project(single, (_) => null), projected);
+    expect(single.instances.containsKey(markerB), isFalse);
+  });
+
+  group('anchor UTF-16 mapping', () {
+    test('Chinese, emoji and weight syntax keep original positions', () {
+      const text = '$markerA中文😀 1.2::x::$markerB结束';
+      expect(PillDocumentEditor.resolveAnchor(text, '中文😀'), (
+        start: 1,
+        end: 5,
+      ));
+      expect(PillDocumentEditor.resolveAnchor(text, '1.2::x::'), (
+        start: 6,
+        end: 14,
+      ));
+      expect(PillDocumentEditor.resolveAnchor(text, '结束'), (
+        start: 15,
+        end: 17,
+      ));
+      expect(PillDocumentEditor.isUtf16Boundary(text, 4), isFalse);
+      expect(
+        () => PillDocumentEditor.resolveAnchor(text, '\uDE00'),
+        throwsA(
+          isA<PillAnchorException>().having(
+            (e) => e.code,
+            'code',
+            'anchor_missing',
+          ),
+        ),
+      );
+    });
+    test('adjacent markers are allowed, spanning markers is refused', () {
+      const text = 'left${markerA}right';
+      expect(PillDocumentEditor.resolveAnchor(text, 'left'), (
+        start: 0,
+        end: 4,
+      ));
+      expect(PillDocumentEditor.resolveAnchor(text, 'right'), (
+        start: 5,
+        end: 10,
+      ));
+      expect(
+        () => PillDocumentEditor.resolveAnchor(text, 'leftright'),
+        throwsA(
+          isA<PillAnchorException>().having(
+            (e) => e.code,
+            'code',
+            'anchor_crosses_marker',
+          ),
+        ),
+      );
+      expect(
+        () => PillDocumentEditor.resolveAnchor(text, markerA),
+        throwsA(
+          isA<PillAnchorException>().having(
+            (e) => e.code,
+            'code',
+            'invalid_position',
+          ),
+        ),
+      );
+    });
+    test(
+      'ambiguity reports count; occurrence selects original document match',
+      () {
+        const text = '重复$markerA重复';
+        expect(
+          () => PillDocumentEditor.resolveAnchor(text, '重复'),
+          throwsA(
+            isA<PillAnchorException>()
+                .having((e) => e.matches, 'matches', 2)
+                .having((e) => e.code, 'code', 'anchor_ambiguous'),
+          ),
+        );
+        expect(PillDocumentEditor.resolveAnchor(text, '重复', occurrence: 1), (
+          start: 3,
+          end: 5,
+        ));
+        for (final occurrence in [-1, 2]) {
+          expect(
+            () => PillDocumentEditor.resolveAnchor(
+              text,
+              '重复',
+              occurrence: occurrence,
+            ),
+            throwsA(
+              isA<PillAnchorException>().having(
+                (e) => e.code,
+                'code',
+                'anchor_missing',
+              ),
+            ),
+          );
+        }
+      },
+    );
+  });
+
   group('allocateMarker / insertBlock', () {
     test(
       'negative marker survives document JSON without changing old markers',
@@ -238,6 +361,126 @@ void main() {
       );
     });
   });
+
+  test(
+    'expansion preserves send text for fixed/rolled/translation/disabled/shared',
+    () {
+      for (final instance in [
+        const PillInstance(blockId: 'b'),
+        const PillInstance(
+          blockId: 'b',
+          settings: PillInstanceSettings(mode: PillRollMode.random),
+          currentRoll: '1.2::rolled::',
+        ),
+        const PillInstance(
+          blockId: 'b',
+          settings: PillInstanceSettings(mode: PillRollMode.sequential),
+          currentRoll: 'next',
+        ),
+        const PillInstance(
+          blockId: '',
+          translation: TranslationPill(source: 'source', zh: '译文'),
+        ),
+        const PillInstance(
+          blockId: '',
+          enabled: false,
+          translation: TranslationPill(source: 'hidden', zh: '禁用'),
+        ),
+      ]) {
+        const marker = '\uE000';
+        final doc = PillDocument(
+          text: 'a${marker}b${marker}c',
+          instances: {marker: instance},
+        );
+        String? resolve(String _, PillInstance i) =>
+            i.settings.hasRoll ? i.currentRoll : 'fixed';
+        final send = PillDocumentEditor.projectWithMarker(doc, resolve);
+        final expanded = PillDocumentEditor.expandOccurrence(
+          doc,
+          marker,
+          occurrence: 1,
+          resolveMarker: resolve,
+        );
+        expect(PillDocumentEditor.projectWithMarker(expanded, resolve), send);
+        expect(expanded.text.startsWith('a${marker}b'), isTrue);
+        expect(expanded.instances[marker], instance);
+        if (instance.translation != null) {
+          expect(
+            PillDocumentEditor.projectWithMarker(
+              PillDocumentEditor.unwrapAllTranslations(doc),
+              resolve,
+            ),
+            send,
+          );
+          expect(
+            PillDocumentEditor.projectWithMarker(
+              PillDocumentEditor.unwrapTranslation(
+                doc,
+                marker,
+                source: instance.translation!.source,
+              ),
+              resolve,
+            ),
+            send,
+          );
+        }
+      }
+    },
+  );
+
+  test(
+    'temporary content wins over translation and roll, round trips and can be cleared',
+    () {
+      final temp = PillTempContent(
+        content: 'fixed temp',
+        negativeContent: 'temp UC',
+        originalContent: 'old',
+        editedAt: DateTime(2026, 10, 26),
+        editedBy: 'agent',
+      );
+      final instance = PillInstance(
+        blockId: 'b',
+        temp: temp,
+        translation: const TranslationPill(source: 'old source', zh: '译文'),
+        settings: const PillInstanceSettings(mode: PillRollMode.random),
+        currentRoll: 'old roll',
+      );
+      final document = PillDocument(
+        text: markerA,
+        instances: {markerA: instance},
+      );
+      expect(
+        PillDocumentEditor.project(document, (_) => 'library'),
+        'fixed temp',
+      );
+      expect(
+        PillDocumentEditor.project(
+          document.copyWith(
+            instances: {markerA: instance.copyWith(useNegativeContent: true)},
+          ),
+          (_) => 'library',
+        ),
+        'temp UC',
+      );
+      final disabled = document.copyWith(
+        instances: {markerA: instance.copyWith(enabled: false)},
+      );
+      expect(PillDocumentEditor.unwrapAllTranslations(disabled).text, '');
+      expect(
+        PillDocumentEditor.unwrapAllTranslations(document).text,
+        'fixed temp',
+      );
+      final expanded = PillDocumentEditor.expandOccurrence(
+        document,
+        markerA,
+        resolveMarker: (_, __) => 'library',
+      );
+      expect(expanded.text, 'fixed temp');
+      expect(PillDocument.fromJson(document.toJson()), document);
+      expect(instance.copyWith().temp, temp);
+      expect(instance.copyWith(temp: null).temp, isNull);
+    },
+  );
 
   group('project / stripMarkers', () {
     test('enabled instances expand, disabled and unknown vanish', () {

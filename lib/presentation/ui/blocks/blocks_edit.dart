@@ -2,14 +2,18 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/enums/quality_tag_preset.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/utils/localization_extension.dart';
 import '../../../core/utils/platform_shortcut_text.dart';
 import '../../../core/utils/primary_activator.dart';
+import '../kit/ui_new_badge.dart';
 import '../kit/ui_block_pill.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_controls.dart';
+import '../kit/ui_extra_icons.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_inputs.dart';
 import '../kit/ui_lib_controls.dart';
@@ -22,33 +26,91 @@ import 'blocks_contract.dart';
 import 'blocks_format.dart';
 import 'blocks_parts.dart';
 
-/// 图标网格（原型 `.icg`）：每格 30、圆角 7、间距 4，一行 10 个；第一格是默认图标，后面是全部 40 个。
+/// 图标网格（原型 `.icg`）：每格 30、圆角 7、间距 4，一行 10 个；第一格是默认图标，后面是原 40 个。
 /// 选中：块色 14% 底 + 1.5px 块色内描边 + 块色图标。
-class BlockIconGrid extends StatelessWidget {
+/// C03：第 42 格「更多」展开新增图标；NSFW 一组默认不显示，展开后再点末格才出现。
+class BlockIconGrid extends StatefulWidget {
   const BlockIconGrid({
     super.key,
     required this.selected,
     required this.color,
     required this.onChanged,
+    this.iconKeys = UiBlockIcon.legacyKeys,
   });
 
+  /// 前排（默认原 40 格）；其余图标按「新增 → NSFW」依次接在后面，同一个网格。
+  final List<String> iconKeys;
   final String? selected;
   final Color color;
 
   /// null = 默认图标。
   final ValueChanged<String?> onChanged;
 
+  static const cell = 30.0, gap = 4.0, columns = 10;
+
+  /// 可见约 4.5 行：第 5 行故意只露一半，提示下面还能滚（10-27 用户确认）。
+  static const viewport = cell * 4.5 + gap * 4;
+
+  @override
+  State<BlockIconGrid> createState() => _BlockIconGridState();
+}
+
+class _BlockIconGridState extends State<BlockIconGrid> {
+  final _scroll = ScrollController();
+
+  List<String?> get _all {
+    final front = widget.iconKeys;
+    final rest = [
+      for (final k in UiBlockIcon.keys)
+        if (!front.contains(k)) k,
+    ];
+    return [
+      null,
+      ...front,
+      for (final k in rest)
+        if (!UiExtraIcons.nsfw.contains(k)) k,
+      for (final k in rest)
+        if (UiExtraIcons.nsfw.contains(k)) k,
+    ];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // 选中项在视区外（新增 / NSFW 图标）时，打开就滚到它那一行。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final i = _all.indexOf(widget.selected);
+      if (i < 0) return;
+      const step = BlockIconGrid.cell + BlockIconGrid.gap;
+      final top = (i ~/ BlockIconGrid.columns) * step;
+      final pos = _scroll.position;
+      if (top + BlockIconGrid.cell > pos.viewportDimension) {
+        _scroll.jumpTo(
+          (top - step).clamp(pos.minScrollExtent, pos.maxScrollExtent),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.ui;
+    final color = widget.color;
     Widget cell(String? key) {
-      final on = key == selected;
+      final on = key == widget.selected;
       return UiPressable(
         key: Key('block-icon-${key ?? 'default'}'),
-        onTap: () => onChanged(key),
+        onTap: () => widget.onChanged(key),
         builder: (context, hover) => Container(
-          width: 30,
-          height: 30,
+          width: BlockIconGrid.cell,
+          height: BlockIconGrid.cell,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: on ? color.withValues(alpha: .14) : (hover ? c.hover : null),
@@ -60,12 +122,25 @@ class BlockIconGrid extends StatelessWidget {
       );
     }
 
+    const width =
+        BlockIconGrid.cell * BlockIconGrid.columns +
+        BlockIconGrid.gap * (BlockIconGrid.columns - 1);
     return SizedBox(
-      width: 30 * 10 + 4 * 9,
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [cell(null), for (final k in UiBlockIcon.keys) cell(k)],
+      key: const Key('block-icon-scroll'),
+      width: width,
+      height: BlockIconGrid.viewport,
+      // 网格内部滚轮；露半行提示可滚，不额外画滚动条（会压住最右一列）。
+      child: ScrollConfiguration(
+        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+        child: SingleChildScrollView(
+          controller: _scroll,
+          physics: const ClampingScrollPhysics(),
+          child: Wrap(
+            spacing: BlockIconGrid.gap,
+            runSpacing: BlockIconGrid.gap,
+            children: [for (final k in _all) cell(k)],
+          ),
+        ),
       ),
     );
   }
@@ -73,7 +148,7 @@ class BlockIconGrid extends StatelessWidget {
 
 /// 编辑块 / 新建块（原型 `editModal`）：1000 × 720（窗口小时缩到 92%）、圆角 16。
 /// 左 330 预览（预览图可拖动 / 滚轮缩放、正文里的样子、卡片样子、来源）；右边 名称 + 文件夹 · 内容（正面 / 负面 / 纯文本）·
-/// 外观（10 色 + 41 格图标 + 6 种外观直接画效果）· 标签 · 附带参数。Ctrl+Enter 保存，Esc 取消。
+/// 外观（10 色 + 可滚图标网格 + 6 种外观直接画效果）· 标签 · 附带参数。Ctrl+Enter 保存，Esc 取消。
 class BlockEditDialog extends StatefulWidget {
   const BlockEditDialog({super.key, required this.data, required this.actions});
 
@@ -94,6 +169,8 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
         widget.data.draft.text ??
         (widget.data.draft.atoms ?? const []).join(', '),
   );
+  final _positiveEditor = GlobalKey<_AtomEditorState>();
+  final _negativeEditor = GlobalKey<_AtomEditorState>();
   var _confirmDelete = false;
   UiPopoverAnchor? _pop;
   WidgetBuilder? _popBuilder;
@@ -108,9 +185,19 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
 
   List<String> get _atoms => _d.atoms ?? BlocksFormat.split(_text.text);
 
-  bool get _valid => _atoms.isNotEmpty || _d.negativeAtoms.isNotEmpty;
+  _AtomEditorState? get _activeEditor => switch (_tab) {
+    _Tab.positive => _positiveEditor.currentState,
+    _Tab.negative => _negativeEditor.currentState,
+    _Tab.text => null,
+  };
+
+  bool get _valid =>
+      _atoms.isNotEmpty ||
+      _d.negativeAtoms.isNotEmpty ||
+      _activeEditor?.hasPendingInput == true;
 
   void _save() {
+    _activeEditor?.commitPending();
     if (!_valid) return;
     final d = _tab == _Tab.text
         ? _d.copyWith(plain: true, text: _text.text)
@@ -466,15 +553,23 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
     final p = _d.params;
 
     final content = switch (_tab) {
-      _Tab.positive => _AtomEditor(
+      _Tab.positive => KeyedSubtree(
         key: const Key('block-edit-atoms'),
-        atoms: _d.atoms ?? const [],
-        onChanged: (v) => _set(_d.copyWith(atoms: v)),
+        child: _AtomEditor(
+          key: _positiveEditor,
+          atoms: _d.atoms ?? const [],
+          onChanged: (v) => _set(_d.copyWith(atoms: v)),
+          onPendingChanged: () => setState(() {}),
+        ),
       ),
-      _Tab.negative => _AtomEditor(
+      _Tab.negative => KeyedSubtree(
         key: const Key('block-edit-negative'),
-        atoms: _d.negativeAtoms,
-        onChanged: (v) => _set(_d.copyWith(negativeAtoms: v)),
+        child: _AtomEditor(
+          key: _negativeEditor,
+          atoms: _d.negativeAtoms,
+          onChanged: (v) => _set(_d.copyWith(negativeAtoms: v)),
+          onPendingChanged: () => setState(() {}),
+        ),
       ),
       _Tab.text => Container(
         height: 150,
@@ -605,6 +700,7 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
               },
               onTap: (t) {
                 if (t == _tab) return;
+                _activeEditor?.commitPending();
                 if (t == _Tab.text) {
                   _text.text = (_d.atoms ?? const []).join(', ');
                   _set(_d.copyWith(plain: true));
@@ -685,12 +781,18 @@ class _BlockEditDialogState extends State<BlockEditDialog> {
                                     spacing: 3,
                                     children: [
                                       BlockPill(_shown, look: look),
-                                      Text(
-                                        BlocksFormat.look(context, look),
-                                        style: UiText.sans(
-                                          11,
-                                          color: on ? c.accent : c.muted,
-                                          height: 1.2,
+                                      // 固定 46 高：长名称（如日文）缩小，不换行撑破。
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          BlocksFormat.look(context, look),
+                                          maxLines: 1,
+                                          softWrap: false,
+                                          style: UiText.sans(
+                                            11,
+                                            color: on ? c.accent : c.muted,
+                                            height: 1.2,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1043,9 +1145,15 @@ class _CropState extends State<_Crop> {
 /// 内容编辑（原型 `.aed`）：已有项是小块（Geist Mono 11.5、24 高），末尾一个输入框；
 /// Enter 或逗号成为一项，粘贴一段自动拆分；点一项拿回输入框里改，悬停出 ×，空输入框按退格删最后一项。
 class _AtomEditor extends StatefulWidget {
-  const _AtomEditor({super.key, required this.atoms, required this.onChanged});
+  const _AtomEditor({
+    super.key,
+    required this.atoms,
+    required this.onChanged,
+    required this.onPendingChanged,
+  });
   final List<String> atoms;
   final ValueChanged<List<String>> onChanged;
+  final VoidCallback onPendingChanged;
 
   @override
   State<_AtomEditor> createState() => _AtomEditorState();
@@ -1056,6 +1164,12 @@ class _AtomEditorState extends State<_AtomEditor> {
   final _focus = FocusNode();
   int? _editing;
   int? _hover;
+
+  bool get hasPendingInput => _ctrl.text.trim().isNotEmpty;
+
+  void commitPending() {
+    if (hasPendingInput) _commit(_ctrl.text);
+  }
 
   @override
   void dispose() {
@@ -1126,9 +1240,17 @@ class _AtomEditorState extends State<_AtomEditor> {
                             top: -5,
                             child: UiPressable(
                               key: Key('block-atom-remove-$i'),
-                              onTap: () => widget.onChanged(
-                                [...widget.atoms]..removeAt(i),
-                              ),
+                              onTap: () {
+                                setState(() {
+                                  if (_editing != null && i < _editing!) {
+                                    _editing = _editing! - 1;
+                                  }
+                                  _hover = null;
+                                });
+                                widget.onChanged(
+                                  [...widget.atoms]..removeAt(i),
+                                );
+                              },
                               builder: (_, h) => Container(
                                 width: 15,
                                 height: 15,
@@ -1186,10 +1308,14 @@ class _AtomEditorState extends State<_AtomEditor> {
                         hintStyle: UiText.sans(12, color: c.faint),
                       ),
                       onChanged: (v) {
-                        if (v.contains(',') || v.contains('\n')) _commit(v);
+                        if (v.contains(',') || v.contains('\n')) {
+                          _commit(v);
+                        } else {
+                          widget.onPendingChanged();
+                        }
                       },
-                      onSubmitted: (v) {
-                        if (v.trim().isNotEmpty) _commit(v);
+                      onSubmitted: (_) {
+                        commitPending();
                         _focus.requestFocus();
                       },
                     ),
@@ -1235,6 +1361,7 @@ class _TagPickerState extends State<_TagPicker> {
       width: 260,
       padding: const EdgeInsets.all(12),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 10,
         children: [
@@ -1255,40 +1382,54 @@ class _TagPickerState extends State<_TagPicker> {
             Container(height: 1, color: c.line),
           ],
           BlockLabel(l10n.blocks_newTag),
-          UiTextInput(
-            key: const Key('block-tag-name'),
-            value: '',
-            hint: l10n.blocks_tagName,
-            height: 30,
-            onChanged: (v) => setState(() => _name = v),
-            onSubmitted: (v) {
-              if (v.trim().isNotEmpty) {
-                widget.onPick(BlockTag(v.trim(), _color));
-              }
-            },
-          ),
-          Row(
-            spacing: 7,
-            children: [
-              for (final col in _palette)
-                UiPressable(
-                  onTap: () => setState(() => _color = col),
-                  builder: (_, _) => Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: col,
-                      shape: BoxShape.circle,
-                      boxShadow: col == _color
-                          ? [
-                              BoxShadow(color: col, spreadRadius: 3.5),
-                              BoxShadow(color: c.raised, spreadRadius: 2),
-                            ]
-                          : null,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                for (final col in _palette)
+                  UiPressable(
+                    key: Key(
+                      'block-tag-color-${col.toARGB32().toRadixString(16)}',
+                    ),
+                    onTap: () => setState(() => _color = col),
+                    builder: (_, _) => Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: col,
+                        shape: BoxShape.circle,
+                        boxShadow: col == _color
+                            ? [
+                                BoxShadow(color: col, spreadRadius: 3.5),
+                                BoxShadow(color: c.raised, spreadRadius: 2),
+                              ]
+                            : null,
+                      ),
                     ),
                   ),
+              ],
+            ),
+          ),
+          // 名称与添加并排；色板在上方独占一行均分宽度，任何语言／字号都不溢出。
+          Row(
+            spacing: 8,
+            children: [
+              Expanded(
+                child: UiTextInput(
+                  key: const Key('block-tag-name'),
+                  value: '',
+                  submitOnBlur: false,
+                  hint: l10n.blocks_tagName,
+                  height: 30,
+                  onChanged: (v) => setState(() => _name = v),
+                  onSubmitted: (v) {
+                    if (v.trim().isNotEmpty) {
+                      widget.onPick(BlockTag(v.trim(), _color));
+                    }
+                  },
                 ),
-              const Spacer(),
+              ),
               UiBtn(
                 key: const Key('block-tag-create'),
                 size: UiBtnSize.small,
@@ -1326,8 +1467,21 @@ class _ParamsPanel extends StatefulWidget {
 }
 
 class _ParamsPanelState extends State<_ParamsPanel> {
+  static const _custom = '__custom';
   late var _p = widget.params;
   String? _open;
+  UiPopoverAnchor? _menuAt;
+  List<UiMenuItem> _menuItems = const [];
+
+  void _openMenu(BuildContext anchor, List<UiMenuItem> items) {
+    final box = anchor.findRenderObject()! as RenderBox;
+    setState(() {
+      _menuItems = items;
+      _menuAt = UiPopoverAnchor(
+        box.localToGlobal(box.size.bottomLeft(const Offset(0, 4))),
+      );
+    });
+  }
 
   void _set(BlockParams p) {
     setState(() => _p = p);
@@ -1413,7 +1567,80 @@ class _ParamsPanelState extends State<_ParamsPanel> {
           ),
       ],
     );
-    return UiPopoverSurface(
+    final model =
+        _p.model ?? cat.currentModel ?? ImageModels.animeDiffusionV5Full;
+    final qualityNative = BlocksFormat.qualityOptions(context, model);
+    final ucNative = {
+      for (final type in UcPresets.getPresetsForModel(model).keys)
+        '${UcPresets.toApiValue(type)}': BlocksFormat.ucLabel(context, type),
+    };
+    final qualityPreview = _p.qualityCustomBlockId != null
+        ? cat.customPresetContents[_p.qualityCustomBlockId]
+        : QualityTags.getQualityTags(
+            model,
+            preset:
+                QualityTagPreset.tryParse(_p.qualityPreset) ??
+                QualityTagPreset.none,
+          );
+    final ucPreview = _p.ucCustomBlockId != null
+        ? cat.customPresetContents[_p.ucCustomBlockId]
+        : _p.ucPreset == null
+        ? null
+        : UcPresets.getPresetContentByInt(model, _p.ucPreset!);
+    List<UiMenuItem> blockItems(
+      String key,
+      String? selected,
+      ValueChanged<String> onPick, {
+      bool divider = false,
+    }) => [
+      for (final (i, e) in cat.customPresets.entries.indexed)
+        UiMenuItem(
+          key: Key('block-param-$key-block-${e.key}'),
+          glyph: UiGlyphs.stack,
+          label: e.value,
+          divider: divider && i == 0,
+          checked: selected == e.key,
+          onTap: () => onPick(e.key),
+        ),
+    ];
+    // 下拉触发器（原型 `.inp` + chevron）。
+    Widget dropdown(
+      String key,
+      String label,
+      String? glyph,
+      List<UiMenuItem> Function() items,
+    ) => Builder(
+      builder: (ctx) => UiPressable(
+        key: Key('block-param-$key'),
+        onTap: () => _openMenu(ctx, items()),
+        builder: (context, hover) => Container(
+          height: 28,
+          constraints: const BoxConstraints(maxWidth: 170),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: hover ? c.hover : c.control,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              if (glyph != null) UiGlyph(glyph, size: 13, color: c.muted),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: UiText.sans(12.5, color: c.ink, height: 1.2),
+                ),
+              ),
+              UiGlyph(UiGlyphs.chevronDown, size: 12, color: c.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+    final panel = UiPopoverSurface(
       key: const Key('block-params-panel'),
       width: 330,
       padding: const EdgeInsets.all(12),
@@ -1506,6 +1733,100 @@ class _ParamsPanelState extends State<_ParamsPanel> {
               (v) => _set(_p.copyWith(noiseSchedule: v)),
             ),
           ),
+          _PresetRow(
+            key: const Key('block-param-quality-row'),
+            label: l10n.qualityTags_label,
+            badge: uiNewBadge(context, 'presets.quality', l10n.gen_menuNew),
+            control: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Builder(
+                  builder: (segContext) => BlockSeg<String>(
+                    key: const Key('block-param-quality'),
+                    values: [...qualityNative.keys, _custom],
+                    selected: _p.qualityCustomBlockId != null
+                        ? _custom
+                        : _p.qualityPreset,
+                    keyOf: (v) => Key('block-param-quality-$v'),
+                    labelOf: (v) => v == _custom
+                        ? l10n.blocks_presetCustom
+                        : qualityNative[v]!,
+                    onTap: (v) => v == _custom
+                        ? _openMenu(
+                            segContext,
+                            blockItems(
+                              'quality',
+                              _p.qualityCustomBlockId,
+                              (id) =>
+                                  _set(_p.copyWith(qualityCustomBlockId: id)),
+                            ),
+                          )
+                        : _set(
+                            _p.copyWith(
+                              qualityPreset: v,
+                              clearQualityCustom: true,
+                            ),
+                          ),
+                  ),
+                ),
+                if (_p.qualityCustomBlockId case final id?)
+                  dropdown(
+                    'quality-block',
+                    cat.customPresets[id] ?? id,
+                    UiGlyphs.stack,
+                    () => blockItems(
+                      'quality',
+                      id,
+                      (v) => _set(_p.copyWith(qualityCustomBlockId: v)),
+                    ),
+                  ),
+              ],
+            ),
+            preview: qualityPreview,
+          ),
+          _PresetRow(
+            key: const Key('block-param-uc-row'),
+            label: l10n.ucPreset_label,
+            badge: uiNewBadge(context, 'presets.uc', l10n.gen_menuNew),
+            control: dropdown(
+              'uc',
+              _p.ucCustomBlockId != null
+                  ? cat.customPresets[_p.ucCustomBlockId] ?? _p.ucCustomBlockId!
+                  : _p.ucPreset == null
+                  ? l10n.blocks_keepCurrent
+                  : ucNative[_p.ucPreset.toString()] ?? '${_p.ucPreset}',
+              _p.ucCustomBlockId != null ? UiGlyphs.stack : null,
+              () => [
+                for (final e in ucNative.entries)
+                  UiMenuItem(
+                    key: Key('block-param-uc-${e.key}'),
+                    label: e.value,
+                    checked:
+                        _p.ucCustomBlockId == null &&
+                        _p.ucPreset?.toString() == e.key,
+                    onTap: () => _set(
+                      _p.copyWith(
+                        ucPreset: int.parse(e.key),
+                        clearUcCustom: true,
+                      ),
+                    ),
+                  ),
+                ...blockItems(
+                  'uc',
+                  _p.ucCustomBlockId,
+                  (id) => _set(_p.copyWith(ucCustomBlockId: id)),
+                  divider: true,
+                ),
+              ],
+            ),
+            preview: ucPreview,
+          ),
+          Text(
+            l10n.blocks_presetHint,
+            style: UiText.sans(11, color: c.faint, height: 1.6),
+          ),
           Row(
             children: [
               UiBtn(
@@ -1527,6 +1848,112 @@ class _ParamsPanelState extends State<_ParamsPanel> {
                 children: [Text(l10n.blocks_done)],
               ),
             ],
+          ),
+        ],
+      ),
+    );
+    return UiPopover(
+      anchor: _menuAt,
+      onDismiss: () => setState(() => _menuAt = null),
+      builder: (_) => UiMenu(
+        width: 220,
+        items: _menuItems,
+        onClose: () => setState(() => _menuAt = null),
+      ),
+      child: panel,
+    );
+  }
+}
+
+/// 质量词 / 负面预设一行（原型 R04）：左侧蓝竖条 + 标签 +「新」，右侧控件；下面是会追加的正文预览。
+class _PresetRow extends StatelessWidget {
+  const _PresetRow({
+    super.key,
+    required this.label,
+    required this.badge,
+    required this.control,
+    required this.preview,
+  });
+  final String label;
+  final String? badge;
+  final Widget control;
+  final String? preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ui;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 2,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: c.accent,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+          SizedBox(
+            width: 54,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 2,
+                children: [
+                  Text(label, style: UiText.sans(12, color: c.muted)),
+                  if (badge != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.brand.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badge!,
+                        style: UiText.sans(
+                          9.5,
+                          weight: FontWeight.w600,
+                          color: c.accent,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: 6,
+              children: [
+                Align(alignment: Alignment.centerLeft, child: control),
+                if (preview != null && preview!.trim().isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.panel,
+                      border: Border.all(color: c.line),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      preview!,
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: UiText.mono(11, color: c.muted, height: 1.55),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

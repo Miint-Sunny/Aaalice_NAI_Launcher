@@ -27,6 +27,7 @@ class TranslationPillView extends StatefulWidget {
     this.highlightEnabled = true,
     this.numericEmphasisEnabled = true,
     this.autoFormat = false,
+    this.toggleOnTap = false,
   });
 
   final TranslationPill pill;
@@ -37,6 +38,9 @@ class TranslationPillView extends StatefulWidget {
   final bool highlightEnabled;
   final bool numericEmphasisEnabled;
   final bool autoFormat;
+
+  /// Embedded temporary-block reading: both mouse buttons only toggle display.
+  final bool toggleOnTap;
 
   @override
   State<TranslationPillView> createState() => _TranslationPillViewState();
@@ -95,7 +99,8 @@ class _TranslationPillViewState extends State<TranslationPillView> {
   };
 
   /// macOS：⌘+点击切换原文 / 译文（触控板没有中键；Windows 用中键）。按下时记位置，
-  /// 抬起时没拖动才切换；[_commandClicked] 让这一下不再打开编辑窗。
+  /// 抬起时没拖动才切换；[_commandClicked] 让这一下不再打开编辑窗（[TranslationPillView.toggleOnTap]
+  /// 时也不再切换第二次）。
   Offset? _commandDownAt;
   bool _commandClicked = false;
 
@@ -131,7 +136,11 @@ class _TranslationPillViewState extends State<TranslationPillView> {
 
   void _onTapUp(TapUpDetails details) {
     if (_commandClicked) return;
-    widget.onEdit(details.globalPosition);
+    if (widget.toggleOnTap) {
+      widget.onToggle();
+    } else {
+      widget.onEdit(details.globalPosition);
+    }
   }
 
   /// 右键交给外层输入框，菜单内容照它自己的（剪切 / 复制 / 粘贴、有选区时的存为块……），

@@ -14,6 +14,70 @@ import 'settings_test_harness.dart';
 void main() {
   setUpAll(loadStudioCaptureFonts);
 
+  testWidgets('R1 active settings toast yields undo/redo to focused text', (
+    t,
+  ) async {
+    late SettingsHostState host;
+    final rec = await pumpSettings(t, onHost: (value) => host = value);
+    final field = find.byKey(const Key('settings-search-input'));
+    await t.tap(field);
+    await t.pump();
+    Future<void> type(String text) async {
+      t.testTextInput.updateEditingValue(
+        TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: text.length),
+        ),
+      );
+      await t.pump(const Duration(milliseconds: 550));
+    }
+
+    Future<void> key(LogicalKeyboardKey key, {bool shift = false}) async {
+      await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      if (shift) await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      await t.sendKeyEvent(key);
+      if (shift) await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await t.pump();
+    }
+
+    final controller = t.widget<TextField>(field).controller!;
+    await type('proxy');
+    await type('proxy enabled');
+    // Trigger the toast after search animations settle, not before the harness
+    // pumpAndSettle can consume its four-second lifetime.
+    host.updateData(SettingsFixture.view(scene: SettingsScene.toast));
+    await t.pump();
+    // The toast is visually hidden while searching, but its page undo handler
+    // remains active for the full lifetime; this is exactly the R1 conflict.
+    expect(host.data.lastChange?.undoable, isTrue);
+    await key(LogicalKeyboardKey.keyZ);
+    expect(controller.text, 'proxy');
+    await key(LogicalKeyboardKey.keyY);
+    expect(controller.text, 'proxy enabled');
+    await key(LogicalKeyboardKey.keyZ);
+    await key(LogicalKeyboardKey.keyZ, shift: true);
+    expect(controller.text, 'proxy enabled');
+    expect(rec.calls.where((c) => c.startsWith('undo:')), isEmpty);
+    controller.selection = const TextSelection.collapsed(offset: 0);
+    FocusManager.instance.primaryFocus!.unfocus();
+    t
+        .widget<Focus>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Focus && widget.focusNode?.debugLabel == 'settings',
+          ),
+        )
+        .focusNode!
+        .requestFocus();
+    await t.pump();
+    await key(LogicalKeyboardKey.keyZ, shift: true);
+    expect(rec.calls, isNot(contains('undo:toast')));
+    await key(LogicalKeyboardKey.keyZ);
+    expect(rec.calls, contains('undo:toast'));
+    await t.pump(const Duration(seconds: 5));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+
   Future<void> tap(WidgetTester t, String key) async {
     final f = find.byKey(Key(key));
     await t.ensureVisible(f.first);
@@ -21,6 +85,24 @@ void main() {
     await t.tap(f.first);
     await t.pumpAndSettle();
   }
+
+  testWidgets('简洁查看器分组默认关闭，可设置且可搜索', (t) async {
+    final rec = await pumpSettings(t, page: SettingsPageId.canvas);
+    expect(
+      SettingSpec.of(SettingKey.simpleViewerGroupBatches).defaultValue,
+      false,
+    );
+    expect(find.text('批量结果按批次分组'), findsOneWidget);
+    await tap(t, 'switch-simpleViewerGroupBatches');
+    expect(rec.changes.single, (SettingKey.simpleViewerGroupBatches, true));
+    await t.pump(const Duration(seconds: 5));
+    await pumpSettings(t, initialQuery: 'simpleViewerGroupBatches');
+    expect(find.text('批量结果按批次分组'), findsOneWidget);
+    expect(
+      find.byKey(const Key('switch-simpleViewerGroupBatches')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('默认打开概览，目录切页走 onOpenPage', (t) async {
     final rec = await pumpSettings(t);

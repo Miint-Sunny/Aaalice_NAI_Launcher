@@ -5,17 +5,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/api_constants.dart';
+import '../../core/constants/model_spec.dart';
 import '../../core/utils/localization_extension.dart';
 import '../../core/utils/prompt_block_exchange.dart';
 import '../../data/models/prompt_block/prompt_block.dart';
 import '../../data/models/prompt_block/prompt_block_folder.dart';
 import '../../data/repositories/prompt_block_repository.dart';
 import '../providers/character_prompt_provider.dart';
+import '../providers/quality_preset_provider.dart';
+import '../providers/uc_preset_provider.dart';
 import '../providers/image_generation_provider.dart';
 import '../providers/pill_roll_coordinator.dart';
 import '../providers/pill_workspace_provider.dart';
 import '../providers/prompt_block_library_provider.dart';
 import '../router/app_router.dart';
+import '../widgets/common/undo_snack_bar.dart';
 import '../widgets/prompt/blocks/curation_import_preview_dialog.dart';
 import '../widgets/prompt/blocks/prompt_block_folder_delete_dialog.dart';
 import '../ui/blocks/blocks_contract.dart';
@@ -36,6 +40,47 @@ const blocksParamCatalog = BlockParamCatalog(
   samplers: Samplers.samplerDisplayNames,
   noiseSchedules: NoiseSchedules.displayNames,
 );
+BlockParamCatalog blocksParamCatalogWithReader(
+  T Function<T>(ProviderListenable<T>) read,
+) => BlockParamCatalog(
+  models: blocksParamCatalog.models,
+  samplers: blocksParamCatalog.samplers,
+  noiseSchedules: blocksParamCatalog.noiseSchedules,
+  currentModel: read(generationParamsNotifierProvider).model,
+  customPresets: {
+    for (final b
+        in read(promptBlockLibraryNotifierProvider).valueOrNull?.blocks ??
+            <PromptBlock>[])
+      b.id: b.displayTitle,
+  },
+  customPresetContents: {
+    for (final b
+        in read(promptBlockLibraryNotifierProvider).valueOrNull?.blocks ??
+            <PromptBlock>[])
+      b.id: b.content,
+  },
+);
+
+BlockParams captureBlockParams(T Function<T>(ProviderListenable<T>) read) {
+  final p = read(generationParamsNotifierProvider);
+  final quality = read(qualityPresetNotifierProvider);
+  final uc = read(ucPresetNotifierProvider);
+  return BlockParams(
+    model: p.model,
+    steps: p.steps,
+    scale: p.scale,
+    cfgRescale: ModelSpecs.of(p.model).isV4OrLater ? p.cfgRescale : null,
+    sampler: p.sampler,
+    noiseSchedule: ModelSpecs.of(p.model).noiseSchedule
+        ? p.noiseSchedule
+        : null,
+    qualityPreset: quality.nativePreset.name,
+    qualityCustomBlockId: quality.isCustom ? quality.customEntryId : null,
+    ucPreset: UcPresets.toApiValue(uc.presetType),
+    ucCustomBlockId: uc.customEntryId,
+  );
+}
+
 final blocksLibrarySelectionProvider = StateProvider<String?>((ref) => null);
 
 class BlocksActions {
@@ -45,7 +90,10 @@ class BlocksActions {
   final bool Function() alive;
   BlocksLibraryBackend get backend => ref.read(blocksLibraryBackendProvider);
 
-  Future<T?> run<T>(Future<T> Function() operation) async {
+  Future<T?> run<T>(
+    Future<T> Function() operation, {
+    bool propagate = false,
+  }) async {
     try {
       if ((!alive() || !context.mounted)) return null;
       return await operation();
@@ -56,6 +104,7 @@ class BlocksActions {
           context.l10n.promptBlockLibrary_importFailed('$error'),
         );
       }
+      if (propagate) rethrow;
       return null;
     }
   }
@@ -68,6 +117,8 @@ class BlocksActions {
   Future<void> insert(
     List<String> ids, {
     String fallbackScope = PillScopes.main,
+    String? targetScope,
+    bool propagateErrors = false,
     ({String scope, int caret})? at,
     ValueChanged<int>? onInserted,
   }) async {
@@ -86,8 +137,12 @@ class BlocksActions {
       if (blocks.isEmpty) return;
       final committed = await guard.commit(
         () {
-          final target = at ?? ref.read(pillActiveEditorTargetProvider);
-          final scope = target?.scope ?? fallbackScope;
+          final target =
+              at ??
+              (targetScope == null
+                  ? ref.read(pillActiveEditorTargetProvider)
+                  : null);
+          final scope = target?.scope ?? targetScope ?? fallbackScope;
           final params = ref.read(generationParamsNotifierProvider);
           void seed(String laneScope, String text) {
             final lane = pillWorkspaceProvider(laneScope);
@@ -154,7 +209,7 @@ class BlocksActions {
           AppToast.success(context, context.l10n.blocks_insertToPrompt);
         }
       }
-    });
+    }, propagate: propagateErrors);
   }
 
   Future<void> applyParams(String id) async {
@@ -181,17 +236,7 @@ class BlocksActions {
     });
   }
 
-  Future<BlockParams?> captureParams() async {
-    final p = ref.read(generationParamsNotifierProvider);
-    return BlockParams(
-      model: p.model,
-      steps: p.steps,
-      scale: p.scale,
-      cfgRescale: p.cfgRescale,
-      sampler: p.sampler,
-      noiseSchedule: p.noiseSchedule,
-    );
-  }
+  Future<BlockParams?> captureParams() async => captureBlockParams(ref.read);
 
   Future<PromptBlock?> edit({
     String? id,
@@ -238,7 +283,7 @@ class BlocksActions {
                       : BlockDraft.of(block)),
               folders: blockFoldersOf(library, {}),
               tags: mapBlocksLibrary(library).tags.map((t) => t.tag).toList(),
-              catalog: blocksParamCatalog,
+              catalog: blocksParamCatalogWithReader(ref.read),
               sourcePath: block?.sourcePath,
               importedAt: block?.importedAt,
               sourceState: block?.sourceState ?? BlockSourceState.none,
@@ -276,12 +321,10 @@ class BlocksActions {
     final deletion = await run(() => service.delete(ids));
     if (deletion == null || (!alive() || !context.mounted)) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
+      undoSnackBar(
         content: Text(context.l10n.promptBlockLibrary_deleted),
-        action: SnackBarAction(
-          label: context.l10n.common_undo,
-          onPressed: () => unawaited(run(() => service.undo(deletion))),
-        ),
+        undoLabel: context.l10n.common_undo,
+        onUndo: () => unawaited(run(() => service.undo(deletion))),
       ),
     );
   }

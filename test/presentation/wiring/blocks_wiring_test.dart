@@ -516,6 +516,48 @@ void main() {
     },
   );
 
+  testWidgets(
+    'explicit resource lane overrides stale focus and preserves paired bundle insertion',
+    (tester) async {
+      final params = container.read(generationParamsNotifierProvider.notifier);
+      params.updatePromptImmediately('keep positive');
+      params.updateNegativePromptImmediately('keep negative');
+      await mount(tester, const BlocksLibraryWiring());
+      container.read(pillActiveEditorTargetProvider.notifier).state = (
+        scope: PillScopes.main,
+        caret: 0,
+      );
+      final host = tester.state<ConsumerState>(
+        find.byType(BlocksLibraryWiring),
+      );
+      await tester.runAsync(
+        () => BlocksActions(host.ref, host.context, () => host.mounted).insert(
+          [blockId],
+          targetScope: PillScopes.negative,
+          propagateErrors: true,
+        ),
+      );
+      await flush(tester);
+      expect(platform.backups, hasLength(1));
+      expect(
+        container.read(pillWorkspaceProvider(PillScopes.main)).projection,
+        contains('keep positive'),
+      );
+      expect(
+        container.read(pillActiveEditorTargetProvider)?.scope,
+        PillScopes.negative,
+      );
+      expect(
+        container
+            .read(pillWorkspaceProvider(PillScopes.negative))
+            .document
+            .instances,
+        isNotEmpty,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('dock uses live data and persists expanded state', (
     tester,
   ) async {
@@ -742,6 +784,24 @@ void main() {
           expect(lane.projection, 'left selected right');
           expect(platform.backups, hasLength(1));
           expect(controller.text, 'left \uE000 right');
+          final notifier = container.read(
+            pillWorkspaceProvider(PillScopes.main).notifier,
+          );
+          notifier.undo();
+          final restored = container.read(
+            pillWorkspaceProvider(PillScopes.main),
+          );
+          expect(
+            restored.document.text,
+            'left selected right',
+            reason: 'selection-to-block must undo as a single operation',
+          );
+          expect(restored.document.instances, isEmpty);
+          notifier.redo();
+          expect(
+            container.read(pillWorkspaceProvider(PillScopes.main)).document,
+            lane.document,
+          );
         }
         expect(tester.takeException(), isNull);
       },
@@ -758,6 +818,20 @@ void main() {
     await tester.tap(find.text('撤销'));
     await flush(tester);
     expect(backend.library.blocks.single.id, blockId);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('delete undo notice dismisses itself after a few seconds', (
+    tester,
+  ) async {
+    await mount(tester, const BlocksLibraryWiring());
+    page(tester).actions.onDelete([blockId]);
+    await flush(tester);
+    expect(find.text('撤销'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.text('撤销'), findsNothing);
+    expect(backend.library.blocks, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -984,6 +1058,54 @@ void main() {
         isFalse,
       );
       expect(platform.backups, hasLength(2));
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'standalone temporary instance shows its own title and no revert in the card',
+    (tester) async {
+      const marker = '';
+      final notifier = container.read(
+        pillWorkspaceProvider(PillScopes.main).notifier,
+      );
+      notifier.restoreDocument(
+        PillDocument(
+          text: 'masterpiece, $marker',
+          instances: {
+            marker: PillInstance(
+              blockId: '',
+              temp: PillTempContent(
+                content: 'white dress, straw hat',
+                originalContent: '',
+                editedAt: DateTime(2026, 10, 28, 9, 5),
+                editedBy: 'agent',
+                title: '服装',
+                color: '#FF1E88E5',
+              ),
+            ),
+          },
+        ),
+      );
+      expect(
+        container.read(pillWorkspaceProvider(PillScopes.main)).projection,
+        'masterpiece, white dress, straw hat',
+      );
+      await mount(
+        tester,
+        Align(
+          alignment: Alignment.topLeft,
+          child: BlockInstanceWiring(
+            scope: PillScopes.main,
+            marker: marker,
+            onDismiss: () {},
+          ),
+        ),
+      );
+      expect(find.byKey(const Key('block-temp-card')), findsOneWidget);
+      expect(find.text('服装'), findsWidgets);
+      expect(find.text('块已删除'), findsNothing);
+      expect(find.byKey(const Key('block-temp-revert')), findsNothing);
+      expect(find.byKey(const Key('block-temp-compare')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

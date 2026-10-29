@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:nai_launcher/core/constants/storage_keys.dart';
+import 'package:nai_launcher/data/services/metadata/unified_metadata_parser.dart';
 import 'package:nai_launcher/core/enums/precise_ref_type.dart';
 import 'package:nai_launcher/presentation/providers/image_generation_provider.dart';
 import 'package:nai_launcher/presentation/widgets/drop/global_drop_handler.dart';
@@ -51,12 +52,14 @@ void main() {
     });
 
     test('plain PNG has no importable dropped-image metadata', () async {
+      UnifiedMetadataParser.resetStatistics();
       final metadata = await detectImportableDroppedImageMetadata(
         'clipboard_image.png',
         Uint8List.fromList(_transparentPngBytes),
       );
 
       expect(metadata, isNull);
+      expect(UnifiedMetadataParser.statistics.totalAttempts, 0);
     });
 
     test('only gallery internal drags bypass the global drop handler', () {
@@ -123,7 +126,11 @@ void main() {
             .read(generationParamsNotifierProvider)
             .preciseReferences;
         expect(references, hasLength(1));
-        expect(identical(references.single.image, image), isTrue);
+        expect(references.single.image, image);
+        // Per-entry identity is a zero-copy view, so remove/re-add of the same
+        // input bytes cannot receive a stale normalization result.
+        expect(identical(references.single.image, image), isFalse);
+        expect(references.single.image.offsetInBytes, image.offsetInBytes);
       },
     );
   });

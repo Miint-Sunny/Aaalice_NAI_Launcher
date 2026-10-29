@@ -56,6 +56,18 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 - **Local upscaling**: Real-ESRGAN works, with the same engine and models as on Windows, running on the Mac's GPU (Metal). NVIDIA RTX Video and SeedVR2 need an NVIDIA GPU and are Windows-only for now.
 - **Local semantic search (RAG)**: Needs a Mac with Apple silicon. With the device set to Auto it runs on the GPU on Macs with 18 GB of memory or more, and on the CPU with 16 GB or less. Intel Macs can't use it: PyTorch no longer makes builds for them.
 
+## What's new in 2.2
+
+- **Independent resource windows**: Open and pin Local Gallery, Blocks, Vibes and Precise References, drag resources back to the workspace, and view full images inside the same window. Gallery timelines and the thumbnail disk cache are shared.
+- **Chinese-aware prompt autocomplete**: Local candidates, Chinese names and related tags in the base and character editors, with independent workspace font sizing and a scrolling prompt toolbar.
+- **Temporary blocks and translation adjustments**: Compare, restore or save Agent-edited blocks; refine, split, merge and undo translations.
+- **Agent workflow improvements**: Slash commands, next-message suggestions, cache-warming status, searchable conversation history, wrapping code blocks and per-block copy.
+- **Gallery and storage controls**: Whole-phrase and exact-tag search, search history, Copy Prompt, an adjustable thumbnail cache limit and clearer storage statistics.
+
+**2.2.1 additions**: Let the Agent split prompts into temporary blocks, with whole-module or multiple translations inside. This update also fixes single-click history details, caret visibility over weighted text and update-manifest parsing, and adds individual-image browsing to the infinite canvas.
+
+See the [complete 2.2.1 changelog](CHANGELOG.md#221---2026-10-28) and [release downloads](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/tag/v2.2.1). Agent suggestions, cache warming and translation adjustments use your own model service; their settings are configurable.
+
 ## Get started in three steps
 
 1. **Sign in**: Use a NovelAI API Token (recommended) or your account and password. You can also enter as a guest to try local features first.
@@ -123,7 +135,8 @@ An optional component. Once enabled, tag suggestions, Tag Wiki, the block librar
 Open the sidebar on the generation or Style Explore page and chat with an AI to edit prompts, look up tags and wiki entries, organize blocks and images, set reference images, or even prepare a generation. It uses the model service you configure in “Models & APIs.”
 
 - It asks before making changes, deleting things or running commands. There are four permission levels: Read-only, Ask, Auto and Full access.
-- **Generation that costs Anlas always needs your own confirmation on the price card, at every permission level.**
+- **Model-initiated generation needs your confirmation on the price card at every permission level.** On a prompt-set card, your click on “Generate” directly authorizes one image, with no second confirmation.
+- Write a set of prompts at once (a few story scenes, a set of outfits to try on, or storyboard panels), then switch between items, import to canvas or generate one image at a time from the prompt set card.
 - Supports skills (Skill), MCP servers and CodeMode so you can extend it for your own workflow.
 
 → [NAI Agent guide](docs/guide/en/nai-agent.md)

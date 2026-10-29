@@ -10,6 +10,7 @@ import '../../../core/utils/keyboard_modifier_utils.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../core/utils/platform_shortcut_text.dart';
 import '../../widgets/common/studio_icons.dart';
+import '../../widgets/common/workspace_text_scale_scope.dart';
 import '../../widgets/navigation/window_chrome_layout.dart';
 import '../kit/ui_block_pill.dart';
 import '../kit/ui_colors.dart';
@@ -179,16 +180,19 @@ class BlocksToolbar extends StatelessWidget {
                       Flexible(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 480),
-                          child: UiSearchField(
+                          child: KeyedSubtree(
                             key: const Key('blocks-search'),
-                            value: d.query,
-                            hint: l10n.blocks_searchLibrary,
-                            focusNode: ctrl.searchFocus,
-                            enabled: !empty,
-                            onChanged: a.onQueryChanged,
-                            trailing: d.rag.enabled
-                                ? BlocksRagBadge(data: d.rag)
-                                : null,
+                            child: UiSearchField(
+                              key: ValueKey(d.scope),
+                              value: d.query,
+                              hint: l10n.blocks_searchLibrary,
+                              focusNode: ctrl.searchFocus,
+                              enabled: !empty,
+                              onChanged: a.onQueryChanged,
+                              trailing: d.rag.enabled
+                                  ? BlocksRagBadge(data: d.rag)
+                                  : null,
+                            ),
                           ),
                         ),
                       ),
@@ -405,14 +409,11 @@ class BlocksWall extends StatelessWidget {
   static int columnsFor(double width, double size) =>
       math.max(1, ((width - 36 + 12) / (minCard(size) + 12)).floor());
 
-  static int columnsOf(BuildContext context, double size) {
-    final box = context.findRenderObject() as RenderBox?;
-    final w = box?.size.width ?? 1000;
-    return columnsFor(w - BlocksLibraryPage.inspectorWidth, size);
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      WorkspaceTextScaleScope(child: Builder(builder: _buildWall));
+
+  Widget _buildWall(BuildContext context) {
     final c = context.ui;
     final l10n = context.l10n;
     final scope = BlocksPageScope.of(context);
@@ -456,6 +457,7 @@ class BlocksWall extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final cols = columnsFor(box.maxWidth, ctrl.cardSize);
+        ctrl.wallColumns = cols;
         final cardW = (box.maxWidth - 36 - 12 * (cols - 1)) / cols;
         final coverH = (cardW * .6).roundToDouble();
         if (d.loading) {

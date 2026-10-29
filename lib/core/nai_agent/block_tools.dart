@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../constants/api_constants.dart';
 import 'package:crypto/crypto.dart';
 import '../../data/models/prompt_block/prompt_block.dart';
 import '../../data/repositories/prompt_block_repository.dart';
@@ -141,18 +142,38 @@ Map<String, dynamic> validateNaiAgentBlockChanges(
       'sampler': 'sampler',
       'noiseSchedule': 'noise_schedule',
       'cfgRescale': 'cfg_rescale',
+      'qualityPreset': 'quality_preset',
+      'ucPreset': 'uc_preset',
     };
+    const customKeys = {'qualityCustomBlockId', 'ucCustomBlockId'};
     if (rawSettings is! Map ||
-        rawSettings.keys.any((k) => !mapping.containsKey(k))) {
+        rawSettings.keys.any(
+          (k) => !mapping.containsKey(k) && !customKeys.contains(k),
+        )) {
       throw const NaiAgentToolError(
         'invalid_changes',
         'Unknown block generation setting',
       );
     }
+    for (final key in customKeys) {
+      if (rawSettings[key] != null && rawSettings[key] is! String) {
+        throw const NaiAgentToolError(
+          'invalid_changes',
+          'Custom preset must be a block ID',
+        );
+      }
+    }
+    if (rawSettings['ucPreset'] != null &&
+        !UcPresetType.values
+            .map(UcPresets.toApiValue)
+            .contains(rawSettings['ucPreset'])) {
+      throw const NaiAgentToolError('invalid_changes', 'Invalid UC preset');
+    }
     try {
       validateBridgePatch({
         for (final e in rawSettings.entries)
-          if (e.value != null) mapping[e.key]!: e.value,
+          if (e.value != null && mapping.containsKey(e.key))
+            mapping[e.key]!: e.value,
       });
     } on FormatException catch (error) {
       throw NaiAgentToolError('invalid_changes', error.message);
@@ -198,6 +219,16 @@ Map<String, dynamic> naiAgentBlockResult(
   'version': naiAgentBlockVersion(block),
 };
 
+const naiAgentBlockInstanceActions = {
+  'insert',
+  'instance_update',
+  'instance_create',
+  'instance_convert',
+  'instance_unwrap',
+  'instance_delete',
+  'instance_promote',
+};
+
 /// The actual Hive repository, backup and editor binding are supplied by Studio.
 class NaiAgentBlockTools {
   NaiAgentBlockTools({
@@ -211,6 +242,7 @@ class NaiAgentBlockTools {
     required this.editInstance,
     required this.validateInstance,
     this.afterDelete,
+    this.promoteInstance,
   });
   final Future<PromptBlockLibraryData> Function() readLibrary;
   final PromptBlockRepository repository;
@@ -228,6 +260,11 @@ class NaiAgentBlockTools {
   final void Function(Map<String, dynamic>, PromptBlock?, BridgeDraftSnapshot)
   validateInstance;
   final Future<void> Function(PromptBlock)? afterDelete;
+  final Future<Map<String, dynamic>> Function(
+    Map<String, dynamic>,
+    void Function(),
+  )?
+  promoteInstance;
 
   Future<Map<String, dynamic>> query(
     Map<String, dynamic> params,
@@ -245,8 +282,40 @@ class NaiAgentBlockTools {
     }
     if (params['id'] case final String id) {
       final block = library.getBlock(id);
+      final draft = readDraft();
+      final lanes = <String, dynamic>{};
+      for (final e in draft.documents.entries) {
+        if (e.value is Map && (e.value as Map)['instances'] is Map) {
+          lanes[e.key == 'prompt'
+                  ? 'main'
+                  : e.key == 'negative_prompt'
+                  ? 'negative'
+                  : e.key] =
+              e.value;
+        }
+      }
+      final characters = draft.documents['characters'];
+      if (characters is Map && characters['lanes'] is Map) {
+        for (final e in (characters['lanes'] as Map).entries) {
+          if (e.value is Map) {
+            lanes['char:${e.key}:pos'] = (e.value as Map)['positive'];
+            lanes['char:${e.key}:neg'] = (e.value as Map)['negative'];
+          }
+        }
+      }
       return naiAgentTextResult({
         'block': block == null ? null : naiAgentBlockResult(block, full: true),
+        'instances': [
+          for (final lane in lanes.entries)
+            if (lane.value is Map && (lane.value as Map)['instances'] is Map)
+              for (final e in ((lane.value as Map)['instances'] as Map).entries)
+                if (e.value is Map && (e.value as Map)['blockId'] == id)
+                  {
+                    'scope': lane.key,
+                    'marker': e.key,
+                    ...Map<String, dynamic>.from(e.value as Map),
+                  },
+        ],
       });
     }
     final query = params['query'] ?? '',
@@ -317,11 +386,18 @@ class NaiAgentBlockTools {
     if (naiAgentBlockOrganizationActions.contains(action)) {
       return manageOrganization(params, cancellation);
     }
-    const actions = {'create', 'update', 'delete', 'insert', 'instance_update'};
+    const actions = {
+      'create',
+      'update',
+      'delete',
+      ...naiAgentBlockInstanceActions,
+    };
+    final instanceAction = naiAgentBlockInstanceActions.contains(action);
+    final promoting = action == 'instance_promote';
     if (!actions.contains(action)) {
       throw const NaiAgentToolError(
         'invalid_action',
-        'Expected create/update/delete/insert/instance_update',
+        'Expected library or instance action from block_manage',
       );
     }
     final changes = action == 'create' || action == 'update'
@@ -333,17 +409,21 @@ class NaiAgentBlockTools {
     final library = await readLibrary();
     final before = readDraft();
     final id = params['id'];
-    final block = id is String ? library.getBlock(id) : null;
-    if (action != 'create' && action != 'instance_update' && block == null) {
+    final block = (action == 'insert' || !instanceAction) && id is String
+        ? library.getBlock(id)
+        : null;
+    if (action != 'create' &&
+        (!instanceAction || action == 'insert') &&
+        block == null) {
       throw const NaiAgentToolError(
         'block_missing',
         'Read the block catalog again',
       );
     }
     final expected = params['expected_version'];
-    if (action == 'insert' || action == 'instance_update') {
-      validateInstance(params, block, before);
-    }
+    final libraryVersion = promoting
+        ? naiAgentBlockLibraryVersion(library)
+        : null;
     void check([PromptBlock? actual]) {
       cancellation.check();
       if (!isAlive()) {
@@ -368,7 +448,16 @@ class NaiAgentBlockTools {
           'Read block_query(id=...) again and supply its version',
         );
       }
-      if ((action == 'insert' || action == 'instance_update') &&
+      if (promoting &&
+          (params['expected_library_version'] != libraryVersion ||
+              naiAgentBlockLibraryVersion(repository.currentLibrary) !=
+                  libraryVersion)) {
+        throw const NaiAgentToolError(
+          'library_conflict',
+          'Read block_query(kind=tree) again before promoting',
+        );
+      }
+      if (instanceAction &&
           params['expected_draft_version'] != before.acknowledgementVersion) {
         throw const NaiAgentToolError(
           'draft_conflict',
@@ -378,13 +467,18 @@ class NaiAgentBlockTools {
     }
 
     check(block);
+    if (instanceAction) validateInstance(params, block, before);
     final path = await backup(library, before, block);
     check(block);
-    if (action == 'insert' || action == 'instance_update') {
+    if (instanceAction) {
       await refresh();
-      final current = id is String ? (await readLibrary()).getBlock(id) : null;
+      final current = block == null
+          ? null
+          : (await readLibrary()).getBlock(block.id);
       check(current);
-      final result = editInstance(params, current);
+      final result = promoting
+          ? await promoteInstance!(params, () => check(current))
+          : editInstance(params, current);
       return naiAgentTextResult({
         ...result,
         'backup_path': path,

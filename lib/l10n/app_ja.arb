@@ -1275,7 +1275,6 @@
   "localGallery_sendToKrita": "Krita に送信",
   "localGallery_importImageMetadata": "画像メタデータをインポート",
   "localGallery_copyPrompt": "プロンプトのコピー",
-  "localGallery_copySeed": "シードをコピー",
   "localGallery_dragToShare": "ドラッグして共有",
   "galleryDragCount": "{count} 枚",
   "@galleryDragCount": {
@@ -8151,7 +8150,6 @@
   "gen_relatedSub": "一緒に使われやすいタグを提案",
   "gen_translating": "翻訳中…",
   "gen_translateNeedsModel": "翻訳モデル未設定。クリックして設定",
-  "gen_translateRestore": "原文を表示",
   "gen_translateWith": "翻訳（{route}）",
   "@gen_translateWith": {
     "placeholders": {
@@ -8326,7 +8324,7 @@
   "gen_countTip": "1 回のリクエストの枚数（1–4）",
   "gen_repeat": "繰り返し",
   "gen_repeatTip": "連続で送るリクエスト数",
-  "gen_repeatTotal": "{times} 回、計 {total} 枚（ホイールでも調整可）",
+  "gen_repeatTotal": "{times} 回、計 {total} 枚 · 押したまま左右にドラッグして調整",
   "@gen_repeatTotal": {
     "placeholders": {
       "times": {},
@@ -11119,7 +11117,6 @@
   "ag_mentionTitle": "このメッセージに参照",
   "ag_mentionEmpty": "一致する内容がありません",
   "ag_mentionSearchBlocks": "ブロックを検索",
-  "ag_skillsTitle": "スキル",
   "ag_keySelect": "選択",
   "ag_keyInsert": "挿入",
   "ag_keyCategory": "カテゴリ切替",
@@ -11256,5 +11253,363 @@
   "mp_errorNetwork": "接続できません",
   "mp_errorResponse": "無効なレスポンス",
   "mp_errorHttp": "リクエスト失敗",
-  "mp_errorRateLimit": "レート制限を超過"
+  "mp_errorRateLimit": "レート制限を超過",
+  "ag_tool_prompt_set": "プロンプトセット",
+  "ag_psCount": "{count} {unit}",
+  "@ag_psCount": {"placeholders": {"count": {"type": "int"}, "unit": {"type": "String"}}},
+  "ag_psPosition": "第{index}{unit} / 全{count}{unit}",
+  "@ag_psPosition": {"placeholders": {"index": {"type": "int"}, "count": {"type": "int"}, "unit": {"type": "String"}}},
+  "ag_psOverview": "一覧表示",
+  "ag_psSingle": "1件ずつ表示",
+  "ag_psPrompt": "プロンプト",
+  "ag_psShared": "共通設定",
+  "ag_psThisItem": "この{unit}",
+  "@ag_psThisItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psMain": "メインプロンプト",
+  "ag_psCharacter": "キャラクター {index}",
+  "@ag_psCharacter": {"placeholders": {"index": {"type": "int"}}},
+  "ag_psNegative": "ネガティブ",
+  "ag_psImport": "キャンバスに読み込む",
+  "ag_psImportTip": "メインプロンプト・キャラクター・ネガティブを書き込みます。パラメータと参照画像は変わりません",
+  "ag_psImported": "「{title}」をプロンプトに書き込みました",
+  "@ag_psImported": {"placeholders": {"title": {"type": "String"}}},
+  "ag_psGenerate": "生成",
+  "ag_psGenerating": "生成中",
+  "ag_psRevision": "v{revision} · {count}件変更",
+  "@ag_psRevision": {"placeholders": {"revision": {"type": "int"}, "count": {"type": "int"}}},
+  "ag_psSaveBlock": "ブロックとして保存",
+  "ag_psSavedBlock": "ブロック「{title}」を保存しました · {count}件",
+  "@ag_psSavedBlock": {"placeholders": {"title": {"type": "String"}, "count": {"type": "int"}}},
+  "ag_psCopyItem": "この{unit}のプロンプトをコピー",
+  "@ag_psCopyItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psCopyAll": "すべてコピー",
+  "ag_psEditItem": "この{unit}の修正を Agent に頼む",
+  "@ag_psEditItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psEditDraft": "「{title}」の第{index}{unit}（{item}）を修正：",
+  "@ag_psEditDraft": {"placeholders": {"title": {"type": "String"}, "index": {"type": "int"}, "unit": {"type": "String"}, "item": {"type": "String"}}},
+  "ag_psTooManyCharacters": "現在のモデルのキャラクターは最大 {count} 人です",
+  "@ag_psTooManyCharacters": {"placeholders": {"count": {"type": "int"}}},
+  "ag_psNoCharacters": "現在のモデルはキャラクタープロンプトに対応していません",
+  "ag_psMissing": "このカードのデータは見つかりません",
+  "startup_dataTitle": "アプリのデータを準備できませんでした",
+  "startup_dataHelp": "アプリのデータを準備できていません。既存のファイルを保持してください。内容の異なるファイルは統合も上書きもしません。データフォルダーをバックアップして確認し、ディスクの空き容量とアクセス権を確認してから再試行してください。",
+  "startup_dataCurrent": "現在のデータフォルダー",
+  "startup_dataLegacy": "以前のデータフォルダー",
+  "startup_dataOpenCurrent": "現在のフォルダーを開く",
+  "startup_dataOpenLegacy": "以前のフォルダーを開く",
+  "startup_dataDetails": "エラーの詳細",
+  "startup_dataActionFailed": "操作に失敗しました：{error}",
+  "@startup_dataActionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_expandToText": "テキストに展開",
+  "ag_answeredTitle": "あなたへの質問 · 回答済み",
+  "ag_historyButton": "履歴",
+  "ag_historyTitle": "会話履歴",
+  "ag_historySearch": "発言とカードを検索…",
+  "ag_historyAll": "すべて",
+  "ag_historyMine": "自分の発言",
+  "ag_historyCards": "カード",
+  "ag_historyQuestions": "質問と回答",
+  "ag_historyEmpty": "一致する項目はありません",
+  "ag_historyBeforeCompaction": "この部分は圧縮前です。クリックして要約を確認。",
+  "ag_historyAuto": "自動圧縮",
+  "ag_historyManual": "手動圧縮",
+  "ag_historyImageMessage": "画像メッセージ",
+  "ag_historyAnswer": "あなたの回答：{answer}",
+  "@ag_historyAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_historyPromptSet": "プロンプトセット",
+  "ag_historyImages": "生成カード · {count} 枚",
+  "@ag_historyImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_historyPromptChange": "プロンプトの変更",
+  "ag_historyParams": "生成設定",
+  "ag_historyPositions": "キャラクター位置",
+  "ag_historySettings": "設定の変更",
+  "ag_historyGallery": "ギャラリーカード",
+  "ag_historyChanges": "変更の要約",
+  "gen_translateTapOriginal": "クリック：原文を表示",
+  "gen_translateTapTranslated": "クリック：訳文を表示",
+  "gen_translateClearRestore": "翻訳ブロックを解除して原文に戻す",
+  "gen_translateClearRestoreSub": "通常の原文に戻します。元に戻せます",
+  "gen_translateCleared": "翻訳ブロックを原文に戻しました",
+  "gen_translateAdjust": "続けて翻訳を調整",
+  "gen_translateAdjustSub": "この翻訳を続けて、分割・再翻訳・結合",
+  "gen_translateAdjustTitle": "翻訳の調整",
+  "gen_translateAdjustContext": "この翻訳を継続 · {count} ブロック",
+  "@gen_translateAdjustContext": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustSelected": "{count} ブロックを選択",
+  "@gen_translateAdjustSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustCollapse": "折りたたむ / 展開",
+  "gen_translateAdjustIntro": "この翻訳を続けます。左のブロックをクリックして参照できます。変更は元に戻せます。",
+  "gen_translateAdjustSplit": "再分割",
+  "gen_translateAdjustRetranslate": "選択を再翻訳",
+  "gen_translateAdjustMerge": "選択を結合",
+  "gen_translateAdjustSplitTemplate": "現在のブロックを読み、参照ブロックを意味ごとに細分化し、原文を保持してください。",
+  "gen_translateAdjustRetranslateTemplate": "現在のブロックを読み、原文を変えずに参照ブロックを再翻訳してください。",
+  "gen_translateAdjustMergeTemplate": "現在のブロックを読み、参照ブロックを指定の原文順に結合し、無関係なブロックは保持してください。",
+  "gen_translateAdjustMarkers": "translation_blocks_read の marker 一覧を使用してください。",
+  "gen_translateAdjustHint": "ブロックの調整方法を入力…",
+  "gen_translateAdjustStartFailed": "調整を開始できません。モデルと Agent ランタイムを確認してください。",
+  "gen_translateAdjustRunFailed": "調整が中断または失敗しました。再試行前にブロックを読み直してください。",
+  "gen_repeatDragTotal": "{times} 回 · 計 {total} 枚",
+  "@gen_repeatDragTotal": {
+    "placeholders": {
+      "times": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "set_cvGroupBatches": "一括生成の結果をグループ化",
+  "set_cvGroupBatchesSub": "シンプルビューアーと無限キャンバスの両方に適用されます。オフにすると1枚ずつ表示し、履歴のサムネイルから各画像を選べます。",
+  "gen_groupBatches": "グループ",
+  "gen_translateAdjustPickHint": "左のブロックをクリックで参照",
+  "gen_translateAdjustClearRefs": "参照をクリア",
+  "gen_translateAdjustSplitInto": "{source} → {count} ブロック",
+  "gen_translateAdjustContextNote": "コンテキスト：今回の原文・ブロック・訳文",
+  "ag_historyStats": "発言 {messages} · カード {cards}",
+  "ag_historyKeySelect": "選択",
+  "ag_historyKeyJump": "会話へ移動",
+  "ag_historyKeyClose": "閉じる",
+  "blocks_tempLabel": "一時ブロック",
+  "blocks_tempEditedByAgent": "Agent が{time}ここを編集しました。",
+  "blocks_tempEditedByYou": "{time}ここを編集しました。",
+  "blocks_tempExplain": "ライブラリの「{title}」から切り離され、変更はこの位置だけに残ります。ライブラリや他のプロンプトの同じブロックには影響しません。",
+  "blocks_tempEdit": "編集",
+  "blocks_tempCompare": "元と比較",
+  "blocks_tempAdded": "追加",
+  "blocks_tempAddedCount": "{count} 語を追加",
+  "blocks_tempAddedNone": "追加なし",
+  "blocks_tempRemoved": "削除",
+  "blocks_tempRemovedHint": "{count} 語を削除",
+  "blocks_tempRemovedNone": "削除なし",
+  "blocks_tempRevert": "元に戻す",
+  "blocks_tempKeepEditing": "編集を続ける",
+  "blocks_tempApply": "適用",
+  "blocks_tempSaveAs": "新しいブロックとして保存",
+  "blocks_tempSaveAsHint": "保存後、この位置は新しいブロックに置き換わり、元のブロックは変わりません",
+  "blocks_tempSaveConfirm": "保存",
+  "blocks_tempShowOriginal": "ライブラリで元を表示",
+  "gen_menuNew": "新",
+  "gen_repeatDragHint": "数字を左右にドラッグ · ダブルクリックで入力",
+  "gen_groupBatchesOn": "バッチごとに表示中 · クリックで1枚ずつ",
+  "gen_groupBatchesOff": "1枚ずつ表示中 · クリックでバッチごと",
+  "blocks_presetCustom": "カスタム",
+  "blocks_presetHint": "付属パラメータの適用時に品質タグとネガティブプリセットも復元します。別モデルでは段階を自動換算し、Turbo は既存の処理に従います。",
+  "@gen_translateAdjustSplitInto": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@ag_historyStats": {
+    "placeholders": {
+      "messages": {
+        "type": "int"
+      },
+      "cards": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempEditedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempEditedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempExplain": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempAddedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempRemovedHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_vibeInpaintUnsupported": "Vibe は部分再描画（Inpainting）に対応していないため、今回は適用されません。",
+  "set_stThumbnailCacheLimit": "サムネイルキャッシュの上限",
+  "set_stThumbnailCacheLimitSub": "すべてのギャラリーフォルダの合計。起動時や手動クリーンで、古いサムネイルから上限の 80% まで削除します。元画像には触れません。",
+  "ag_slashGroupSkills": "スキル",
+  "ag_slashGroupTemplates": "プロンプトテンプレート",
+  "ag_slashGroupBuiltin": "Studio コマンド",
+  "ag_commandNew": "新しいチャットを開始",
+  "ag_commandCompact": "コンテキストを圧縮",
+  "ag_commandModel": "モデルを選択",
+  "ag_commandThinking": "思考レベルを選択",
+  "ag_commandHistory": "セッション履歴を開く",
+  "ag_commandRename": "チャット名を変更",
+  "ag_commandCopy": "最後の返信をコピー",
+  "ag_commandExport": "セッションをエクスポート",
+  "ag_commandCompactArgs": "[指示]",
+  "ag_commandRenameArgs": "<名前>",
+  "set_agNextSuggestion": "次のメッセージ候補",
+  "set_agNextSuggestionSub": "現在の会話モデルで次のメッセージを予測します。追加のトークンを使用します。Tab で採用。",
+  "set_agCacheWarming": "プロンプトキャッシュの予熱",
+  "set_agCacheWarmingSub": "プロンプトキャッシュが切れる直前に 1 トークンのリクエストで延長します（寿命 5 分、全モデル対象）。次のステップはコンテキスト全体を再送せずキャッシュを読みます。",
+  "set_agCacheOff": "オフ",
+  "set_agCacheStreaming": "Agent の実行中のみ",
+  "set_agCacheIdle": "待機中も予熱",
+  "set_agCacheIdleCost": "待機中のウォームアップ（最大 30 分）は追加のモデル料金がかかります。",
+  "ag_suggestionAccept": "Tab でこの提案を入力",
+  "ag_cacheWarmTitle": "キャッシュのウォームアップ",
+  "ag_cacheWarmOff": "オフ",
+  "ag_cacheWarmRefreshing": "キャッシュを延長中…",
+  "ag_cacheWarmIdle": "待機中 — 次の実行で開始",
+  "ag_cacheWarmNext": "{time} 後に延長",
+  "@ag_cacheWarmNext": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "set_stOther": "その他のファイル",
+  "set_stIncomplete": "一部のフォルダを読み取れなかったため、合計は不完全です。カテゴリにカーソルを合わせると参照元を表示します。",
+  "set_stSliceIncomplete": "一部のみ読み取り",
+  "localGallery_searchHistoryTitle": "最近の検索",
+  "localGallery_searchHistoryClear": "クリア",
+  "localGallery_searchHistoryRemove": "履歴から削除",
+  "ag_cacheWarmCount": "延長 {count} 回",
+  "@ag_cacheWarmCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_cacheWarmLast": "前回 {time}",
+  "@ag_cacheWarmLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_cacheWarmTtl": "キャッシュ寿命 {minutes} 分",
+  "@ag_cacheWarmTtl": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "set_workspaceFontScale": "創作エリアの文字サイズ",
+  "set_promptAutocomplete": "プロンプトの自動補完",
+  "shortcut_action_open_resource_window": "リソースウィンドウを開く",
+  "set_workspaceFontScaleSub": "プロンプト欄・キャラクター欄・ブロック・ビューアのプロンプトの文字。上のUI文字サイズとは別に調整します。",
+  "set_promptAutocompleteSub": "プロンプト欄とキャラクター欄の入力中にローカルのタグ辞書から候補を表示します。↑↓で選択、Tab か Enter で確定、Esc で閉じます。",
+  "floating_open": "リソース小窓",
+  "floating_searchGallery": "検索（フレーズ全体 / 完全一致タグ）",
+  "floating_searchName": "名前で検索",
+  "floating_collapse": "タイトルバーに畳む",
+  "floating_expand": "展開",
+  "floating_empty": "何もありません",
+  "floating_loadFailed": "読み込めませんでした",
+  "floating_loadMore": "さらに読み込む",
+  "set_stThumbQuotaTip": "サムネイル {count} 枚 · {time}に集計",
+  "@set_stThumbQuotaTip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_autocompleteTitle": "補完",
+  "prompt_autocompleteHint": "↑↓ 選択 · → 関連 · ← 戻る · Tab / Enter で補完 · Esc で閉じる",
+  "prompt_autocompleteHintRelated": "↑↓ 選択 · ← 戻る · Enter / クリックで追加 · Esc で関連を閉じる",
+  "resourceWindow_pin": "最前面に表示",
+  "resourceWindow_newWindow": "リソースウィンドウをもう一つ開く",
+  "resourceWindow_rowHeight": "行の高さ",
+  "resourceWindow_cardSize": "カードサイズ",
+  "resourceWindow_dragHint": "生成ページの対応エリアへドラッグ",
+  "resourceWindow_dragHintBlocks": "プロンプトへドラッグして挿入",
+  "resourceWindow_keyDrag": "ドラッグ",
+  "resourceWindow_keyDouble": "ダブルクリック",
+  "resourceWindow_hintDrag": "生成ページで使う",
+  "resourceWindow_hintView": "拡大表示",
+  "resourceWindow_hintPrimary": "メイン操作",
+  "resourceWindow_connected": "メインウィンドウに接続済み",
+  "resourceWindow_disconnected": "メインウィンドウ未接続",
+  "resourceWindow_currentModelUsable": "現在のモデルで使用可能",
+  "resourceWindow_insertPositive": "正のプロンプトに挿入",
+  "resourceWindow_insertNegative": "負のプロンプトに挿入",
+  "resourceWindow_errorNotFound": "この項目はもう存在しません（一覧を更新しました）",
+  "resourceWindow_errorNotReady": "メインウィンドウの準備ができていません。少し待ってから再試行してください",
+  "resourceWindow_errorUnsupported": "現在のモデルはこの操作に対応していません",
+  "resourceWindow_errorFailed": "操作に失敗しました",
+  "blocks_tempStandaloneExplain": "このプロンプトの中だけにあり、ライブラリには保存されていません。残すには新しいブロックとして保存してください。",
+  "blocks_tempCreatedByAgent": "Agent が{time}このブロックを作成しました。",
+  "@blocks_tempCreatedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_tempCreatedByYou": "{time}このブロックを作成しました。",
+  "@blocks_tempCreatedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  }
 }

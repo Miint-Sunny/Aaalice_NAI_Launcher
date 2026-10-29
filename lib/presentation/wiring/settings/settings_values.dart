@@ -31,9 +31,12 @@ import '../../providers/notification_settings_provider.dart';
 import '../../providers/online_gallery_blacklist_provider.dart';
 import '../../providers/proxy_settings_provider.dart';
 import '../../providers/settings_font_scale_provider.dart';
+import '../../providers/workspace_text_settings_provider.dart';
 import '../../providers/share_image_settings_provider.dart';
 import '../../providers/shortcuts_provider.dart';
 import '../../providers/simple_output_viewer_provider.dart';
+import '../../providers/simple_viewer_group_batches_provider.dart';
+import '../../providers/thumbnail_cache_limit_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/update_provider.dart';
 import '../../ui/settings/settings_contract.dart';
@@ -41,6 +44,14 @@ import 'settings_agent.dart';
 import '../../../core/cache/thumbnail_cache_service.dart';
 
 final settingsRefreshProvider = StateProvider<int>((ref) => 0);
+
+/// Small reactive projection shared by the full settings view and isolated tests.
+final workspaceTextSettingValuesProvider = Provider<Map<SettingKey, Object>>(
+  (ref) => {
+    SettingKey.workspaceFontScale: ref.watch(workspaceFontScaleProvider),
+    SettingKey.promptAutocomplete: ref.watch(promptAutocompleteEnabledProvider),
+  },
+);
 
 String settingsSeedModel(UpscaleWorkflowSettings settings) =>
     settings.localModel.startsWith('seedvr2-')
@@ -69,6 +80,7 @@ final settingsValuesProvider = Provider<SettingsValues>((ref) {
     SettingKey.themeMode: store.getStudioThemeMode(),
     SettingKey.fontFamily: font == FontConfig.defaultFont ? 'system' : font.key,
     SettingKey.settingsFontScale: ref.watch(settingsFontScaleProvider),
+    ...ref.watch(workspaceTextSettingValuesProvider),
     SettingKey.language: AppLanguage.fromLocale(locale).storageCode,
     SettingKey.reduceMotion: ref.watch(canvasReducedMotionNotifierProvider),
     SettingKey.completionSound: sound.soundEnabled,
@@ -81,6 +93,10 @@ final settingsValuesProvider = Provider<SettingsValues>((ref) {
     SettingKey.outputViewer: ref.watch(simpleOutputViewerNotifierProvider)
         ? 'simple'
         : 'canvas',
+    SettingKey.simpleViewerGroupBatches: ref.watch(
+      simpleViewerGroupBatchesProvider,
+    ),
+    SettingKey.thumbnailCacheLimitGb: ref.watch(thumbnailCacheLimitGbProvider),
     SettingKey.canvasLockCamera: ref.watch(canvasLockCameraNotifierProvider),
     SettingKey.canvasZoomToFill: ref.watch(canvasZoomToFillNotifierProvider),
     SettingKey.shortcutsEnabled: shortcuts?.enableShortcuts ?? true,
@@ -118,6 +134,8 @@ final settingsValuesProvider = Provider<SettingsValues>((ref) {
     SettingKey.agentModel: agent.modelId.isEmpty
         ? null
         : jsonEncode([agent.providerId, agent.modelId]),
+    SettingKey.agentNextSuggestion: agent.nextSuggestion,
+    SettingKey.agentCacheWarming: agent.cacheWarming,
     SettingKey.agentEnterToSend: agent.enterToSend,
     SettingKey.agentMaxRequests: agent.maxRequestsPerRun.toDouble(),
     SettingKey.ragEnabled: rag.enabled,
@@ -210,6 +228,12 @@ class SettingsValueStore {
             );
       case SettingKey.settingsFontScale:
         await ref.read(settingsFontScaleProvider.notifier).setFontScale(n);
+      case SettingKey.workspaceFontScale:
+        await ref.read(workspaceFontScaleProvider.notifier).setFontScale(n);
+      case SettingKey.promptAutocomplete:
+        await ref
+            .read(promptAutocompleteEnabledProvider.notifier)
+            .setEnabled(b);
       case SettingKey.language:
         await ref.read(localeNotifierProvider.notifier).setLocale(text!);
       case SettingKey.reduceMotion:
@@ -236,6 +260,10 @@ class SettingsValueStore {
         await ref
             .read(simpleOutputViewerNotifierProvider.notifier)
             .setSimple(text == 'simple');
+      case SettingKey.simpleViewerGroupBatches:
+        await ref.read(simpleViewerGroupBatchesProvider.notifier).setGrouped(b);
+      case SettingKey.thumbnailCacheLimitGb:
+        await ref.read(thumbnailCacheLimitGbProvider.notifier).setLimit(n);
       case SettingKey.canvasLockCamera:
         await ref.read(canvasLockCameraNotifierProvider.notifier).setLocked(b);
       case SettingKey.canvasZoomToFill:
@@ -323,6 +351,14 @@ class SettingsValueStore {
         await ref.read(settingsAgentBackendProvider).update({
           'providerId': selection[0],
           'modelId': selection[1],
+        });
+      case SettingKey.agentNextSuggestion:
+        await ref.read(settingsAgentBackendProvider).update({
+          'nextSuggestion': b,
+        });
+      case SettingKey.agentCacheWarming:
+        await ref.read(settingsAgentBackendProvider).update({
+          'cacheWarming': text,
         });
       case SettingKey.agentEnterToSend:
         await ref.read(settingsAgentBackendProvider).update({'enterToSend': b});

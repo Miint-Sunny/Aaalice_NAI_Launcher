@@ -57,6 +57,65 @@ test('gallery batch schema exposes bounded IDs and per-image versions with batch
   // Exact-form/unique-ID/per-ID completeness validation belongs to Dart.
 });
 
+test('block schema accepts presets and occurrence-local content, rejects invalid values', () => {
+  const tool = domainTools.find(tool=>tool.name==='block_manage');
+  for (const action of ['create','update']) {
+    assert.equal(Value.Check(tool.parameters, {action,changes:{title:'preset',content:'text',generationSettings:{qualityPreset:'light',ucPreset:7,qualityCustomBlockId:'q',ucCustomBlockId:'u'}}}), true);
+    for (const generationSettings of [{qualityPreset:'invalid'},{ucPreset:4},{ucPreset:1.5},{qualityCustomBlockId:5}]) {
+      assert.equal(Value.Check(tool.parameters,{action,changes:{generationSettings}}),false);
+    }
+  }
+  assert.match(tool.description, /temporary block for this occurrence only/);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_update',marker:'x',occurrence:1,instance:{content:'new',negative_content:'UC'}}),true);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_update',instance:{content:42}}),false);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_update',occurrence:-1,instance:{content:'new'}}),false);
+  const reading = {source:'brown cloak',zh:'棕色斗篷'};
+  assert.equal(Value.Check(tool.parameters,{action:'instance_create',kind:'temporary',instance:{title:'服装',content:'brown cloak',translations:[reading]}}),true);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_update',instance:{translations:[],negative_translations:[reading]}}),true);
+  for (const translations of ['reading',Array(65).fill(reading),[{...reading,language_code:'invalid'}]]) {
+    assert.equal(Value.Check(tool.parameters,{action:'instance_update',instance:{translations}}),false);
+  }
+});
+
+test('inline block schema stays one flat object with enums; per-action rules live in Dart', async () => {
+  const tool = domainTools.find(tool=>tool.name==='block_manage');
+  assert.equal(tool.parameters.type, 'object');
+  assert.ok(!('anyOf' in tool.parameters) && !('allOf' in tool.parameters));
+  assert.ok(tool.parameters.properties.action.enum.includes('instance_convert'));
+  const segment = {kind:'temporary',anchor:{text:'中文😀',mode:'replace'},instance:{title:'one-off',color:'#80112233',icon:'star'}};
+  assert.equal(Value.Check(tool.parameters,{action:'instance_convert',segments:[segment]}),true);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_create',kind:'translation',instance:{enabled:false},translation:{source:'rain',zh:'雨',language_code:'ja'}}),true);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_create',kind:'translation',translation:{source:'rain',zh:'雨',marks:[]}}),false);
+  for (const segments of [[],Array(65).fill(segment),[{...segment,anchor:{text:'',mode:'replace'}}]]) {
+    assert.equal(Value.Check(tool.parameters,{action:'instance_convert',segments}),false);
+  }
+  for (const instance of [{title:'x'.repeat(41)},{color:'blue'},{icon:7}]) {
+    assert.equal(Value.Check(tool.parameters,{action:'instance_create',kind:'temporary',instance}),false);
+  }
+  assert.equal(Value.Check(tool.parameters,{action:'instance_create',translation:{language_code:'xx'}}),false);
+  assert.equal(Value.Check(tool.parameters,{action:'instance_create',anchor:{text:'x',mode:'unknown'}}),false);
+  assert.equal(Value.Check(tool.parameters,{action:'merge'}),false);
+  for (const phrase of [/1\.\.64 segments/, /source \(generation text\)/, /expected_library_version/, /references\/blocks\.md/, /compose/]) assert.match(tool.description,phrase);
+  assert.ok(tool.description.length <= 1400);
+  const promptDescription = studioTools(()=>{}).find(t=>t.name==='prompt_update').description;
+  assert.match(promptDescription,/pill_conflict/);
+  assert.match(promptDescription,/field_version/);
+  assert.ok(promptDescription.length <= 400);
+  const skill = await readFile(new URL('../skills/nai-studio/references/blocks.md',import.meta.url),'utf8');
+  assert.match(skill, /## Merging and splitting/);
+  assert.match(skill, /Missing `needsReview` means false; missing `languageCode` means `zh`/);
+  const icons = await readFile(new URL('../../../lib/presentation/widgets/prompt/blocks/prompt_block_icons.dart',import.meta.url),'utf8');
+  for (const [,key] of icons.split('};')[0].matchAll(/'([a-z_]+)': Icons\./g)) assert.ok(skill.includes('`'+key+'`'),key);
+});
+
+test('every domain tool description stays compact and schemas avoid anyOf enums', () => {
+  for (const tool of domainTools) {
+    assert.ok(tool.description.length <= 1400, tool.name);
+    const json = JSON.stringify(tool.parameters);
+    assert.ok(!/"anyOf":\[\{"type":"string","const"/.test(json), tool.name);
+  }
+});
+
 test('only registered domain tools enter the Pi tool list', async () => {
   const calls = [];
   const tools = studioTools(async (...args) => { calls.push(args); return { content: [{ type: 'text', text: 'saved' }] }; },

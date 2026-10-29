@@ -33,7 +33,10 @@ void main() {
         ),
       );
       calls++;
-      await waitForResponse?.call();
+      final side = (requests.last['messages'] as List).any(
+        (m) => '$m'.contains('预测用户下一条'),
+      );
+      if (!side) await waitForResponse?.call();
       request.response.headers.set(
         'content-type',
         'text/event-stream; charset=utf-8',
@@ -43,6 +46,7 @@ void main() {
           'id': 'test',
           'object': 'chat.completion.chunk',
           'model': 'test',
+          if ((requests.last['max_tokens'] ?? requests.last['max_completion_tokens']) == 1) 'usage': {'prompt_tokens': 32, 'completion_tokens': 1, 'total_tokens': 33},
           'choices': [
             {
               'index': 0,
@@ -77,6 +81,8 @@ void main() {
   });
   NaiAgentWorkspaceController controller({
     bool vision = false,
+    bool suggestions = false,
+    int? promptCacheSeconds,
     bool Function()? readVision,
     int Function()? readModelRevision,
     NaiAgentVisionAccess visionAccess = const NaiAgentVisionAccess(),
@@ -113,6 +119,10 @@ void main() {
               'maxConcurrentRequests': 1,
               'maxRequestsPerRun': settings.maxRequestsPerRun,
               'permissionMode': settings.permissionMode,
+              'nextSuggestion': suggestions && settings.nextSuggestion,
+              'cacheWarming': settings.cacheWarming,
+              if (promptCacheSeconds != null)
+                'promptCacheSeconds': promptCacheSeconds,
             },
             executeTool: (_, __, ___) async => {'content': []},
           ),
@@ -120,6 +130,58 @@ void main() {
     controllers.add(value);
     return value;
   }
+
+  test(
+    'suggestions arrive from host, clear on typing, accept into draft and settings apply live',
+    () async {
+      final c = controller(suggestions: true);
+      await c.initialize();
+      await c.sendText('hello');
+      for (var i = 0; i < 300 && c.selected!.suggestion == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(c.selected!.suggestion, '完成');
+      expect(c.selected!.messages.where((m) => m['role'] == 'user').length, 1);
+      await c.acceptSuggestion();
+      expect(c.selected!.composer.text, '完成');
+      expect(c.selected!.suggestion, isNull);
+      await c.updateSettings({'nextSuggestion': false, 'cacheWarming': 'off'});
+      expect(c.selected!.cacheWarming['mode'], 'off');
+      await c.saveComposer('');
+      await c.sendText('no suggestion');
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(c.selected!.suggestion, isNull);
+    },
+  );
+
+  test(
+    'cache_warm usage pushes updated tokens and warming status to Dart while idle',
+    () async {
+      final c = controller(promptCacheSeconds: 11);
+      await c.initialize();
+      await c.updateSettings({'cacheWarming': 'idle'});
+      await c.sendText('warm the synthetic cache');
+      final runtime = c.selected!;
+      expect(runtime.cacheWarming['state'], 'scheduled');
+      final revision = runtime.usageRevision;
+      for (var i = 0; i < 500 && runtime.cacheWarming['warmCount'] != 1; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      expect(runtime.cacheWarming['warmCount'], 1);
+      expect(runtime.cacheWarming['state'], 'scheduled');
+      expect(runtime.cacheWarming['ttlSeconds'], 11);
+      expect(
+        runtime.cacheWarming['nextWarmAt'],
+        (runtime.cacheWarming['lastWarmAt'] as int) + 1000,
+      );
+      expect(runtime.cacheWarming['decision'], isNull);
+      expect(runtime.usageRevision, greaterThan(revision));
+      expect((runtime.stats['tokens'] as Map)['input'], 32);
+      expect(runtime.messages.where((m) => m['role'] == 'assistant').length, 1);
+      await c.updateSettings({'cacheWarming': 'off'});
+      expect(runtime.cacheWarming['state'], 'inactive');
+    },
+  );
 
   test(
     'real host limit persists in Pi history; Continue sends without consuming draft',
@@ -921,6 +983,58 @@ void main() {
     },
   );
 
+  for (final withImage in [false, true]) {
+    test(
+      'queue consumption clears stable IDs with image=$withImage and retains follow-up',
+      () async {
+        final c = controller(vision: true);
+        await c.initialize();
+        final firstEntered = Completer<void>(),
+            firstRelease = Completer<void>();
+        final secondEntered = Completer<void>(),
+            secondRelease = Completer<void>();
+        waitForResponse = () async {
+          if (calls == 1) {
+            firstEntered.complete();
+            await firstRelease.future;
+          }
+          if (calls == 2) {
+            secondEntered.complete();
+            await secondRelease.future;
+          }
+        };
+        await c.saveComposer('first');
+        final run = c.send();
+        await firstEntered.future.timeout(const Duration(seconds: 15));
+        if (withImage) {
+          await c.attach(
+            'queued.png',
+            img.encodePng(img.Image(width: 2, height: 2)),
+            'image/png',
+          );
+        }
+        await c.saveComposer('same text');
+        await c.send(steer: true);
+        final consumed = c.selected!.composer.pending.single['queueId'];
+        await c.saveComposer('same text');
+        await c.send();
+        final remaining = c.selected!.composer.pending.last['queueId'];
+        firstRelease.complete();
+        await secondEntered.future.timeout(const Duration(seconds: 15));
+        expect(c.selected!.composer.pending.map((p) => p['queueId']), [
+          remaining,
+        ]);
+        expect(c.selected!.queue.map((p) => p['queueId']), [remaining]);
+        expect(
+          c.selected!.composer.pending.any((p) => p['queueId'] == consumed),
+          false,
+        );
+        secondRelease.complete();
+        await run;
+        expect(c.selected!.composer.pending, isEmpty);
+      },
+    );
+  }
   test(
     'stopping preserves only unsent queue messages for explicit restoration',
     () async {

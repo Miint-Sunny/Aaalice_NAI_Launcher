@@ -63,7 +63,8 @@ SettingsValueLabel settingsValueLabels(
     if (value is bool) return value ? l.set_on : l.set_off;
     if (value is num) {
       return switch (key) {
-        SettingKey.settingsFontScale => '${(value * 100).round()}%',
+        SettingKey.settingsFontScale ||
+        SettingKey.workspaceFontScale => '${(value * 100).round()}%',
         SettingKey.costThreshold => '${value.round()} Anlas',
         SettingKey.intervalSeconds => '${value.round()} ${l.set_unitSeconds}',
         SettingKey.intervalJitter => '±${value.round()}%',
@@ -112,6 +113,18 @@ Map<SettingKey, List<SettingsOption>> settingsOptions(
     SettingKey.defaultAccount: [
       for (final account in ref.watch(accountManagerNotifierProvider).accounts)
         SettingsOption(value: account.id, label: account.displayName),
+    ],
+    SettingKey.agentCacheWarming: [
+      SettingsOption(value: 'off', label: context.l10n.set_agCacheOff),
+      SettingsOption(
+        value: 'streaming',
+        label: context.l10n.set_agCacheStreaming,
+      ),
+      SettingsOption(
+        value: 'idle',
+        label: context.l10n.set_agCacheIdle,
+        detail: context.l10n.set_agCacheIdleCost,
+      ),
     ],
     SettingKey.agentModel: [
       for (final provider in config.providers.where((p) => p.enabled))
@@ -305,6 +318,8 @@ SettingsViewData settingsViewData(
       lastScanAt: lastScan,
       scanning: ref.watch(settingsStorageBusyProvider),
       thumbnailBytes: measured?.thumbnailBytes ?? 0,
+      thumbnailCount: measured?.thumbnailCount ?? 0,
+      measuredAt: measured?.measuredAt,
       thumbnailLimit:
           locations?.thumbnailLimit ?? measured?.thumbnailLimit ?? 0,
       folderNames: locations?.folderNames ?? measured?.folderNames ?? const {},

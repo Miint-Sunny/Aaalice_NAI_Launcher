@@ -2,6 +2,8 @@
 class StorageKeys {
   StorageKeys._();
 
+  static const String floatingResourceWindows = 'floating_resource_windows_v1';
+
   // Secure Storage Keys (敏感数据)
   static const String accessToken = 'nai_access_token';
   static const String tokenExpiry = 'nai_token_expiry';
@@ -37,6 +39,8 @@ class StorageKeys {
   static const String studioThemeMode = 'studio_theme_mode';
   static const String fontFamily = 'font_family';
   static const String fontScale = 'font_scale';
+  static const String workspaceFontScale = 'workspace_font_scale';
+  static const String promptAutocompleteEnabled = 'prompt_autocomplete_enabled';
   static const String settingsFontScale = 'settings_font_scale';
   static const String locale = 'locale';
   static const String fileLoggingEnabled = 'file_logging_enabled';
@@ -52,6 +56,8 @@ class StorageKeys {
   static const String promptMaximized = 'prompt_maximized';
   static const String historyClickBehavior = 'history_click_behavior';
   static const String simpleOutputViewer = 'simple_output_viewer';
+  static const String simpleViewerGroupBatches = 'simple_viewer_group_batches';
+  static const String thumbnailCacheLimitGb = 'thumbnail_cache_limit_gb';
   static const String canvasLockCamera = 'canvas_lock_camera';
   static const String canvasReducedMotion = 'canvas_reduced_motion';
   static const String canvasZoomToFill = 'canvas_zoom_to_fill';
@@ -232,6 +238,9 @@ class StorageKeys {
 
   /// 本地画廊排序字段（GallerySortField.name 字符串）
   static const String localGallerySortField = 'local_gallery_sort_field';
+
+  static const String localGallerySearchHistory =
+      'local_gallery_search_history';
 
   /// 本地画廊排序方向（GallerySortDirection.name 字符串）
   static const String localGallerySortDirection =

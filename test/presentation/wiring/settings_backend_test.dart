@@ -10,6 +10,12 @@ import 'package:nai_launcher/core/rag/rag_runtime_probe.dart';
 import 'package:nai_launcher/core/rag/rag_settings.dart';
 import 'package:nai_launcher/core/constants/storage_keys.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
+import 'package:nai_launcher/core/network/nai_api_endpoint.dart';
+import 'package:nai_launcher/core/network/nai_api_endpoint_service.dart';
+import 'package:nai_launcher/presentation/providers/proxy_settings_provider.dart';
+import 'package:nai_launcher/presentation/providers/simple_viewer_group_batches_provider.dart';
+import 'package:nai_launcher/presentation/providers/thumbnail_cache_limit_provider.dart';
+import 'package:nai_launcher/core/cache/thumbnail_cache_service.dart';
 import 'package:nai_launcher/core/services/settings_gpu_probe.dart';
 import 'package:nai_launcher/data/models/auth/saved_account.dart';
 import 'package:nai_launcher/data/models/upscale/local_upscale_models.dart';
@@ -24,6 +30,7 @@ import 'package:nai_launcher/presentation/providers/rag_provider.dart';
 import 'package:nai_launcher/presentation/providers/theme_provider.dart';
 import 'package:nai_launcher/presentation/ui/settings/settings_contract.dart';
 import 'package:nai_launcher/presentation/wiring/settings/settings_accounts.dart';
+import 'package:nai_launcher/presentation/wiring/settings/settings_edits.dart';
 import 'package:nai_launcher/presentation/wiring/settings/settings_connections.dart';
 import 'package:nai_launcher/presentation/wiring/settings/settings_inventory.dart';
 import 'package:nai_launcher/presentation/wiring/settings/settings_models.dart';
@@ -42,6 +49,95 @@ class _SystemBrightness extends StudioSystemBrightness {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'thumbnail limit persists, clamps and applies capacity/file budget',
+    () async {
+      final storage = MemoryStorage();
+      final container = ProviderContainer(
+        overrides: [localStorageServiceProvider.overrideWithValue(storage)],
+      );
+      addTearDown(container.dispose);
+      expect(container.read(thumbnailCacheLimitGbProvider), 20);
+      expect(ThumbnailCacheService.instance.cacheLimits, (
+        maxSizeMB: 20480,
+        maxFiles: 500000,
+      ));
+      await container
+          .read(settingsValueStoreProvider)
+          .write(SettingKey.thumbnailCacheLimitGb, 50);
+      expect(storage.values[StorageKeys.thumbnailCacheLimitGb], 50);
+      expect(ThumbnailCacheService.instance.cacheLimits, (
+        maxSizeMB: 51200,
+        maxFiles: 1250000,
+      ));
+      await container
+          .read(thumbnailCacheLimitGbProvider.notifier)
+          .setLimit(100);
+      expect(container.read(thumbnailCacheLimitGbProvider), 50);
+      await container.read(thumbnailCacheLimitGbProvider.notifier).setLimit(-1);
+      expect(container.read(thumbnailCacheLimitGbProvider), 1);
+      container.invalidate(thumbnailCacheLimitGbProvider);
+      expect(container.read(thumbnailCacheLimitGbProvider), 1);
+      expect(normalizeThumbnailCacheLimitGb('bad'), 20);
+      expect(normalizeThumbnailCacheLimitGb(double.nan), 20);
+      final spec = SettingSpec.of(SettingKey.thumbnailCacheLimitGb);
+      expect(
+        (spec.min, spec.max, spec.step, spec.defaultValue),
+        (1, 50, 1, 20),
+      );
+      await container.read(thumbnailCacheLimitGbProvider.notifier).setLimit(20);
+    },
+  );
+  test('simple viewer grouping persists, defaults off and reloads', () async {
+    final storage = MemoryStorage();
+    ProviderContainer create() => ProviderContainer(
+      overrides: [localStorageServiceProvider.overrideWithValue(storage)],
+    );
+    final first = create();
+    expect(first.read(simpleViewerGroupBatchesProvider), false);
+    await first
+        .read(settingsValueStoreProvider)
+        .write(SettingKey.simpleViewerGroupBatches, true);
+    expect(storage.values[StorageKeys.simpleViewerGroupBatches], true);
+    first.dispose();
+    final second = create();
+    expect(second.read(simpleViewerGroupBatchesProvider), true);
+    second.dispose();
+  });
+  test(
+    'account connection target follows actual login user routing, official and custom',
+    () async {
+      final storage = MemoryStorage();
+      for (final endpoint in [
+        NaiApiEndpointConfig.official,
+        const NaiApiEndpointConfig(
+          mainBaseUrl: 'https://account.fixture.invalid',
+          imageBaseUrl: 'https://images.fixture.invalid',
+        ),
+      ]) {
+        final called = <Uri>[];
+        final container = ProviderContainer(
+          overrides: [
+            localStorageServiceProvider.overrideWithValue(storage),
+            currentProxyAddressProvider.overrideWith((ref) => null),
+            settingsEndpointProbeProvider.overrideWithValue((uri, _) async {
+              called.add(uri);
+              return 1;
+            }),
+          ],
+        );
+        container.read(naiApiEndpointServiceProvider).setCurrent(endpoint);
+        await container.read(settingsNetworkProvider.notifier).check();
+        final account = container
+            .read(settingsNetworkProvider)
+            .endpoints
+            .singleWhere((e) => e.kind == SettingsEndpointKind.naiApi);
+        expect(account.host, Uri.parse(endpoint.userUrl('/user/login')).host);
+        expect(called, contains(Uri.parse(endpoint.userUrl('/user/login'))));
+        container.dispose();
+      }
+    },
+  );
   test(
     'fresh theme follows system brightness without writing a preference',
     () async {
@@ -238,6 +334,60 @@ void main() {
       expect(data.sources.last.skipped, 1);
       expect(data.indexBytes, 123);
       expect(data.busy, isTrue);
+    },
+  );
+
+  test(
+    'RAG verification is ready at full progress, real writes stay building',
+    () {
+      SettingsRagState project(RagStatus status) => settingsRagData(
+        const RagSettings(enabled: true),
+        status,
+        const AsyncData(RagRuntimeInfo(python: 'fixture', ready: true)),
+        const RagModelDownloadState(),
+        const SettingsRagSessionState(),
+        null,
+      ).sources.first.state;
+      expect(
+        project(
+          const RagStatus(busy: true, phase: 'checking', indexed: 8, total: 8),
+        ),
+        SettingsRagState.ready,
+      );
+      final writing = settingsRagData(
+        const RagSettings(enabled: true),
+        const RagStatus(
+          busy: true,
+          phase: 'building',
+          indexed: 8,
+          total: 8,
+          processed: 3,
+        ),
+        const AsyncData(RagRuntimeInfo(python: 'fixture', ready: true)),
+        const RagModelDownloadState(),
+        const SettingsRagSessionState(),
+        null,
+      );
+      expect(writing.sources.first.done, 3);
+      expect(writing.indexBusy, true);
+      expect(writing.busy, true);
+      expect(
+        project(
+          const RagStatus(busy: true, phase: 'checking', indexed: 4, total: 8),
+        ),
+        SettingsRagState.loading,
+      );
+      // A same-count digest change is still a real incremental write.
+      expect(
+        project(
+          const RagStatus(busy: true, phase: 'building', indexed: 8, total: 8),
+        ),
+        SettingsRagState.building,
+      );
+      expect(
+        project(const RagStatus(phase: 'ready', indexed: 8, total: 8)),
+        SettingsRagState.ready,
+      );
     },
   );
 

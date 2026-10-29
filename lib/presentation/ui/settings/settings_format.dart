@@ -128,6 +128,12 @@ abstract final class SettingsFormat {
   /// GB 数字（不带单位，一位小数）。
   static String gb(int b) => (b / (1024 * 1024 * 1024)).toStringAsFixed(1);
 
+  /// GB 数字：不到 10 GB 两位小数（2.26），否则一位（12.4）。缩略图配额这类要看清余量的地方用。
+  static String gbFine(int b) {
+    final g = b / (1024 * 1024 * 1024);
+    return g.toStringAsFixed(g < 10 ? 2 : 1);
+  }
+
   static String two(int n) => n.toString().padLeft(2, '0');
   static String time(DateTime t) => '${two(t.hour)}:${two(t.minute)}';
   static String monthDay(DateTime t) => '${two(t.month)}-${two(t.day)}';
@@ -211,6 +217,9 @@ abstract final class SettingsFormat {
     };
   }
 
+  static String simpleViewerGroupDescription(BuildContext context) =>
+      context.l10n.set_cvGroupBatchesSub;
+
   static String percent(double v) => '${(v * 100).round()}%';
 
   /// 文案里的 `{keys}` 占位换成 `\u0000`，配合 [SettingsKeyText] 画键帽。
@@ -248,6 +257,9 @@ abstract final class SettingsFormat {
       (SettingKey.seedVramMode, 'low') => l.set_upLowVram,
       (SettingKey.proxyMode, 'system') => l.set_nwSystem,
       (SettingKey.proxyMode, 'manual') => l.set_nwManual,
+      (SettingKey.agentCacheWarming, 'off') => l.set_agCacheOff,
+      (SettingKey.agentCacheWarming, 'streaming') => l.set_agCacheStreaming,
+      (SettingKey.agentCacheWarming, 'idle') => l.set_agCacheIdle,
       _ => value,
     };
   }

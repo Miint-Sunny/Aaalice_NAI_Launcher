@@ -22,15 +22,19 @@ class SettingsPreferencesService {
       StorageKeys.fontFamily,
       StorageKeys.fontScale,
       StorageKeys.settingsFontScale,
+      StorageKeys.workspaceFontScale,
       StorageKeys.locale,
       StorageKeys.historyClickBehavior,
       StorageKeys.simpleOutputViewer,
+      StorageKeys.simpleViewerGroupBatches,
+      StorageKeys.thumbnailCacheLimitGb,
       StorageKeys.canvasLockCamera,
       StorageKeys.canvasReducedMotion,
       StorageKeys.canvasZoomToFill,
       StorageKeys.notificationSoundEnabled,
     ],
     PreferenceGroup.input: [
+      StorageKeys.promptAutocompleteEnabled,
       StorageKeys.enablePromptWeightScroll,
       StorageKeys.promptWeightScrollModifier,
       StorageKeys.tagExpansionResultLimit,
@@ -58,8 +62,13 @@ class SettingsPreferencesService {
     if (key == StorageKeys.fontFamily) {
       return value is String && value.isNotEmpty && value.length <= 128;
     }
-    if (key == StorageKeys.fontScale || key == StorageKeys.settingsFontScale) {
+    if (key == StorageKeys.fontScale ||
+        key == StorageKeys.settingsFontScale ||
+        key == StorageKeys.workspaceFontScale) {
       return value is num && value.isFinite && value >= .8 && value <= 1.5;
+    }
+    if (key == StorageKeys.thumbnailCacheLimitGb) {
+      return value is int && value >= 1 && value <= 50;
     }
     if (key == StorageKeys.historyClickBehavior) {
       return ['open_detail', 'select_preview'].contains(value);

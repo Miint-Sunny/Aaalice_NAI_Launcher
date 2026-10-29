@@ -5,7 +5,7 @@
 
 ## 本地图片超分
 
-- 本地超分不读取 ComfyUI 启用状态、模型列表或端口，也不调用 NAI 生成/放大接口。Real-ESRGAN 在 Windows 和 macOS 上都用 Vulkan，同一版引擎、同一套模型和参数；SeedVR2 与 RTX 组件只支持 Windows。
+- 本地超分不读取 ComfyUI 启用状态、模型列表或端口，也不调用 NAI 生成/放大接口。Real-ESRGAN 常规引擎在 Windows 和 macOS 上都用 Vulkan，同一版引擎、同一套模型和参数；独立管理的 SeedVR2／RTX 可选组件只支持 Windows。权重和真实推理验证按各组件的既定授权范围。
 - Windows 每次运行前从资源包释放引擎并按清单核对哈希。macOS 的引擎随应用包签名放在 `Contents/Resources/tools/local-upscale/`，不从资源包释放、也不读 `assets/local_upscale/windows/`（Mac 包里已剔除）；旧 Mac 构建释放到「应用支持」目录的 `windows/` 会被清掉。界面按 `localUpscalePlatformProvider` 判断哪种放大方式能用，服务按真实系统再拒一次。Mac 版引擎找不到模型文件时会去读 `/proc/self/exe` 然后段错误（上游 issue #48 的原因），所以 `-m` 必须是绝对路径、文件在启动前确认存在（`resolve` 每次核对哈希）；Mac 上模型路径按 UTF-8 字节数算 256 字节的上限。
 - 任务冻结来源、模型和倍率，原始模型输出上限 6400 万像素；推理后用 Pica Lanczos3 精确调整尺寸并保留透明度。
 - 只继承源图实际元数据，保存及画布登记不能补写当前无关草稿。来源或手动选择改变过时保护最新状态；正常成功定位新结果而不抢提示词输入焦点。
@@ -13,7 +13,7 @@
 
 ## 画风探索多池遗传
 
-- A工作台界面：编辑列384、舞台至少480、检查器312；1280及以下默认收起检查器，手动打开在窄窗浮出。每次手动生成点击登记独立轮，旧探索行内改名；检查器、全屏共用查看器、进化页签、两两比较、开始进化、存为块及首次使用的现行说明见 `docs/style-explore-redesign-2026-10-10.md`。存块默认正向遗传抽取原子，无记录时完整正向；合并父本走 `addParentsToActiveSet`。检查点⑤待复查，未安装运行包。
+- A工作台界面：编辑列384、舞台至少480、检查器312；1280及以下默认收起检查器，手动打开在窄窗浮出。每次手动生成点击登记独立轮，旧探索行内改名；检查器、全屏共用查看器、进化页签、两两比较、开始进化、存为块及首次使用的现行说明见 `docs/style-explore-redesign-2026-10-10.md`。存块默认正向遗传抽取原子，无记录时完整正向；合并父本走 `addParentsToActiveSet`。该界面已随九页整合安装并累计包含于 +58；旧检查点⑤已废止，不作为当前待办。
 - 探索页基础轮和手动登记统一使用 `N×1` 逐张生成；每个候选槽位保存自己的生成前 `ExploreRollSnapshot`，不能把一个多图请求的同一快照复制给多个候选。
 - `PillInstance.locked` 是用户持久化的实例级锁，只冻结随机实例的内容，不改变触发概率；固定模式没有可锁定的 roll。
 - 深度轮的自动保护只使用 runner/provider 运行态 guard：非 override 的遗传随机实例按锁空语义参与投影，用户原有锁状态和 `currentRoll` 不被覆盖；guard 不写入 Hive、Recipe 或 `PillDocument`，完成、暂停、取消、异常和恢复时必须清理并恢复原状态。
@@ -51,9 +51,14 @@
 - `autoFormatPrompt` 只规范逗号/空白并保护 NAI 权重结构，不再把提示词中的空格自动改成下划线；数据库和搜索层的 canonical 下划线规则不变。
 - `sdSyntaxAutoConvert` 在失焦和实际生成/桥接请求副本阶段均按设置门控；SD 转换在格式化之前执行，两个开关都关闭时请求副本保留原文。
 
+## 提示词组卡用户生成
+
+- 用户亲自点击提示词组卡“生成”即授权当前项的一次请求、一张图，不再创建聊天底部的第二张价格确认卡。此信任边界只属于 UI 回调：模型 `generation_run`、云端图像工具等仍走现有价格卡，不接受模型参数、卡片数据或权限档位提供免确认授权。
+- 保留新报价和余额检查、备份前后草稿／账号／参考图／价格复核、原生准入、停止与防重入；生成结果仍按当前项持久化。不改变发布过的 2.1.0 记录。
+
 ## 模型与计费
 
-- 模型栏的 Turbo 胶囊与 A／F 紧凑标签仅由 V5 模型族开启，不复用 V4+ 通用的 Anime／Furry 能力作为显示条件。V5 Full 可切换，V5 Curated 显示不可用提示；模式段按实际内容宽度加左右各 6px 留白，高度 26px，不补足旧宽度预算。V4／V4.5 等旧模型保留完整 Anime／Furry 和原留白。这两项修正源码完成、待本机更新，见 [修正与验证](docs/v5-turbo-capsule-scope-fix-2026-10-17.md)。
+- 模型栏的 Turbo 胶囊与 A／F 紧凑标签仅由 V5 模型族开启，不复用 V4+ 通用的 Anime／Furry 能力作为显示条件。V5 Full 可切换，V5 Curated 显示不可用提示；模式段按实际内容宽度加左右各 6px 留白，高度 26px，不补足旧宽度预算。V4／V4.5 等旧模型保留完整 Anime／Furry 和原留白。这两项修正已随 r25 安装并累计包含于 +58，见 [修正与验证](docs/v5-turbo-capsule-scope-fix-2026-10-17.md)。
 
 - V5 Full 的 Turbo／Medium Effort 使用 `nai-diffusion-5-full-medium`，重绘为 `nai-diffusion-5-full-medium-inpainting`。固定 14 步、Euler Ancestral、Heavy UC，忽略自定义主／角色负面及 CFG Rescale，引导强度可调。固定值仅在请求投影中生效，存储的 Full 步数／采样器／UC 和负面草稿保留，切回 Full 恢复；界面不提供固定参数编辑。黑色胶囊仍显示 Full 家族，独立闪电表示实际模式，Anime／Furry 缩为 A／F，模式段按内容宽度收紧。桥接生效读数和 Agent 报价带 `model_constraints`，原始 `_draft`／`draft_summary` 不能被生效投影覆盖；元数据必须有明确 Medium 标记才认定为 Turbo，不根据 14 步推断。见 [实现与验证](docs/v5-turbo-support-2026-10-17.md)。
 - 云端 NAI 放大使用 image API `/ai/upscale`，`nai-diffusion-5-curated` / blur=0，固定 2x；输入面积≤3,145,728，费用按源图像素为 1 / 2 / 3 / 4，Opus 不免。不要恢复旧主域、4x / width / height 请求。
@@ -72,6 +77,7 @@
 
 ## 本地与在线图库
 
+- **本地画廊自动同步（2026-10-23）**：由 `GalleryFileMonitor` 递归监听主图库和额外源，预热时开始订阅；设置改变后调整订阅。文件事件合并 500ms，应用失焦或画廊分支不可见时只积累路径；获焦只恢复处理，空队列不查询、不遍历、不重载时间线。增删改只核对事件文件，目录变化只枚举该子树；索引写入共用原扫描锁，目录改名沿用图片／分类 ID 和软删状态，其他路径的尺寸、记录及缩略图缓存保留。实际内容改变才重载同一 dataset，保持滚动位置和筛选；修改原图时只失效该图的哈希／缩略图／解码缓存。没有轮询、定时全量扫描或失败自动重扫；监听／更新错误沿现有错误状态报告，手动刷新保留完整核对。见 `docs/gallery-file-events-2026-10-23.md`。
 - 生图与本地画廊右键共用 `ImageActionMenu`：顶部快捷按钮、32px 常用行和单层子菜单；「详情」在「图生图」上方，打开现有全屏查看器。先关闭菜单再执行复制、跳转等动作；点击坐标转换到 Navigator overlay。子菜单以父菜单项右上缘为锚，不沿用根菜单的左上对齐；根 / 子菜单统一使用 root overlay，子项实际宽度与面板约束一致，由 Flutter 向左翻转及垂直避边。
 - 全屏详情提示词使用只读 `UnifiedPromptInput`，展示原始全局 / 角色 / 负向字段，保留权重与换行，不再按逗号拆成标签。翻译按钮在折叠按钮之前；详情翻译文档隔离于生成草稿，过期结果不回写。译文块可拖出，点击位置弹出「存入积木」；入库保存 `TranslationPill.source` 与阅读译文元数据，不自动加入颜料版。旧「收藏到词库」入口已删除。
 - 本地搜索、在线图库标签搜索（含 AI TAG 全文／提示词框）、在线黑名单、批量元数据增删标签框和块管理顶部搜索使用显式本地标签扩展。Ctrl+单击打开搜索，Ctrl+拖选查询关联；选择标签后分别生成本地筛选 chip、追加在线查询词、加入黑名单、加入相应批量编辑列表或筛选块。在线全文查询按空格分词，AI TAG 提示词按逗号追加；普通打字不弹旧补全。块管理匹配标签原名及下划线转空格的内容写法。
@@ -139,7 +145,9 @@
 | `canvas_utils.dart` | `rrectFromSize`/`parseAspect`/`hexToColor` |
 | `models.dart` | `CanvasImageData`/`CanvasImageGroup`/`CanvasTileVisual` |
 
-**Provider**：`canvas_settings_provider.dart`（锁/减弱动态/填充缩放/固定图片持久化）；`preview_selection_provider.dart`（焦点组=共享选中，喂参数面板和 emotion）；`image_generation_provider.dart` 的 `mergedPanelImages` 是输出历史的数据源——**生成中 currentImages + 全部历史（不截断）**；当前 GenUI 的历史批次／引用／图片目录按真实输入独立投影，`GenScope` 按区域订阅；`canvasFeedGeometryProvider` 只在图片、尺寸、批次或 Pins 变化时分组布局，`canvasFeedLayoutProvider` 为活动槽接入最新进度／预览并复用历史条目。相机帧复用批次边界索引；收藏按 ID／路径集合及图库内容版本刷新，正负 Token 先解析预设语义后分别失效。历史／参考缩略图按布局与 DPR 解码并保留滤波余量，放大、OLD、拖拽、保存仍使用原图；实现和验证见 `docs/generation-performance-fixes-2026-10-16.md`；独立固定图片区由 `CanvasPinRepository` 提供。子图态零 API，纯粹前端焦点（`generationPreviewSubFocusProvider`）。
+**Provider**：`canvas_settings_provider.dart`（锁/减弱动态/填充缩放/固定图片持久化）；`preview_selection_provider.dart`（焦点组=共享选中，喂参数面板和 emotion）；`image_generation_provider.dart` 的 `mergedPanelImages` 是输出历史的数据源——**生成中 currentImages + 全部历史（不截断）**；当前 GenUI 的历史批次／引用／图片目录按真实输入独立投影，`GenScope` 按区域订阅；`canvasFeedGeometryProvider` 只在图片、尺寸、批次、展示分组或 Pins 变化时分组布局，`canvasFeedLayoutProvider` 为活动槽接入最新进度／预览并复用历史条目。相机帧复用批次边界索引；收藏按 ID／路径集合及图库内容版本刷新，正负 Token 先解析预设语义后分别失效。历史／参考缩略图按布局与 DPR 解码并保留滤波余量，放大、OLD、拖拽、保存仍使用原图；实现和验证见 `docs/generation-performance-fixes-2026-10-16.md`；独立固定图片区由 `CanvasPinRepository` 提供。子图态零 API，纯粹前端焦点（`generationPreviewSubFocusProvider`）。
+
+**展示分组**：原 `simpleViewerGroupBatches` 设置同时控制简洁查看器与无限画布；关闭时已完成图按原批内顺序各自成为 `img:<id>` 展示组，画布纵向逐张排列，历史逐张投影。开启时保留原批次布局。生成中的多槽位批次仍原位接管完成图，Pins 仍独立展示；不改真实 `generationRunId`、保存或大图批次序列。`canvasFeedGeometryProvider` 也响应展示分组开关，切换时普通结果按图片 ID 保留焦点。见 `docs/canvas-batch-grouping-2026-10-28.md`，安装状态仍以工作区接手说明为准。
 
 **当前相机与输入约定**：裸滚轮平移（Shift 转横向）、Ctrl+滚轮缩放；仅中键或 Shift+鼠标左键拖动相机；触控板平移/缩放按事件增量处理。锁相机阻止手动平移、缩放及复位，程序化对焦仍可用；WASD 松键始终清理按键状态。相机停稳 120ms 可选最近组，Ctrl+0 主动总览时暂不自动选中。远跳先移近起点再抵达准确终点，连续离散缩放累积未完成目标，平滑模式直接更新。常规手动 scale 夹在 [0.1, 8]；大图程序化聚焦可低于 0.1（下限 0.0001），后续缩放从实际比例连续进行；非焦点图 scale(0.98)，悬停回 1。相机逐帧变换不重建重图子树，仅挂载可见范围及缓冲区。
 
@@ -238,6 +246,7 @@
 ## 构建与更新
 
 - Windows 内部数据统一经 `app_support_directory.dart` 使用 EXE 旁 `user-data/`，临时文件使用其 `temp/`；不依赖工作目录，不静默退回 C 盘。旧 AppData 数据必须在数据库打开前完整备份、SHA-256 校验和迁移；保留旧路径联接兼容已存绝对路径，两端有不同数据时拒绝合并。旧目录识别仍取自 `CompanyName=com.example` 与 `ProductName=nai_launcher`，原生身份保持稳定。更新、打包和卸载必须保护 `user-data/` 及迁移备份。
+- 首次新建、旧目录为空或仅已有相邻数据时，同样在插件启动前建立并验证兼容联接。历史缺联接造成的分叉只允许恢复标记中 `schema=1`、`layout=executable-adjacent`、原路径匹配且 `backup=null` 的首次新建配置；旧目录只能包含根级 `flutter_secure_storage.dat`、`shared_preferences.json`、`*.secure` 普通文件。先独立备份，SHA-256 复核，独占创建缺失目标；同名内容必须相同，未知条目／链接／真实冲突拒绝处理，保留旧原件与备份。数据准备失败显示独立五语言恢复页，重试先重新准备目录，成功后才打开数据库。见 [修复与验证](docs/startup-data-recovery-2026-10-23.md)。
 
 - macOS 的设置、数据库和 Agent 数据在「应用支持」目录（bundle id `com.wof.naiStudio`），应用包里只放随包工具、不写数据。应用内更新只挑 `macos-portable` 资产（Release 没有 Mac 包时退回 Release 页面，不挑 Windows 包），下载、续传、大小与 SHA-256 校验同 Windows；之后用 ditto 解压到更新目录的 `macos-<版本>/`，`open -R` 在访达中选中新版本，由用户退出后拖进「应用程序」替换。不静默覆盖、不重启应用，因此也不等生成任务；新版本启动后清掉更新包和解压出的应用。
 

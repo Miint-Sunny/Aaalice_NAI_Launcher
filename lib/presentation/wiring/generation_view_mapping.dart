@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 
@@ -142,8 +143,22 @@ GenHistoryData generationHistoryView(
   bool autoSave = true,
   int pinned = 0,
   DateTime? now,
+  bool singleImages = false,
 }) {
-  final batches = buildHistoryBatches(state);
+  final batches = buildHistoryBatches(state)
+      .expand(
+        (batch) => singleImages && !batch.isGenerating
+            ? batch.images.map(
+                (image) => HistoryBatch(
+                  key: 'img:${image.id}',
+                  images: [image],
+                  isGenerating: false,
+                  count: 1,
+                ),
+              )
+            : [batch],
+      )
+      .toList();
   DateTime time(HistoryBatch batch) => batch.images.isEmpty
       ? now ?? DateTime.now()
       : batch.images
@@ -174,6 +189,9 @@ GenHistoryData generationHistoryView(
                 op: generationOperation(image.operation),
               ),
           ],
+          pendingPreview: batch.isGenerating
+              ? _historyPendingPreview(state, batch)
+              : null,
           pending: math.max(0, batch.count - batch.images.length),
           pendingWidth: batch.isGenerating
               ? state.batchWidth ?? state.displayWidth
@@ -183,6 +201,40 @@ GenHistoryData generationHistoryView(
               : null,
         ),
     ],
+  );
+}
+
+// Weak keys keep old streaming frames collectible while sharing providers with
+// the canvas for the same immutable byte buffer.
+final _previewImages = Expando<MemoryImage>();
+MemoryImage? _previewImage(Uint8List? bytes) => bytes == null || bytes.isEmpty
+    ? null
+    : _previewImages[bytes] ??= MemoryImage(bytes);
+
+MemoryImage? _historyPendingPreview(
+  ImageGenerationState state,
+  HistoryBatch batch,
+) {
+  final done = <int>{};
+  var next = 0;
+  for (final image in batch.images.where(
+    (image) => !image.isVariationOriginal,
+  )) {
+    while (done.contains(next)) {
+      next++;
+    }
+    done.add(image.batchIndex ?? next++);
+  }
+  final index = Iterable<int>.generate(
+    state.totalImages,
+  ).where((index) => !done.contains(index)).firstOrNull;
+  if (index == null) return null;
+  final slot = state.streamPreviewSlots
+      .where((slot) => slot.imageNumber == index + 1)
+      .firstOrNull;
+  return _previewImage(
+    slot?.previewBytes ??
+        (state.currentImage == index + 1 ? state.streamPreview : null),
   );
 }
 
@@ -203,7 +255,18 @@ GenGroup? generationFocusView(
   CanvasFocus? focus,
   String? selectedImage,
   List<GeneratedImage> pinned = const [],
+  bool singleImages = false,
 }) {
+  if (singleImages &&
+      (!state.isGenerating || focus?.group.startsWith('img:') == true)) {
+    final image =
+        pinned.where((image) => image.id == selectedImage).firstOrNull ??
+        state.findImageById(selectedImage) ??
+        state.displayImages.lastOrNull ??
+        state.mergedPanelImages.firstOrNull;
+    if (image == null) return null;
+    return GenGroup(id: 'img:${image.id}', tiles: [generationTileView(image)]);
+  }
   final images = <String, GeneratedImage>{};
   for (final image in [...state.mergedPanelImages, ...state.displayImages]) {
     images.putIfAbsent(image.id, () => image);
@@ -282,7 +345,7 @@ GenTile _pendingTile(
     id: 'slot:$key:$index',
     width: state.batchWidth ?? state.displayWidth ?? 832,
     height: state.batchHeight ?? state.displayHeight ?? 1216,
-    preview: preview?.isNotEmpty == true ? MemoryImage(preview!) : null,
+    preview: _previewImage(preview),
     state: streaming ? GenTileState.streaming : GenTileState.pending,
     progress: streaming ? (slot?.progress ?? state.progress).clamp(0, 1) : null,
   );

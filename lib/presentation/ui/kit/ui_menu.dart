@@ -17,6 +17,8 @@ class UiMenuItem {
     this.divider = false,
     this.checked = false,
     this.trailing,
+    this.subtitle,
+    this.badge,
     this.enabled = true,
     this.indent = 0,
     this.leading,
@@ -37,6 +39,12 @@ class UiMenuItem {
 
   /// 右侧的快捷键字（`Ctrl D`），macOS 上显示成 ⌘D（见 [platformShortcutLabel]）。
   final String? trailing;
+
+  /// 第二行弱色说明（11 号）。
+  final String? subtitle;
+
+  /// 标题后的小蓝标签（例如“新”）。
+  final String? badge;
   final bool enabled;
 
   /// 子项缩进（分类树）。
@@ -105,7 +113,7 @@ class UiMenu extends StatelessWidget {
                           ? c.error
                           : c.ink;
                       return Container(
-                        height: 34,
+                        height: it.subtitle == null ? 34 : 48,
                         padding: EdgeInsets.only(
                           left: 10 + it.indent,
                           right: 10,
@@ -126,17 +134,64 @@ class UiMenu extends StatelessWidget {
                             else
                               ?it.leading,
                             Expanded(
-                              child: Text(
-                                it.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: UiText.sans(
-                                  13,
-                                  color: fg,
-                                  weight: it.checked
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    spacing: 6,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          it.label,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: UiText.sans(
+                                            13,
+                                            color: fg,
+                                            weight: it.checked
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                          ),
+                                        ),
+                                      ),
+                                      if (it.badge != null)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: c.brand.withValues(
+                                              alpha: .12,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            it.badge!,
+                                            style: UiText.sans(
+                                              10,
+                                              weight: FontWeight.w600,
+                                              color: c.accent,
+                                              height: 1,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (it.subtitle != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 1),
+                                      child: Text(
+                                        it.subtitle!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: UiText.sans(11, color: c.faint),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             if (it.trailing != null)

@@ -43,12 +43,15 @@ String settingTitle(BuildContext context, SettingKey k) {
     SettingKey.themeMode => l.set_apTheme,
     SettingKey.fontFamily => l.set_apFont,
     SettingKey.settingsFontScale => l.set_apScale,
+    SettingKey.workspaceFontScale => l.set_workspaceFontScale,
+    SettingKey.promptAutocomplete => l.set_promptAutocomplete,
     SettingKey.language => l.set_apLanguage,
     SettingKey.reduceMotion => l.set_apReduceMotion,
     SettingKey.completionSound => l.set_apSound,
     SettingKey.completionSoundFile => l.set_apSoundFile,
     SettingKey.historyClick => l.set_cvHistoryClick,
     SettingKey.outputViewer => l.set_cvViewer,
+    SettingKey.simpleViewerGroupBatches => l.set_cvGroupBatches,
     SettingKey.canvasLockCamera => l.set_cvLock,
     SettingKey.canvasZoomToFill => l.set_cvFill,
     SettingKey.shortcutsEnabled => l.set_scEnabled,
@@ -67,11 +70,14 @@ String settingTitle(BuildContext context, SettingKey k) {
     SettingKey.autoSave => l.set_stAutoSave,
     SettingKey.vibePath => l.set_stVibePath,
     SettingKey.galleryQuality => l.set_stQuality,
+    SettingKey.thumbnailCacheLimitGb => l.set_stThumbnailCacheLimit,
     SettingKey.appDataPath => l.set_stAppData,
     SettingKey.cacheStatsAutoRefresh => l.set_dcAutoRefresh,
     SettingKey.agentModel => l.set_agModel,
     SettingKey.agentEnterToSend => l.set_agEnter,
     SettingKey.agentMaxRequests => l.set_agMax,
+    SettingKey.agentNextSuggestion => l.set_agNextSuggestion,
+    SettingKey.agentCacheWarming => l.set_agCacheWarming,
     SettingKey.ragEnabled => l.set_pageRag,
     SettingKey.ragContext => l.set_rgRange,
     SettingKey.ragDevice => l.set_rgDevice,
@@ -111,11 +117,14 @@ String settingSection(BuildContext context, SettingKey k) {
     SettingKey.themeMode => l.set_apTheme,
     SettingKey.fontFamily ||
     SettingKey.settingsFontScale ||
+    SettingKey.workspaceFontScale ||
     SettingKey.language => l.set_apText,
     SettingKey.reduceMotion ||
     SettingKey.completionSound ||
     SettingKey.completionSoundFile => l.set_apMotion,
-    SettingKey.historyClick || SettingKey.outputViewer => l.set_cvBrowse,
+    SettingKey.historyClick ||
+    SettingKey.outputViewer ||
+    SettingKey.simpleViewerGroupBatches => l.set_cvBrowse,
     SettingKey.canvasLockCamera ||
     SettingKey.canvasZoomToFill => l.set_cvCanvasSec,
     SettingKey.shortcutsEnabled ||
@@ -128,14 +137,18 @@ String settingSection(BuildContext context, SettingKey k) {
     SettingKey.intervalJitter => l.set_gnPace,
     SettingKey.wheelWeight ||
     SettingKey.wheelModifier ||
-    SettingKey.relatedTags => l.set_gnInput,
+    SettingKey.relatedTags ||
+    SettingKey.promptAutocomplete => l.set_gnInput,
     SettingKey.imageSavePath || SettingKey.autoSave => l.set_stSave,
     SettingKey.vibePath || SettingKey.galleryQuality => l.set_stAssets,
-    SettingKey.appDataPath => l.set_stMaintain,
+    SettingKey.appDataPath ||
+    SettingKey.thumbnailCacheLimitGb => l.set_stMaintain,
     SettingKey.cacheStatsAutoRefresh => l.set_dcStats,
     SettingKey.agentModel ||
     SettingKey.agentEnterToSend ||
-    SettingKey.agentMaxRequests => l.set_agModelSec,
+    SettingKey.agentMaxRequests ||
+    SettingKey.agentNextSuggestion ||
+    SettingKey.agentCacheWarming => l.set_agModelSec,
     SettingKey.ragEnabled => l.set_pageRag,
     SettingKey.ragContext => l.set_rgContext,
     SettingKey.ragDevice ||
@@ -177,8 +190,10 @@ String settingValue(BuildContext context, SettingKey k, SettingsValues v) {
     case SettingKind.number:
       final n = v.number(k);
       return switch (k) {
-        SettingKey.settingsFontScale => '${(n * 100).round()}%',
+        SettingKey.settingsFontScale ||
+        SettingKey.workspaceFontScale => '${(n * 100).round()}%',
         SettingKey.costThreshold => '${n.round()} Anlas',
+        SettingKey.thumbnailCacheLimitGb => '${n.round()} GB',
         SettingKey.intervalSeconds => '${n.round()} ${l.set_unitSeconds}',
         SettingKey.intervalJitter => '±${n.round()}%',
         SettingKey.seedInputNoise ||
@@ -198,6 +213,8 @@ String settingValue(BuildContext context, SettingKey k, SettingsValues v) {
 /// 整个设置的搜索索引（按目录顺序）。
 /// 只参与匹配的同义词（不分语言，主要是英文键和常见说法）。
 const _synonyms = <SettingKey, String>{
+  SettingKey.simpleViewerGroupBatches: 'simple viewer batch group',
+  SettingKey.thumbnailCacheLimitGb: 'thumbnail cache global limit GB GiB',
   SettingKey.costWarning: 'anlas cost',
   SettingKey.costThreshold: 'anlas cost',
   SettingKey.intervalSeconds: 'delay rate limit',
@@ -228,13 +245,15 @@ List<SettingsHit> settingsIndex(BuildContext context) {
       SettingKind.toggle => SetSwitch(k),
       SettingKind.number =>
         k == SettingKey.settingsFontScale ||
+                k == SettingKey.workspaceFontScale ||
                 k == SettingKey.intervalJitter ||
                 k.name.startsWith('seed')
             ? SetSlider(
                 k,
                 width: 140,
                 label: (x) => switch (k) {
-                  SettingKey.settingsFontScale => '${(x * 100).round()}%',
+                  SettingKey.settingsFontScale ||
+                  SettingKey.workspaceFontScale => '${(x * 100).round()}%',
                   SettingKey.intervalJitter => '±${x.round()}%',
                   SettingKey.seedCpuOffload => '${x.round()}',
                   _ => x.toStringAsFixed(2),

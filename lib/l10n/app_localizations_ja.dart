@@ -2752,9 +2752,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get localGallery_copyPrompt => 'プロンプトのコピー';
 
   @override
-  String get localGallery_copySeed => 'シードをコピー';
-
-  @override
   String get localGallery_dragToShare => 'ドラッグして共有';
 
   @override
@@ -14571,9 +14568,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get gen_translateNeedsModel => '翻訳モデル未設定。クリックして設定';
 
   @override
-  String get gen_translateRestore => '原文を表示';
-
-  @override
   String gen_translateWith(Object route) {
     return '翻訳（$route）';
   }
@@ -14942,7 +14936,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String gen_repeatTotal(Object times, Object total) {
-    return '$times 回、計 $total 枚（ホイールでも調整可）';
+    return '$times 回、計 $total 枚 · 押したまま左右にドラッグして調整';
   }
 
   @override
@@ -20903,9 +20897,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ag_mentionSearchBlocks => 'ブロックを検索';
 
   @override
-  String get ag_skillsTitle => 'スキル';
-
-  @override
   String get ag_keySelect => '選択';
 
   @override
@@ -21288,4 +21279,672 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get mp_errorRateLimit => 'レート制限を超過';
+
+  @override
+  String get ag_tool_prompt_set => 'プロンプトセット';
+
+  @override
+  String ag_psCount(int count, String unit) {
+    return '$count $unit';
+  }
+
+  @override
+  String ag_psPosition(int index, int count, String unit) {
+    return '第$index$unit / 全$count$unit';
+  }
+
+  @override
+  String get ag_psOverview => '一覧表示';
+
+  @override
+  String get ag_psSingle => '1件ずつ表示';
+
+  @override
+  String get ag_psPrompt => 'プロンプト';
+
+  @override
+  String get ag_psShared => '共通設定';
+
+  @override
+  String ag_psThisItem(String unit) {
+    return 'この$unit';
+  }
+
+  @override
+  String get ag_psMain => 'メインプロンプト';
+
+  @override
+  String ag_psCharacter(int index) {
+    return 'キャラクター $index';
+  }
+
+  @override
+  String get ag_psNegative => 'ネガティブ';
+
+  @override
+  String get ag_psImport => 'キャンバスに読み込む';
+
+  @override
+  String get ag_psImportTip => 'メインプロンプト・キャラクター・ネガティブを書き込みます。パラメータと参照画像は変わりません';
+
+  @override
+  String ag_psImported(String title) {
+    return '「$title」をプロンプトに書き込みました';
+  }
+
+  @override
+  String get ag_psGenerate => '生成';
+
+  @override
+  String get ag_psGenerating => '生成中';
+
+  @override
+  String ag_psRevision(int revision, int count) {
+    return 'v$revision · $count件変更';
+  }
+
+  @override
+  String get ag_psSaveBlock => 'ブロックとして保存';
+
+  @override
+  String ag_psSavedBlock(String title, int count) {
+    return 'ブロック「$title」を保存しました · $count件';
+  }
+
+  @override
+  String ag_psCopyItem(String unit) {
+    return 'この$unitのプロンプトをコピー';
+  }
+
+  @override
+  String get ag_psCopyAll => 'すべてコピー';
+
+  @override
+  String ag_psEditItem(String unit) {
+    return 'この$unitの修正を Agent に頼む';
+  }
+
+  @override
+  String ag_psEditDraft(String title, int index, String unit, String item) {
+    return '「$title」の第$index$unit（$item）を修正：';
+  }
+
+  @override
+  String ag_psTooManyCharacters(int count) {
+    return '現在のモデルのキャラクターは最大 $count 人です';
+  }
+
+  @override
+  String get ag_psNoCharacters => '現在のモデルはキャラクタープロンプトに対応していません';
+
+  @override
+  String get ag_psMissing => 'このカードのデータは見つかりません';
+
+  @override
+  String get startup_dataTitle => 'アプリのデータを準備できませんでした';
+
+  @override
+  String get startup_dataHelp =>
+      'アプリのデータを準備できていません。既存のファイルを保持してください。内容の異なるファイルは統合も上書きもしません。データフォルダーをバックアップして確認し、ディスクの空き容量とアクセス権を確認してから再試行してください。';
+
+  @override
+  String get startup_dataCurrent => '現在のデータフォルダー';
+
+  @override
+  String get startup_dataLegacy => '以前のデータフォルダー';
+
+  @override
+  String get startup_dataOpenCurrent => '現在のフォルダーを開く';
+
+  @override
+  String get startup_dataOpenLegacy => '以前のフォルダーを開く';
+
+  @override
+  String get startup_dataDetails => 'エラーの詳細';
+
+  @override
+  String startup_dataActionFailed(String error) {
+    return '操作に失敗しました：$error';
+  }
+
+  @override
+  String get blocks_expandToText => 'テキストに展開';
+
+  @override
+  String get ag_answeredTitle => 'あなたへの質問 · 回答済み';
+
+  @override
+  String get ag_historyButton => '履歴';
+
+  @override
+  String get ag_historyTitle => '会話履歴';
+
+  @override
+  String get ag_historySearch => '発言とカードを検索…';
+
+  @override
+  String get ag_historyAll => 'すべて';
+
+  @override
+  String get ag_historyMine => '自分の発言';
+
+  @override
+  String get ag_historyCards => 'カード';
+
+  @override
+  String get ag_historyQuestions => '質問と回答';
+
+  @override
+  String get ag_historyEmpty => '一致する項目はありません';
+
+  @override
+  String get ag_historyBeforeCompaction => 'この部分は圧縮前です。クリックして要約を確認。';
+
+  @override
+  String get ag_historyAuto => '自動圧縮';
+
+  @override
+  String get ag_historyManual => '手動圧縮';
+
+  @override
+  String get ag_historyImageMessage => '画像メッセージ';
+
+  @override
+  String ag_historyAnswer(String answer) {
+    return 'あなたの回答：$answer';
+  }
+
+  @override
+  String get ag_historyPromptSet => 'プロンプトセット';
+
+  @override
+  String ag_historyImages(int count) {
+    return '生成カード · $count 枚';
+  }
+
+  @override
+  String get ag_historyPromptChange => 'プロンプトの変更';
+
+  @override
+  String get ag_historyParams => '生成設定';
+
+  @override
+  String get ag_historyPositions => 'キャラクター位置';
+
+  @override
+  String get ag_historySettings => '設定の変更';
+
+  @override
+  String get ag_historyGallery => 'ギャラリーカード';
+
+  @override
+  String get ag_historyChanges => '変更の要約';
+
+  @override
+  String get gen_translateTapOriginal => 'クリック：原文を表示';
+
+  @override
+  String get gen_translateTapTranslated => 'クリック：訳文を表示';
+
+  @override
+  String get gen_translateClearRestore => '翻訳ブロックを解除して原文に戻す';
+
+  @override
+  String get gen_translateClearRestoreSub => '通常の原文に戻します。元に戻せます';
+
+  @override
+  String get gen_translateCleared => '翻訳ブロックを原文に戻しました';
+
+  @override
+  String get gen_translateAdjust => '続けて翻訳を調整';
+
+  @override
+  String get gen_translateAdjustSub => 'この翻訳を続けて、分割・再翻訳・結合';
+
+  @override
+  String get gen_translateAdjustTitle => '翻訳の調整';
+
+  @override
+  String gen_translateAdjustContext(int count) {
+    return 'この翻訳を継続 · $count ブロック';
+  }
+
+  @override
+  String gen_translateAdjustSelected(int count) {
+    return '$count ブロックを選択';
+  }
+
+  @override
+  String get gen_translateAdjustCollapse => '折りたたむ / 展開';
+
+  @override
+  String get gen_translateAdjustIntro =>
+      'この翻訳を続けます。左のブロックをクリックして参照できます。変更は元に戻せます。';
+
+  @override
+  String get gen_translateAdjustSplit => '再分割';
+
+  @override
+  String get gen_translateAdjustRetranslate => '選択を再翻訳';
+
+  @override
+  String get gen_translateAdjustMerge => '選択を結合';
+
+  @override
+  String get gen_translateAdjustSplitTemplate =>
+      '現在のブロックを読み、参照ブロックを意味ごとに細分化し、原文を保持してください。';
+
+  @override
+  String get gen_translateAdjustRetranslateTemplate =>
+      '現在のブロックを読み、原文を変えずに参照ブロックを再翻訳してください。';
+
+  @override
+  String get gen_translateAdjustMergeTemplate =>
+      '現在のブロックを読み、参照ブロックを指定の原文順に結合し、無関係なブロックは保持してください。';
+
+  @override
+  String get gen_translateAdjustMarkers =>
+      'translation_blocks_read の marker 一覧を使用してください。';
+
+  @override
+  String get gen_translateAdjustHint => 'ブロックの調整方法を入力…';
+
+  @override
+  String get gen_translateAdjustStartFailed =>
+      '調整を開始できません。モデルと Agent ランタイムを確認してください。';
+
+  @override
+  String get gen_translateAdjustRunFailed =>
+      '調整が中断または失敗しました。再試行前にブロックを読み直してください。';
+
+  @override
+  String gen_repeatDragTotal(int times, int total) {
+    return '$times 回 · 計 $total 枚';
+  }
+
+  @override
+  String get set_cvGroupBatches => '一括生成の結果をグループ化';
+
+  @override
+  String get set_cvGroupBatchesSub =>
+      'シンプルビューアーと無限キャンバスの両方に適用されます。オフにすると1枚ずつ表示し、履歴のサムネイルから各画像を選べます。';
+
+  @override
+  String get gen_groupBatches => 'グループ';
+
+  @override
+  String get gen_translateAdjustPickHint => '左のブロックをクリックで参照';
+
+  @override
+  String get gen_translateAdjustClearRefs => '参照をクリア';
+
+  @override
+  String gen_translateAdjustSplitInto(String source, int count) {
+    return '$source → $count ブロック';
+  }
+
+  @override
+  String get gen_translateAdjustContextNote => 'コンテキスト：今回の原文・ブロック・訳文';
+
+  @override
+  String ag_historyStats(int messages, int cards) {
+    return '発言 $messages · カード $cards';
+  }
+
+  @override
+  String get ag_historyKeySelect => '選択';
+
+  @override
+  String get ag_historyKeyJump => '会話へ移動';
+
+  @override
+  String get ag_historyKeyClose => '閉じる';
+
+  @override
+  String get blocks_tempLabel => '一時ブロック';
+
+  @override
+  String blocks_tempEditedByAgent(String time) {
+    return 'Agent が$timeここを編集しました。';
+  }
+
+  @override
+  String blocks_tempEditedByYou(String time) {
+    return '$timeここを編集しました。';
+  }
+
+  @override
+  String blocks_tempExplain(String title) {
+    return 'ライブラリの「$title」から切り離され、変更はこの位置だけに残ります。ライブラリや他のプロンプトの同じブロックには影響しません。';
+  }
+
+  @override
+  String get blocks_tempEdit => '編集';
+
+  @override
+  String get blocks_tempCompare => '元と比較';
+
+  @override
+  String get blocks_tempAdded => '追加';
+
+  @override
+  String blocks_tempAddedCount(int count) {
+    return '$count 語を追加';
+  }
+
+  @override
+  String get blocks_tempAddedNone => '追加なし';
+
+  @override
+  String get blocks_tempRemoved => '削除';
+
+  @override
+  String blocks_tempRemovedHint(int count) {
+    return '$count 語を削除';
+  }
+
+  @override
+  String get blocks_tempRemovedNone => '削除なし';
+
+  @override
+  String get blocks_tempRevert => '元に戻す';
+
+  @override
+  String get blocks_tempKeepEditing => '編集を続ける';
+
+  @override
+  String get blocks_tempApply => '適用';
+
+  @override
+  String get blocks_tempSaveAs => '新しいブロックとして保存';
+
+  @override
+  String get blocks_tempSaveAsHint => '保存後、この位置は新しいブロックに置き換わり、元のブロックは変わりません';
+
+  @override
+  String get blocks_tempSaveConfirm => '保存';
+
+  @override
+  String get blocks_tempShowOriginal => 'ライブラリで元を表示';
+
+  @override
+  String get gen_menuNew => '新';
+
+  @override
+  String get gen_repeatDragHint => '数字を左右にドラッグ · ダブルクリックで入力';
+
+  @override
+  String get gen_groupBatchesOn => 'バッチごとに表示中 · クリックで1枚ずつ';
+
+  @override
+  String get gen_groupBatchesOff => '1枚ずつ表示中 · クリックでバッチごと';
+
+  @override
+  String get blocks_presetCustom => 'カスタム';
+
+  @override
+  String get blocks_presetHint =>
+      '付属パラメータの適用時に品質タグとネガティブプリセットも復元します。別モデルでは段階を自動換算し、Turbo は既存の処理に従います。';
+
+  @override
+  String get gen_vibeInpaintUnsupported =>
+      'Vibe は部分再描画（Inpainting）に対応していないため、今回は適用されません。';
+
+  @override
+  String get set_stThumbnailCacheLimit => 'サムネイルキャッシュの上限';
+
+  @override
+  String get set_stThumbnailCacheLimitSub =>
+      'すべてのギャラリーフォルダの合計。起動時や手動クリーンで、古いサムネイルから上限の 80% まで削除します。元画像には触れません。';
+
+  @override
+  String get ag_slashGroupSkills => 'スキル';
+
+  @override
+  String get ag_slashGroupTemplates => 'プロンプトテンプレート';
+
+  @override
+  String get ag_slashGroupBuiltin => 'Studio コマンド';
+
+  @override
+  String get ag_commandNew => '新しいチャットを開始';
+
+  @override
+  String get ag_commandCompact => 'コンテキストを圧縮';
+
+  @override
+  String get ag_commandModel => 'モデルを選択';
+
+  @override
+  String get ag_commandThinking => '思考レベルを選択';
+
+  @override
+  String get ag_commandHistory => 'セッション履歴を開く';
+
+  @override
+  String get ag_commandRename => 'チャット名を変更';
+
+  @override
+  String get ag_commandCopy => '最後の返信をコピー';
+
+  @override
+  String get ag_commandExport => 'セッションをエクスポート';
+
+  @override
+  String get ag_commandCompactArgs => '[指示]';
+
+  @override
+  String get ag_commandRenameArgs => '<名前>';
+
+  @override
+  String get set_agNextSuggestion => '次のメッセージ候補';
+
+  @override
+  String get set_agNextSuggestionSub =>
+      '現在の会話モデルで次のメッセージを予測します。追加のトークンを使用します。Tab で採用。';
+
+  @override
+  String get set_agCacheWarming => 'プロンプトキャッシュの予熱';
+
+  @override
+  String get set_agCacheWarmingSub =>
+      'プロンプトキャッシュが切れる直前に 1 トークンのリクエストで延長します（寿命 5 分、全モデル対象）。次のステップはコンテキスト全体を再送せずキャッシュを読みます。';
+
+  @override
+  String get set_agCacheOff => 'オフ';
+
+  @override
+  String get set_agCacheStreaming => 'Agent の実行中のみ';
+
+  @override
+  String get set_agCacheIdle => '待機中も予熱';
+
+  @override
+  String get set_agCacheIdleCost => '待機中のウォームアップ（最大 30 分）は追加のモデル料金がかかります。';
+
+  @override
+  String get ag_suggestionAccept => 'Tab でこの提案を入力';
+
+  @override
+  String get ag_cacheWarmTitle => 'キャッシュのウォームアップ';
+
+  @override
+  String get ag_cacheWarmOff => 'オフ';
+
+  @override
+  String get ag_cacheWarmRefreshing => 'キャッシュを延長中…';
+
+  @override
+  String get ag_cacheWarmIdle => '待機中 — 次の実行で開始';
+
+  @override
+  String ag_cacheWarmNext(String time) {
+    return '$time 後に延長';
+  }
+
+  @override
+  String get set_stOther => 'その他のファイル';
+
+  @override
+  String get set_stIncomplete =>
+      '一部のフォルダを読み取れなかったため、合計は不完全です。カテゴリにカーソルを合わせると参照元を表示します。';
+
+  @override
+  String get set_stSliceIncomplete => '一部のみ読み取り';
+
+  @override
+  String get localGallery_searchHistoryTitle => '最近の検索';
+
+  @override
+  String get localGallery_searchHistoryClear => 'クリア';
+
+  @override
+  String get localGallery_searchHistoryRemove => '履歴から削除';
+
+  @override
+  String ag_cacheWarmCount(int count) {
+    return '延長 $count 回';
+  }
+
+  @override
+  String ag_cacheWarmLast(String time) {
+    return '前回 $time';
+  }
+
+  @override
+  String ag_cacheWarmTtl(int minutes) {
+    return 'キャッシュ寿命 $minutes 分';
+  }
+
+  @override
+  String get set_workspaceFontScale => '創作エリアの文字サイズ';
+
+  @override
+  String get set_promptAutocomplete => 'プロンプトの自動補完';
+
+  @override
+  String get shortcut_action_open_resource_window => 'リソースウィンドウを開く';
+
+  @override
+  String get set_workspaceFontScaleSub =>
+      'プロンプト欄・キャラクター欄・ブロック・ビューアのプロンプトの文字。上のUI文字サイズとは別に調整します。';
+
+  @override
+  String get set_promptAutocompleteSub =>
+      'プロンプト欄とキャラクター欄の入力中にローカルのタグ辞書から候補を表示します。↑↓で選択、Tab か Enter で確定、Esc で閉じます。';
+
+  @override
+  String get floating_open => 'リソース小窓';
+
+  @override
+  String get floating_searchGallery => '検索（フレーズ全体 / 完全一致タグ）';
+
+  @override
+  String get floating_searchName => '名前で検索';
+
+  @override
+  String get floating_collapse => 'タイトルバーに畳む';
+
+  @override
+  String get floating_expand => '展開';
+
+  @override
+  String get floating_empty => '何もありません';
+
+  @override
+  String get floating_loadFailed => '読み込めませんでした';
+
+  @override
+  String get floating_loadMore => 'さらに読み込む';
+
+  @override
+  String set_stThumbQuotaTip(int count, String time) {
+    return 'サムネイル $count 枚 · $timeに集計';
+  }
+
+  @override
+  String get prompt_autocompleteTitle => '補完';
+
+  @override
+  String get prompt_autocompleteHint =>
+      '↑↓ 選択 · → 関連 · ← 戻る · Tab / Enter で補完 · Esc で閉じる';
+
+  @override
+  String get prompt_autocompleteHintRelated =>
+      '↑↓ 選択 · ← 戻る · Enter / クリックで追加 · Esc で関連を閉じる';
+
+  @override
+  String get resourceWindow_pin => '最前面に表示';
+
+  @override
+  String get resourceWindow_newWindow => 'リソースウィンドウをもう一つ開く';
+
+  @override
+  String get resourceWindow_rowHeight => '行の高さ';
+
+  @override
+  String get resourceWindow_cardSize => 'カードサイズ';
+
+  @override
+  String get resourceWindow_dragHint => '生成ページの対応エリアへドラッグ';
+
+  @override
+  String get resourceWindow_dragHintBlocks => 'プロンプトへドラッグして挿入';
+
+  @override
+  String get resourceWindow_keyDrag => 'ドラッグ';
+
+  @override
+  String get resourceWindow_keyDouble => 'ダブルクリック';
+
+  @override
+  String get resourceWindow_hintDrag => '生成ページで使う';
+
+  @override
+  String get resourceWindow_hintView => '拡大表示';
+
+  @override
+  String get resourceWindow_hintPrimary => 'メイン操作';
+
+  @override
+  String get resourceWindow_connected => 'メインウィンドウに接続済み';
+
+  @override
+  String get resourceWindow_disconnected => 'メインウィンドウ未接続';
+
+  @override
+  String get resourceWindow_currentModelUsable => '現在のモデルで使用可能';
+
+  @override
+  String get resourceWindow_insertPositive => '正のプロンプトに挿入';
+
+  @override
+  String get resourceWindow_insertNegative => '負のプロンプトに挿入';
+
+  @override
+  String get resourceWindow_errorNotFound => 'この項目はもう存在しません（一覧を更新しました）';
+
+  @override
+  String get resourceWindow_errorNotReady =>
+      'メインウィンドウの準備ができていません。少し待ってから再試行してください';
+
+  @override
+  String get resourceWindow_errorUnsupported => '現在のモデルはこの操作に対応していません';
+
+  @override
+  String get resourceWindow_errorFailed => '操作に失敗しました';
+
+  @override
+  String get blocks_tempStandaloneExplain =>
+      'このプロンプトの中だけにあり、ライブラリには保存されていません。残すには新しいブロックとして保存してください。';
+
+  @override
+  String blocks_tempCreatedByAgent(String time) {
+    return 'Agent が$timeこのブロックを作成しました。';
+  }
+
+  @override
+  String blocks_tempCreatedByYou(String time) {
+    return '$timeこのブロックを作成しました。';
+  }
 }

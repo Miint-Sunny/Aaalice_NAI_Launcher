@@ -17,7 +17,8 @@ import 'gen_page.dart';
 import 'gen_parts.dart';
 
 /// 历史栏（原型 `rightA`）：标题行 40 │ 批次列表（时间 · 张数 + 封面）│ 底栏 40。
-/// 单击一批 = 画布切到这批；300ms 内再点 = 开大图；右键菜单；多选（按钮 / Ctrl / Shift）出操作条。
+/// 单击按设置开大图或联动预览；联动时 300ms 内再点开大图。
+/// 右键菜单；多选（按钮 / Ctrl / Shift）出操作条。
 /// 窗口按钮压在这一栏顶上，所以有窗口按钮时整栏下移 36。
 class GenHistoryPanel extends StatefulWidget {
   const GenHistoryPanel({super.key, required this.width});
@@ -96,7 +97,7 @@ class _GenHistoryPanelState extends State<GenHistoryPanel> {
         now.difference(_lastTapAt!) < const Duration(milliseconds: 300);
     _lastTap = b.id;
     _lastTapAt = now;
-    if (again && b.images.isNotEmpty) {
+    if ((h.openDetailOnClick || again) && b.images.isNotEmpty) {
       _lastTap = null;
       scope.actions.onOpenViewer(b.images.first.id);
     } else {
@@ -517,7 +518,25 @@ class _BatchItem extends StatelessWidget {
     final w = h * ratio;
     final time = b.time.toLocal();
     final day = GenFormat.day(context, time, now);
-    Widget image = cover == null
+    final preview = b.pendingPreview;
+    Widget image = cover == null && preview != null
+        // 流式生成：封面跟画布同一帧模糊预览，角上留小转圈（10-25 反馈）。
+        ? ClipRRect(
+            key: Key('gen-batch-stream-${b.id}'),
+            borderRadius: BorderRadius.circular(5),
+            child: Stack(
+              children: [
+                UiPreviewImage(
+                  image: preview,
+                  width: w,
+                  height: h,
+                  gaplessPlayback: true,
+                ),
+                const Positioned(right: 6, top: 6, child: UiSpinner(size: 12)),
+              ],
+            ),
+          )
+        : cover == null
         ? Container(
             width: w,
             height: h,

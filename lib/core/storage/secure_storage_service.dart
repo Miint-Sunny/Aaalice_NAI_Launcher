@@ -4,6 +4,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../constants/storage_keys.dart';
 import '../utils/app_logger.dart';
+import '../utils/studio_sandbox.dart';
+import 'sandbox_credential_store.dart';
 
 part 'secure_storage_service.g.dart';
 
@@ -34,7 +36,8 @@ class SecureStorageService {
     _memoryCache.remove(key);
   }
 
-  final FlutterSecureStorage _storage;
+  final SandboxCredentialStore _storage;
+  final String? _sandbox;
 
   static final RegExp _bearerPrefixRegex = RegExp(
     r'^Bearer\s+',
@@ -43,28 +46,39 @@ class SecureStorageService {
   static final RegExp _allWhitespaceRegex = RegExp(r'\s+');
 
   /// 内存缓存 - 解决 Windows 上 secure storage 写入后立即读取为 null 的问题
-  static final Map<String, String> _memoryCache = {};
+  static final Map<String, Map<String, String>> _memoryCaches = {};
+  Map<String, String> get _memoryCache =>
+      _memoryCaches.putIfAbsent(_sandbox ?? '', () => {});
+  static int _authRevision = 0;
+
+  /// 当前认证写入版本；同一个 Token 的重新登录也属于新会话。
+  int get authRevision => _authRevision;
 
   SecureStorageService({FlutterSecureStorage? storage})
-    : _storage =
-          storage ??
-          const FlutterSecureStorage(
-            // Windows: 使用默认配置
-            wOptions: WindowsOptions(),
-            // macOS：用传统登录钥匙串（useDataProtectionKeyChain: false）。
-            // data protection keychain 需要 keychain-access-groups entitlement，
-            // 而该 entitlement 要求开发者证书签名，ad-hoc 无证书时无法构建。
-            // 钥匙串服务名用本应用自己的，见 [macOSKeychainService]
-            mOptions: MacOsOptions(
-              accountName: macOSKeychainService,
-              useDataProtectionKeyChain: false,
+    : _sandbox = studioSandboxRoot(),
+      _storage = SandboxCredentialStore(
+        sandbox: studioSandboxRoot(),
+        storage:
+            storage ??
+            const FlutterSecureStorage(
+              // Windows: 使用默认配置
+              wOptions: WindowsOptions(),
+              // macOS：用传统登录钥匙串（useDataProtectionKeyChain: false）。
+              // data protection keychain 需要 keychain-access-groups entitlement，
+              // 而该 entitlement 要求开发者证书签名，ad-hoc 无证书时无法构建。
+              // 钥匙串服务名用本应用自己的，见 [macOSKeychainService]
+              mOptions: MacOsOptions(
+                accountName: macOSKeychainService,
+                useDataProtectionKeyChain: false,
+              ),
             ),
-          );
+      );
 
   // ==================== Access Token ====================
 
   /// 保存 Access Token
   Future<void> saveAccessToken(String token) async {
+    _authRevision++;
     final normalizedToken = _normalizeToken(token);
 
     // 先保存到内存缓存
@@ -83,6 +97,7 @@ class SecureStorageService {
 
   /// 获取 Access Token
   Future<String?> getAccessToken() async {
+    final revision = _authRevision;
     // 优先从内存缓存读取
     final cached = _memoryCache[StorageKeys.accessToken];
     if (cached != null && cached.isNotEmpty) {
@@ -92,6 +107,9 @@ class SecureStorageService {
     // 从持久化存储读取
     try {
       final token = await _storage.read(key: StorageKeys.accessToken);
+      if (revision != _authRevision) {
+        return _memoryCache[StorageKeys.accessToken];
+      }
       if (token != null && token.isNotEmpty) {
         final normalizedToken = _normalizeToken(token);
         // 同步到内存缓存
@@ -160,6 +178,7 @@ class SecureStorageService {
 
   /// 清除所有认证信息
   Future<void> clearAuth() async {
+    _authRevision++;
     // 清除内存缓存
     _memoryCache.remove(StorageKeys.accessToken);
 
@@ -172,6 +191,7 @@ class SecureStorageService {
 
   /// 清除所有存储数据
   Future<void> clearAll() async {
+    _authRevision++;
     // 清除所有内存缓存
     _memoryCache.clear();
 

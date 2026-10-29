@@ -1275,7 +1275,6 @@
   "localGallery_sendToKrita": "Krita로 보내기",
   "localGallery_importImageMetadata": "이미지 메타데이터 가져오기",
   "localGallery_copyPrompt": "프롬프트 복사",
-  "localGallery_copySeed": "시드 복사",
   "localGallery_dragToShare": "끌어서 공유",
   "galleryDragCount": "{count, plural, =1{이미지 1장} other{이미지 {count}장}}",
   "@galleryDragCount": {
@@ -8151,7 +8150,6 @@
   "gen_relatedSub": "자주 함께 쓰는 태그 추천",
   "gen_translating": "번역 중…",
   "gen_translateNeedsModel": "번역 모델이 없습니다. 클릭하여 설정",
-  "gen_translateRestore": "원문 보기",
   "gen_translateWith": "번역 ({route})",
   "@gen_translateWith": {
     "placeholders": {
@@ -8326,7 +8324,7 @@
   "gen_countTip": "요청 1회당 장수 (1–4)",
   "gen_repeat": "반복",
   "gen_repeatTip": "연속으로 보낼 요청 수",
-  "gen_repeatTotal": "{times}회, 총 {total}장 (휠로도 조절)",
+  "gen_repeatTotal": "{times}회, 총 {total}장 · 누른 채 좌우로 드래그하여 조절",
   "@gen_repeatTotal": {
     "placeholders": {
       "times": {},
@@ -11119,7 +11117,6 @@
   "ag_mentionTitle": "이 메시지에 참조",
   "ag_mentionEmpty": "일치하는 내용이 없습니다",
   "ag_mentionSearchBlocks": "블록 검색",
-  "ag_skillsTitle": "스킬",
   "ag_keySelect": "선택",
   "ag_keyInsert": "삽입",
   "ag_keyCategory": "카테고리 전환",
@@ -11256,5 +11253,363 @@
   "mp_errorNetwork": "연결할 수 없음",
   "mp_errorResponse": "잘못된 응답",
   "mp_errorHttp": "요청 실패",
-  "mp_errorRateLimit": "요청 한도 초과"
+  "mp_errorRateLimit": "요청 한도 초과",
+  "ag_tool_prompt_set": "프롬프트 세트",
+  "ag_psCount": "{count} {unit}",
+  "@ag_psCount": {"placeholders": {"count": {"type": "int"}, "unit": {"type": "String"}}},
+  "ag_psPosition": "{unit} {index} / {count}",
+  "@ag_psPosition": {"placeholders": {"index": {"type": "int"}, "count": {"type": "int"}, "unit": {"type": "String"}}},
+  "ag_psOverview": "전체 보기",
+  "ag_psSingle": "하나씩 보기",
+  "ag_psPrompt": "프롬프트",
+  "ag_psShared": "공통 설정",
+  "ag_psThisItem": "이 {unit}",
+  "@ag_psThisItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psMain": "메인 프롬프트",
+  "ag_psCharacter": "캐릭터 {index}",
+  "@ag_psCharacter": {"placeholders": {"index": {"type": "int"}}},
+  "ag_psNegative": "네거티브",
+  "ag_psImport": "캔버스로 가져오기",
+  "ag_psImportTip": "메인 프롬프트, 캐릭터, 네거티브만 씁니다. 파라미터와 참조 이미지는 그대로입니다",
+  "ag_psImported": "‘{title}’을(를) 프롬프트에 넣었습니다",
+  "@ag_psImported": {"placeholders": {"title": {"type": "String"}}},
+  "ag_psGenerate": "생성",
+  "ag_psGenerating": "생성 중",
+  "ag_psRevision": "v{revision} · {count}개 수정",
+  "@ag_psRevision": {"placeholders": {"revision": {"type": "int"}, "count": {"type": "int"}}},
+  "ag_psSaveBlock": "블록으로 저장",
+  "ag_psSavedBlock": "블록 ‘{title}’ 저장 · {count}개",
+  "@ag_psSavedBlock": {"placeholders": {"title": {"type": "String"}, "count": {"type": "int"}}},
+  "ag_psCopyItem": "이 {unit}의 프롬프트 복사",
+  "@ag_psCopyItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psCopyAll": "모두 복사",
+  "ag_psEditItem": "이 {unit} 수정을 Agent에 요청",
+  "@ag_psEditItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psEditDraft": "‘{title}’ {unit} {index}({item}) 수정: ",
+  "@ag_psEditDraft": {"placeholders": {"title": {"type": "String"}, "index": {"type": "int"}, "unit": {"type": "String"}, "item": {"type": "String"}}},
+  "ag_psTooManyCharacters": "현재 모델은 캐릭터를 최대 {count}명까지 지원합니다",
+  "@ag_psTooManyCharacters": {"placeholders": {"count": {"type": "int"}}},
+  "ag_psNoCharacters": "현재 모델은 캐릭터 프롬프트를 지원하지 않습니다",
+  "ag_psMissing": "이 카드의 데이터를 찾을 수 없습니다",
+  "startup_dataTitle": "앱 데이터를 준비하지 못했습니다",
+  "startup_dataHelp": "앱 데이터가 아직 준비되지 않았습니다. 기존 파일을 보존하세요. 내용이 다른 파일은 병합하거나 덮어쓰지 않습니다. 데이터 폴더를 백업하고 확인한 뒤 디스크 여유 공간과 접근 권한을 점검하고 다시 시도하세요.",
+  "startup_dataCurrent": "현재 데이터 폴더",
+  "startup_dataLegacy": "이전 데이터 폴더",
+  "startup_dataOpenCurrent": "현재 폴더 열기",
+  "startup_dataOpenLegacy": "이전 폴더 열기",
+  "startup_dataDetails": "오류 세부 정보",
+  "startup_dataActionFailed": "작업 실패: {error}",
+  "@startup_dataActionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_expandToText": "텍스트로 펼치기",
+  "ag_answeredTitle": "사용자에게 질문 · 답변 완료",
+  "ag_historyButton": "기록",
+  "ag_historyTitle": "대화 기록",
+  "ag_historySearch": "메시지 및 카드 검색…",
+  "ag_historyAll": "전체",
+  "ag_historyMine": "내 메시지",
+  "ag_historyCards": "카드",
+  "ag_historyQuestions": "질문과 답변",
+  "ag_historyEmpty": "일치하는 항목 없음",
+  "ag_historyBeforeCompaction": "압축 이전의 내용입니다. 눌러 요약을 확인하세요.",
+  "ag_historyAuto": "자동 압축",
+  "ag_historyManual": "수동 압축",
+  "ag_historyImageMessage": "이미지 메시지",
+  "ag_historyAnswer": "내 답변: {answer}",
+  "@ag_historyAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_historyPromptSet": "프롬프트 세트",
+  "ag_historyImages": "생성 카드 · {count}장",
+  "@ag_historyImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_historyPromptChange": "프롬프트 변경",
+  "ag_historyParams": "생성 설정",
+  "ag_historyPositions": "캐릭터 위치",
+  "ag_historySettings": "설정 변경",
+  "ag_historyGallery": "갤러리 카드",
+  "ag_historyChanges": "변경 요약",
+  "gen_translateTapOriginal": "클릭: 원문 표시",
+  "gen_translateTapTranslated": "클릭: 번역문 표시",
+  "gen_translateClearRestore": "번역 블록 해제 및 원문 복원",
+  "gen_translateClearRestoreSub": "일반 원문으로 복원하며 실행 취소 가능",
+  "gen_translateCleared": "번역 블록을 원문으로 복원했습니다",
+  "gen_translateAdjust": "추가 번역 조정",
+  "gen_translateAdjustSub": "이번 번역을 이어서 분할, 재번역, 병합",
+  "gen_translateAdjustTitle": "번역 조정",
+  "gen_translateAdjustContext": "이번 번역 이어가기 · {count}개 블록",
+  "@gen_translateAdjustContext": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustSelected": "{count}개 블록 선택됨",
+  "@gen_translateAdjustSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustCollapse": "접기 / 펼치기",
+  "gen_translateAdjustIntro": "이번 번역을 이어갑니다. 왼쪽 블록을 클릭해 참조하세요. 변경은 실행 취소할 수 있습니다.",
+  "gen_translateAdjustSplit": "다시 분할",
+  "gen_translateAdjustRetranslate": "선택 재번역",
+  "gen_translateAdjustMerge": "선택 병합",
+  "gen_translateAdjustSplitTemplate": "현재 블록을 읽고 참조 블록을 의미 단위로 나누세요. 정확한 원문을 보존하세요.",
+  "gen_translateAdjustRetranslateTemplate": "현재 블록을 읽고 원문을 바꾸지 않고 참조 블록을 다시 번역하세요.",
+  "gen_translateAdjustMergeTemplate": "현재 블록을 읽고 참조 블록을 지정한 원문 순서로 병합하세요. 관련 없는 블록은 유지하세요.",
+  "gen_translateAdjustMarkers": "translation_blocks_read의 marker 목록을 사용하세요.",
+  "gen_translateAdjustHint": "번역 블록 조정 방법 입력…",
+  "gen_translateAdjustStartFailed": "조정을 시작할 수 없습니다. 모델과 Agent 런타임을 확인하세요.",
+  "gen_translateAdjustRunFailed": "조정이 중단되었거나 실패했습니다. 다시 시도하기 전에 블록을 읽으세요.",
+  "gen_repeatDragTotal": "{times}회 · 총 {total}장",
+  "@gen_repeatDragTotal": {
+    "placeholders": {
+      "times": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "set_cvGroupBatches": "일괄 생성 결과를 그룹으로 표시",
+  "set_cvGroupBatchesSub": "간단 뷰어와 무한 캔버스 모두에 적용됩니다. 끄면 이미지를 한 장씩 표시하며 기록 썸네일로 각 이미지를 선택할 수 있습니다.",
+  "gen_groupBatches": "그룹",
+  "gen_translateAdjustPickHint": "왼쪽 블록을 클릭해 참조",
+  "gen_translateAdjustClearRefs": "참조 지우기",
+  "gen_translateAdjustSplitInto": "{source} → {count}개 블록",
+  "gen_translateAdjustContextNote": "컨텍스트: 이번 번역의 원문, 블록, 번역문",
+  "ag_historyStats": "발언 {messages} · 카드 {cards}",
+  "ag_historyKeySelect": "선택",
+  "ag_historyKeyJump": "대화로 이동",
+  "ag_historyKeyClose": "닫기",
+  "blocks_tempLabel": "임시 블록",
+  "blocks_tempEditedByAgent": "Agent가{time} 여기를 수정했습니다.",
+  "blocks_tempEditedByYou": "{time} 여기를 수정했습니다.",
+  "blocks_tempExplain": "라이브러리의 「{title}」와 분리되어 변경은 이 위치에만 남습니다. 라이브러리와 다른 프롬프트의 같은 블록에는 영향이 없습니다.",
+  "blocks_tempEdit": "편집",
+  "blocks_tempCompare": "원본과 비교",
+  "blocks_tempAdded": "추가",
+  "blocks_tempAddedCount": "{count}개 단어 추가",
+  "blocks_tempAddedNone": "추가 없음",
+  "blocks_tempRemoved": "삭제",
+  "blocks_tempRemovedHint": "{count}개 삭제",
+  "blocks_tempRemovedNone": "삭제 없음",
+  "blocks_tempRevert": "원본으로 복원",
+  "blocks_tempKeepEditing": "계속 편집",
+  "blocks_tempApply": "적용",
+  "blocks_tempSaveAs": "새 블록으로 저장",
+  "blocks_tempSaveAsHint": "저장하면 이 위치가 새 블록으로 바뀌고 원본은 그대로 유지됩니다",
+  "blocks_tempSaveConfirm": "저장",
+  "blocks_tempShowOriginal": "라이브러리에서 원본 보기",
+  "gen_menuNew": "신규",
+  "gen_repeatDragHint": "숫자를 좌우로 드래그 · 더블클릭하여 입력",
+  "gen_groupBatchesOn": "배치별 묶음 · 클릭하면 한 장씩",
+  "gen_groupBatchesOff": "한 장씩 표시 · 클릭하면 배치별 묶음",
+  "blocks_presetCustom": "사용자 지정",
+  "blocks_presetHint": "부가 매개변수를 적용하면 품질 태그와 네거티브 프리셋도 함께 복원됩니다. 다른 모델에서는 단계를 자동 환산하며 Turbo는 기존 처리를 따릅니다.",
+  "@gen_translateAdjustSplitInto": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@ag_historyStats": {
+    "placeholders": {
+      "messages": {
+        "type": "int"
+      },
+      "cards": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempEditedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempEditedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempExplain": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempAddedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempRemovedHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_vibeInpaintUnsupported": "Vibe는 부분 다시 그리기(Inpainting)를 지원하지 않으므로 이번 생성에는 적용되지 않습니다.",
+  "set_stThumbnailCacheLimit": "썸네일 캐시 한도",
+  "set_stThumbnailCacheLimitSub": "모든 갤러리 폴더 합계입니다. 시작할 때나 수동 정리 시 오래된 썸네일부터 한도의 80%까지 삭제하며 원본은 건드리지 않습니다.",
+  "ag_slashGroupSkills": "스킬",
+  "ag_slashGroupTemplates": "프롬프트 템플릿",
+  "ag_slashGroupBuiltin": "Studio 명령",
+  "ag_commandNew": "새 대화 시작",
+  "ag_commandCompact": "컨텍스트 압축",
+  "ag_commandModel": "모델 선택",
+  "ag_commandThinking": "사고 수준 선택",
+  "ag_commandHistory": "세션 기록 열기",
+  "ag_commandRename": "대화 이름 변경",
+  "ag_commandCopy": "마지막 답변 복사",
+  "ag_commandExport": "세션 내보내기",
+  "ag_commandCompactArgs": "[지침]",
+  "ag_commandRenameArgs": "<이름>",
+  "set_agNextSuggestion": "다음 메시지 제안",
+  "set_agNextSuggestionSub": "현재 대화 모델로 다음 메시지를 예측합니다. 추가 토큰을 사용하며 Tab으로 채택합니다.",
+  "set_agCacheWarming": "프롬프트 캐시 예열",
+  "set_agCacheWarmingSub": "프롬프트 캐시가 만료되기 직전 1토큰 요청으로 연장합니다(수명 5분, 모든 모델). 다음 단계는 전체 컨텍스트를 다시 보내지 않고 캐시를 읽습니다.",
+  "set_agCacheOff": "끄기",
+  "set_agCacheStreaming": "Agent 실행 중에만",
+  "set_agCacheIdle": "대기 중에도 예열",
+  "set_agCacheIdleCost": "대기 중 예열(최대 30분)은 추가 모델 비용이 발생합니다.",
+  "ag_suggestionAccept": "Tab으로 이 제안 입력",
+  "ag_cacheWarmTitle": "캐시 예열",
+  "ag_cacheWarmOff": "꺼짐",
+  "ag_cacheWarmRefreshing": "캐시 연장 중…",
+  "ag_cacheWarmIdle": "대기 중 — 다음 실행 시 시작",
+  "ag_cacheWarmNext": "{time} 후 연장",
+  "@ag_cacheWarmNext": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "set_stOther": "기타 파일",
+  "set_stIncomplete": "일부 폴더를 읽지 못해 합계가 불완전합니다. 분류에 마우스를 올리면 출처 폴더가 표시됩니다.",
+  "set_stSliceIncomplete": "일부만 읽음",
+  "localGallery_searchHistoryTitle": "최근 검색",
+  "localGallery_searchHistoryClear": "지우기",
+  "localGallery_searchHistoryRemove": "기록에서 삭제",
+  "ag_cacheWarmCount": "연장 {count}회",
+  "@ag_cacheWarmCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_cacheWarmLast": "최근 {time}",
+  "@ag_cacheWarmLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_cacheWarmTtl": "캐시 수명 {minutes}분",
+  "@ag_cacheWarmTtl": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "set_workspaceFontScale": "창작 영역 글자 크기",
+  "set_promptAutocomplete": "프롬프트 자동 완성",
+  "shortcut_action_open_resource_window": "리소스 창 열기",
+  "set_workspaceFontScaleSub": "프롬프트 칸, 캐릭터 칸, 블록, 뷰어 프롬프트의 글자. 위 인터페이스 글자 크기와 별도로 조절합니다.",
+  "set_promptAutocompleteSub": "프롬프트 칸과 캐릭터 칸에 입력할 때 로컬 태그 사전에서 후보를 보여 줍니다. ↑↓ 선택, Tab 또는 Enter 적용, Esc 닫기.",
+  "floating_open": "리소스 창",
+  "floating_searchGallery": "검색 (전체 구문 / 정확한 태그)",
+  "floating_searchName": "이름 검색",
+  "floating_collapse": "제목 표시줄로 접기",
+  "floating_expand": "펼치기",
+  "floating_empty": "항목 없음",
+  "floating_loadFailed": "불러오지 못했습니다",
+  "floating_loadMore": "더 불러오기",
+  "set_stThumbQuotaTip": "썸네일 {count}개 · {time} 집계",
+  "@set_stThumbQuotaTip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_autocompleteTitle": "자동 완성",
+  "prompt_autocompleteHint": "↑↓ 선택 · → 연관 · ← 돌아가기 · Tab / Enter 완성 · Esc 닫기",
+  "prompt_autocompleteHintRelated": "↑↓ 선택 · ← 돌아가기 · Enter / 클릭 추가 · Esc 연관 닫기",
+  "resourceWindow_pin": "항상 위에",
+  "resourceWindow_newWindow": "리소스 창 하나 더 열기",
+  "resourceWindow_rowHeight": "행 높이",
+  "resourceWindow_cardSize": "카드 크기",
+  "resourceWindow_dragHint": "생성 페이지의 해당 영역으로 끌어다 놓기",
+  "resourceWindow_dragHintBlocks": "프롬프트로 끌어다 삽입",
+  "resourceWindow_keyDrag": "드래그",
+  "resourceWindow_keyDouble": "더블클릭",
+  "resourceWindow_hintDrag": "생성 페이지에서 사용",
+  "resourceWindow_hintView": "크게 보기",
+  "resourceWindow_hintPrimary": "기본 작업",
+  "resourceWindow_connected": "메인 창 연결됨",
+  "resourceWindow_disconnected": "메인 창 연결 끊김",
+  "resourceWindow_currentModelUsable": "현재 모델에서 사용 가능",
+  "resourceWindow_insertPositive": "긍정 프롬프트에 삽입",
+  "resourceWindow_insertNegative": "부정 프롬프트에 삽입",
+  "resourceWindow_errorNotFound": "이 항목은 더 이상 없습니다. 목록을 새로 고쳤습니다",
+  "resourceWindow_errorNotReady": "메인 창이 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요",
+  "resourceWindow_errorUnsupported": "현재 모델은 이 작업을 지원하지 않습니다",
+  "resourceWindow_errorFailed": "작업에 실패했습니다",
+  "blocks_tempStandaloneExplain": "이 프롬프트에만 있고 라이브러리에는 저장되지 않았습니다. 남기려면 새 블록으로 저장하세요.",
+  "blocks_tempCreatedByAgent": "Agent가{time} 이 블록을 만들었습니다.",
+  "@blocks_tempCreatedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_tempCreatedByYou": "{time} 이 블록을 만들었습니다.",
+  "@blocks_tempCreatedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  }
 }

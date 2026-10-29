@@ -10,6 +10,7 @@ import '../../../core/nai_agent/attachment_manifest.dart';
 import '../../../core/nai_agent/pi_host_client.dart';
 import '../../../core/nai_agent/attachment_image.dart';
 import '../../../core/nai_agent/vision_access.dart';
+import 'nai_agent_settings_binding.dart' show refreshNaiAgentRuntimeSettings;
 import '../../../core/utils/nai_resolution_adapter.dart';
 import '../../../core/utils/localization_extension.dart';
 import '../../../data/services/nai_agent/agent_workspace_store.dart';
@@ -26,20 +27,37 @@ typedef AgentClientFactory =
 
 /// Live projections and UI drafts only. Official Pi owns messages and execution.
 class AgentChatRuntime {
-  AgentChatRuntime(this.workspace, this.chat, this.composer);
+  AgentChatRuntime(this.workspace, this.chat, AgentComposerState composer)
+    : _composer = composer;
   final AgentWorkspace workspace;
   AgentChat chat;
-  AgentComposerState composer;
+  AgentComposerState _composer;
+  int _composerRevision = 0;
+  AgentComposerState get composer => _composer;
+  set composer(AgentComposerState value) {
+    if (value.text != _composer.text ||
+        !listEquals(value.attachments, _composer.attachments)) {
+      _composerRevision++;
+    }
+    _composer = value;
+  }
+
   PiHostClient? client;
   StreamSubscription<Map<String, dynamic>>? subscription;
   List<Map<String, dynamic>> messages = [], queue = [];
-  Map<String, dynamic> stats = {}, context = {};
-  List<Map<String, dynamic>> entries = [], userEntries = [];
+  List<Map<String, dynamic>> historyMessages = [];
+  Map<String, dynamic> stats = {}, context = {}, cacheWarming = {};
+  List<Map<String, dynamic>> entries = [], userEntries = [], commands = [];
   final Map<String, Map<String, dynamic>> tools = {};
   final Map<String, String> extensionStatus = {};
   final Map<String, List<String>> extensionWidgets = {};
   final List<String> extensionNotices = [];
   final autoCompactions = <String>{};
+  String? suggestion;
+  int suggestionTurn = -1;
+  bool suggestionAllowed = false;
+  int _suggestionRevision = 0;
+  int _suggestionCancels = 0;
   String? compactionReason;
   static String compactionKey(Map message) =>
       jsonEncode([message['summary'], message['tokensBefore']]);
@@ -54,6 +72,7 @@ class AgentChatRuntime {
   String? error, providerId, modelId, reasoningEffort;
   int usageRevision = 0;
   int importingImages = 0;
+  int pendingImageCount = 0;
   int pendingSends = 0;
   bool _resending = false;
   int modelRevision = -1;
@@ -62,6 +81,8 @@ class AgentChatRuntime {
   int? runLimitHit;
   String? extensionSignature;
   String mcpStatus = '';
+  String? localAction;
+  int localActionRevision = 0;
 
   static Map _entryMessage(Map entry) =>
       entry['message'] is Map ? entry['message'] as Map : entry;
@@ -192,6 +213,10 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     int revision, {
     bool restoreHistory = true,
   }) async {
+    final previous = selected;
+    if (previous != null && previous.chat.id != chat.id) {
+      await _clearSuggestion(previous);
+    }
     await _discardOtherDrafts(chat.id);
     for (final runtime
         in _runtimes.values
@@ -201,6 +226,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       await runtime.client?.close();
       runtime.client = null;
       runtime.messages = [];
+      runtime.historyMessages = [];
       runtime.runLimitHit = null;
       runtime.tools.clear();
     }
@@ -525,9 +551,23 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
         before.modelId != settings.modelId) {
       for (final runtime in _runtimes.values) {
         runtime._clearVisionNotice();
+        await _clearSuggestion(runtime);
       }
     }
     _notify();
+    if (changes.containsKey('cacheWarming') ||
+        changes.containsKey('nextSuggestion')) {
+      for (final runtime in _runtimes.values) {
+        if (!settings.nextSuggestion) runtime.suggestion = null;
+        final client = runtime.client;
+        if (client != null && !client.isClosed) {
+          _applyUsage(
+            runtime,
+            await refreshNaiAgentRuntimeSettings(client, settings),
+          );
+        }
+      }
+    }
     if (changes.containsKey('permissionMode')) {
       await Future.wait([
         for (final runtime in _runtimes.values)
@@ -666,9 +706,42 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     _notify();
   }
 
+  Future<void> _clearSuggestion(AgentChatRuntime runtime) async {
+    runtime.suggestion = null;
+    runtime.suggestionAllowed = false;
+    runtime._suggestionRevision++;
+    final client = runtime.client;
+    if (client != null && !client.isClosed) {
+      runtime._suggestionCancels++;
+      try {
+        final response = await client.cancelSuggestion();
+        final turn = response['forTurn'] as int?;
+        if (turn != null && turn > runtime.suggestionTurn) {
+          runtime.suggestionTurn = turn;
+        }
+      } finally {
+        runtime._suggestionCancels--;
+      }
+    }
+  }
+
+  Future<void> acceptSuggestion() async {
+    final runtime = selected;
+    if (runtime == null ||
+        runtime.composer.text.isNotEmpty ||
+        runtime.suggestion == null) {
+      return;
+    }
+    await saveComposer(runtime.suggestion!);
+  }
+
   Future<void> saveComposer(String text) async {
     final runtime = selected;
     if (runtime == null) return;
+    // Clear synchronously before awaiting the transport; stale events cannot refill a draft.
+    final cancelling = text != runtime.composer.text
+        ? _clearSuggestion(runtime)
+        : Future<void>.value();
     runtime.composer = AgentComposerState(
       text: text,
       attachments: runtime.composer.attachments,
@@ -677,6 +750,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     );
     _notify();
     await _persist(runtime);
+    await cancelling;
   }
 
   Future<void> attach(
@@ -721,15 +795,18 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
   /// Reserve the original conversation before the first OS/file await.
   Future<T> importImages<T>(
     AgentChatRuntime runtime,
-    Future<T> Function() action,
-  ) async {
+    Future<T> Function() action, {
+    int imageCount = 0,
+  }) async {
     checkImageImportTarget(runtime);
     runtime.importingImages++;
+    runtime.pendingImageCount += imageCount;
     _notify();
     try {
       return await action();
     } finally {
       runtime.importingImages--;
+      runtime.pendingImageCount -= imageCount;
       if (runtime.importingImages == 0 && _discardedDrafts.remove(runtime)) {
         await _closeRuntime(runtime);
         await store.discardDraftChat(runtime.workspace.id, runtime.chat.id);
@@ -803,6 +880,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
               : 'Agent selection changed during startup',
         );
       }
+      runtime.suggestionTurn = -1;
       runtime.client = client;
       runtime.extensionStatus.clear();
       runtime.extensionWidgets.clear();
@@ -855,12 +933,108 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     }
   }
 
-  Future<void> send({bool steer = false}) async {
+  Future<void> send({
+    bool steer = false,
+    Future<bool> Function(String)? onSlashAction,
+  }) async {
+    final input = selected?.composer.text ?? '';
+    if (isBuiltinSlashCommand(input)) {
+      await sendSlashCommand(input, onAction: onSlashAction);
+      return;
+    }
     await _send(steer: steer);
   }
 
+  Future<bool?> sendSlashCommand(
+    String text, {
+    bool clearComposer = false,
+    Future<bool> Function(String)? onAction,
+  }) async {
+    final runtime = selected;
+    final revision = runtime?._composerRevision;
+    final result = await executeSlashCommand(text, onAction: onAction);
+    if (result == true &&
+        runtime != null &&
+        runtime._composerRevision == revision &&
+        identical(_runtimes[runtime.chat.id], runtime) &&
+        (clearComposer || runtime.composer.text == text)) {
+      runtime.composer = AgentComposerState(
+        attachments: runtime.composer.attachments,
+        pending: runtime.composer.pending,
+        interrupted: runtime.composer.interrupted,
+      );
+      await _persist(runtime);
+      _notify();
+    }
+    return result;
+  }
+
+  static bool isBuiltinSlashCommand(String text) {
+    final name = RegExp(r'^/([a-z]+)(?:\s|$)').firstMatch(text.trim())?[1];
+    return const {
+      'new',
+      'compact',
+      'rename',
+      'copy',
+      'export',
+      'model',
+      'thinking',
+      'history',
+    }.contains(name);
+  }
+
+  /// null means a template/skill/ordinary prompt; builtins never reach Pi.
+  Future<bool?> executeSlashCommand(
+    String text, {
+    Future<bool> Function(String)? onAction,
+  }) async {
+    final match = RegExp(
+      r'^/([a-z]+)(?:\s+([\s\S]*))?$',
+    ).firstMatch(text.trim());
+    if (match == null) return null;
+    final name = match[1]!, args = match[2]?.trim() ?? '';
+    if (!const {
+      'new',
+      'compact',
+      'rename',
+      'copy',
+      'export',
+      'model',
+      'thinking',
+      'history',
+    }.contains(name)) {
+      return null;
+    }
+    if (selected == null || selected!.starting) return false;
+    if (name != 'compact' && name != 'rename' && args.isNotEmpty) return false;
+    switch (name) {
+      case 'new':
+        await createChat();
+        return true;
+      case 'compact':
+        if (selected!.running) return false;
+        await compact(args.isEmpty ? null : args);
+        return selected?.error == null;
+      case 'model':
+      case 'thinking':
+      case 'history':
+        selected!.localAction = name;
+        selected!.localActionRevision++;
+        _notify();
+        return true;
+      case 'rename':
+        if (args.isEmpty) return false;
+        await renameChat(selected!.chat.id, args);
+        return true;
+      default:
+        return await onAction?.call(name) ?? false;
+    }
+  }
+
   /// Sends a standalone message without consuming or restoring over the draft.
-  Future<bool> sendText(String text) => _send(text: text);
+  Future<bool> sendText(String text) => isBuiltinSlashCommand(text)
+      ? executeSlashCommand(text).then((result) => result ?? false)
+      : _send(text: text);
 
   /// Fork at a past user entry without consuming the bottom draft or its queue.
   /// Image indexes refer to the original content parts, not the image ordinal.
@@ -980,12 +1154,18 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     if (resending && runtime.userMessageForEntry(resendEntryId) == null) {
       return false;
     }
+    final cancellingSuggestion = _clearSuggestion(runtime);
+    final suggestionRevision = runtime._suggestionRevision;
     final wasRunning = runtime.running;
     runtime.pendingSends++;
     runtime._resending = resending;
     runtime.error = null;
     runtime.runLimitHit = null;
     try {
+      await cancellingSuggestion;
+      runtime.suggestionAllowed =
+          runtime._suggestionRevision == suggestionRevision &&
+          identical(selected, runtime);
       if (runtime.chat.isDraft) {
         runtime.starting = true;
         try {
@@ -1101,12 +1281,21 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       if (visionNotice != null) runtime.visionNotice = visionNotice;
       await _persist(runtime);
       _notify();
-      final reply = await client.prompt(
+      final responding = client.prompt(
         prompt.text,
         images: prompt.images.isEmpty ? null : prompt.images,
         steer: steer,
         queueId: queueId,
       );
+      // Edits/selection changes during async image/client preparation must also
+      // cancel the host request that has just been dispatched.
+      final reply = (await Future.wait([
+        responding,
+        if (!runtime.suggestionAllowed ||
+            !identical(selected, runtime) ||
+            runtime.composer.text.isNotEmpty)
+          _clearSuggestion(runtime).then((_) => <String, dynamic>{}),
+      ])).first;
       _applyState(runtime, reply);
       if (runtime._visionNoticeRevision == noticeRevision &&
           (visionNotice != null || runtime.error == null)) {
@@ -1154,6 +1343,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       attachments: runtime.composer.attachments,
       pending: recovered,
     );
+    await _clearSuggestion(runtime);
     await runtime.client?.abort();
     runtime.running = false;
     runtime.waitingForSlot = false;
@@ -1202,8 +1392,10 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
   }
 
   Future<void> restorePending(String id) async {
+    if (_disposed || _closeFuture != null) return;
     final runtime = selected!;
     final item = runtime.composer.pending.firstWhere((p) => p['queueId'] == id);
+    final revision = runtime._composerRevision;
     if (runtime.composer.text.isNotEmpty ||
         runtime.composer.attachments.isNotEmpty) {
       throw const NaiAgentToolError(
@@ -1213,7 +1405,34 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     }
     if (runtime.queue.any((p) => p['queueId'] == id)) {
       await runtime.client!.editQueue(id, remove: true);
+      if (_disposed ||
+          _closeFuture != null ||
+          !identical(_runtimes[runtime.chat.id], runtime)) {
+        return;
+      }
       runtime.queue.removeWhere((p) => p['queueId'] == id);
+      // The host no longer owns this message. Keep it recoverable if the user
+      // edited the composer or a host state update already removed its row.
+      final current = runtime.composer;
+      runtime.composer = AgentComposerState(
+        text: current.text,
+        attachments: current.attachments,
+        interrupted: current.interrupted,
+        wasRunning: current.wasRunning,
+        pending: [
+          for (final pending in current.pending)
+            pending['queueId'] == id
+                ? {...pending, 'recovered': true}
+                : pending,
+          if (!current.pending.any((pending) => pending['queueId'] == id))
+            {...item, 'recovered': true},
+        ],
+      );
+      if (revision != runtime._composerRevision) {
+        await _persist(runtime);
+        _notify();
+        return;
+      }
     }
     runtime.composer = AgentComposerState(
       text: item['text'] as String? ?? '',
@@ -1231,7 +1450,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> compact() async {
+  Future<void> compact([String? instructions]) async {
     final runtime = selected!;
     if (runtime.running) return;
     final client = await _ensureClient(runtime);
@@ -1239,7 +1458,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     runtime.running = true;
     _notify();
     try {
-      _applyState(runtime, await client.compact());
+      _applyState(runtime, await client.compact(instructions));
       runtime.runLimitHit = null;
     } catch (error) {
       runtime.error = _error(error, runtime);
@@ -1280,6 +1499,22 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     if (_disposed) return;
     runtime.uiRevision++;
     if (envelope['type'] == 'usage') _applyUsage(runtime, envelope);
+    if (envelope['type'] == 'suggestion') {
+      final turn = envelope['forTurn'] as int;
+      if (turn >= runtime.suggestionTurn) {
+        runtime.suggestionTurn = turn;
+        runtime.suggestion =
+            settings.nextSuggestion &&
+                runtime.suggestionAllowed &&
+                runtime._suggestionCancels == 0 &&
+                identical(selected, runtime) &&
+                runtime.composer.text.isEmpty
+            ? (envelope['text'] as String).isEmpty
+                  ? null
+                  : envelope['text'] as String
+            : null;
+      }
+    }
     if (envelope['type'] == 'extension_error') {
       runtime.runLimitHit = null;
       runtime.error =
@@ -1327,6 +1562,29 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       );
       unawaited(_persist(runtime));
     }
+    if (envelope['type'] == 'queue' && !runtime._resending) {
+      final queue = _maps(envelope['queue']);
+      final remaining = queue.map((item) => item['queueId']).toSet();
+      final consumed = {
+        ...envelope['consumedQueueIds'] as List? ?? [],
+        for (final item in runtime.queue)
+          if (!remaining.contains(item['queueId'])) item['queueId'],
+      };
+      runtime.queue = queue;
+      runtime.composer = AgentComposerState(
+        text: runtime.composer.text,
+        attachments: runtime.composer.attachments,
+        pending: runtime.composer.pending
+            .where(
+              (item) =>
+                  item['recovered'] == true ||
+                  !consumed.contains(item['queueId']),
+            )
+            .toList(),
+        interrupted: runtime.composer.interrupted,
+      );
+      unawaited(_persist(runtime));
+    }
     final event = envelope['event'] as Map?;
     if (event != null) {
       final type = event['type'];
@@ -1345,34 +1603,6 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       if (type == 'message_start') {
         final message = Map<String, dynamic>.from(event['message'] as Map);
         runtime.messages = [...runtime.messages, message];
-        if (message['role'] == 'user' && !runtime._resending) {
-          final content = message['content'];
-          final text = content is String
-              ? content
-              : [
-                  for (final part in content as List? ?? [])
-                    if (part is Map && part['type'] == 'text')
-                      part['text'] ?? '',
-                ].join('\n');
-          final pending = [...runtime.composer.pending];
-          final consumed = pending.indexWhere(
-            (item) =>
-                item['recovered'] != true &&
-                (item['text'] == text ||
-                    (item['text'] == '' && text == '查看附图。')),
-          );
-          if (consumed >= 0) {
-            final id = pending.removeAt(consumed)['queueId'];
-            runtime.queue.removeWhere((item) => item['queueId'] == id);
-            runtime.composer = AgentComposerState(
-              text: runtime.composer.text,
-              attachments: runtime.composer.attachments,
-              pending: pending,
-              interrupted: runtime.composer.interrupted,
-            );
-            unawaited(_persist(runtime));
-          }
-        }
       }
       if (type == 'message_update' || type == 'message_end') {
         final message = Map<String, dynamic>.from(event['message'] as Map);
@@ -1443,15 +1673,20 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       Map<String, dynamic>.from(item as Map),
   ];
   void _applyUsage(AgentChatRuntime runtime, Map<String, dynamic> value) {
+    runtime.cacheWarming = Map<String, dynamic>.from(
+      value['cacheWarming'] as Map? ?? runtime.cacheWarming,
+    );
     runtime.usageRevision++;
     runtime.stats = Map<String, dynamic>.from(value['stats'] as Map? ?? {});
     runtime.context = Map<String, dynamic>.from(value['context'] as Map? ?? {});
   }
 
   void _applyState(AgentChatRuntime runtime, Map<String, dynamic> value) {
+    runtime.commands = _maps(value['commands']);
     runtime.mcpStatus = value['mcpStatus'] as String? ?? runtime.mcpStatus;
     runtime.uiRevision++;
     runtime.messages = _maps(value['messages']);
+    runtime.historyMessages = _maps(value['historyMessages']);
     final lastAssistant = runtime.messages
         .where((m) => m['role'] == 'assistant')
         .lastOrNull;

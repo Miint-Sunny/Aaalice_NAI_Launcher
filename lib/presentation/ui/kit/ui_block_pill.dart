@@ -2,9 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/prompt_icon_catalog.dart';
 import '../../widgets/common/studio_icons.dart';
+import '../../widgets/common/workspace_text_scale_scope.dart';
 import 'ui_colors.dart';
 import 'ui_glyph.dart';
+import 'ui_extra_icons.dart';
 import 'ui_lib_nav.dart';
 import 'ui_text.dart';
 
@@ -34,6 +37,7 @@ class UiBlockPill extends StatelessWidget {
     this.open = false,
     this.disabled = false,
     this.paired = false,
+    this.temporary = false,
     this.dragging = false,
     this.ghost = false,
     this.focused = false,
@@ -42,6 +46,12 @@ class UiBlockPill extends StatelessWidget {
     this.translationMark = '译',
   });
 
+  /// Agent 改过、已与块库断开的临时块：琥珀 / 墨色 −45° 警示斜纹 + 末尾实心琥珀扳手（原型 `.pl.tmp`）。
+  /// 字色不变；描边换成琥珀色。转正或还原后回到普通外观。
+  final bool temporary;
+
+  /// 警示色（与原型 `--hz` 一致）。
+  static const hazard = Color(0xFFF5B800);
   final String label;
   final Color color;
 
@@ -85,7 +95,10 @@ class UiBlockPill extends StatelessWidget {
       color.computeLuminance() > .5 ? const Color(0xFF1A1A1A) : Colors.white;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      WorkspaceTextScaleScope(child: Builder(builder: _buildPill));
+
+  Widget _buildPill(BuildContext context) {
     final c = context.ui;
     final h = large ? 24.0 : 20.0;
     final radius = large ? 6.0 : 5.0;
@@ -116,11 +129,14 @@ class UiBlockPill extends StatelessWidget {
       iconInk = base;
     }
 
-    final borderColor = tr
+    final hazardOn = temporary && !disabled && !missing && !invalid;
+    final borderColor = hazardOn
+        ? (c.dark ? const Color(0xFFA87D00) : const Color(0xFFD9A200))
+        : tr
         ? c.line
         : (solid ? base : base.withValues(alpha: .45));
     final fillAlpha = c.dark ? .15 : .08;
-    final Color? fill = disabled
+    final Color? fill = disabled || hazardOn
         ? null
         : open
         ? base.withValues(alpha: .16)
@@ -213,7 +229,25 @@ class UiBlockPill extends StatelessWidget {
               ),
             ),
           ),
-        if (tail != null)
+        if (hazardOn)
+          Container(
+            key: const Key('block-pill-temporary'),
+            width: large ? 18 : 15,
+            height: large ? 18 : 15,
+            margin: const EdgeInsets.only(left: 2),
+            decoration: BoxDecoration(
+              color: hazard,
+              borderRadius: BorderRadius.circular(large ? 4 : 3),
+            ),
+            alignment: Alignment.center,
+            child: UiGlyph(
+              UiGlyphs.wrench,
+              size: large ? 12 : 10,
+              strokeWidth: 2.3,
+              color: const Color(0xFF1A1400),
+            ),
+          )
+        else if (tail != null)
           Padding(
             padding: const EdgeInsets.only(left: 1),
             child: Opacity(
@@ -234,15 +268,23 @@ class UiBlockPill extends StatelessWidget {
     );
 
     Widget pill = Container(
-      height: h,
-      padding: EdgeInsets.only(left: large ? 6 : 4, right: large ? 8 : 6),
+      height: h * WorkspaceTextScaleScope.scaleOf(context),
+      padding: EdgeInsets.only(
+        left: large ? 6 : 4,
+        right: hazardOn ? 2 : (large ? 8 : 6),
+      ),
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(radius),
         border: dashed ? null : Border.all(color: borderColor),
         boxShadow: [
           if (open && !disabled)
-            BoxShadow(color: base.withValues(alpha: .30), spreadRadius: 2),
+            BoxShadow(
+              color: hazardOn
+                  ? hazard.withValues(alpha: .45)
+                  : base.withValues(alpha: .30),
+              spreadRadius: 2,
+            ),
           if (dragging)
             BoxShadow(
               color: Colors.black.withValues(alpha: c.dark ? .45 : .14),
@@ -253,7 +295,12 @@ class UiBlockPill extends StatelessWidget {
       ),
       child: Center(widthFactor: 1, child: row),
     );
-    if (!disabled &&
+    if (hazardOn) {
+      pill = CustomPaint(
+        painter: _HazardPainter(radius, dark: c.dark),
+        child: pill,
+      );
+    } else if (!disabled &&
         !open &&
         (look == BlockAppearance.stripes ||
             look == BlockAppearance.dots ||
@@ -351,6 +398,52 @@ class _SkinPainter extends CustomPainter {
       old.look != look || old.color != color || old.radius != radius;
 }
 
+/// 临时块警示底纹：−45° 斜纹，琥珀 4px / 墨色 4px 相间（原型 `repeating-linear-gradient(-45deg, …)`）。
+/// 浅色：琥珀 30% / 墨 8.5%；深色：琥珀 22% / 黑 32%。
+class _HazardPainter extends CustomPainter {
+  _HazardPainter(this.radius, {required this.dark});
+  final double radius;
+  final bool dark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rr = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    canvas
+      ..save()
+      ..clipRRect(rr)
+      ..drawRect(
+        Offset.zero & size,
+        Paint()
+          ..color = dark
+              ? Colors.black.withValues(alpha: .32)
+              : const Color(0xFF141414).withValues(alpha: .085),
+      );
+    final amber = Paint()
+      ..color = UiBlockPill.hazard.withValues(alpha: dark ? .22 : .30);
+    // 条宽 4px（垂直于条纹方向），周期 8px；沿水平方向的投影为 ×√2。
+    const k = 1.41421356;
+    for (var d = -size.height; d < size.width + size.height; d += 8 * k) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(d, size.height)
+          ..lineTo(d + 4 * k, size.height)
+          ..lineTo(d + 4 * k + size.height, 0)
+          ..lineTo(d + size.height, 0)
+          ..close(),
+        amber,
+      );
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_HazardPainter old) =>
+      old.radius != radius || old.dark != dark;
+}
+
 class _OutlinePainter extends CustomPainter {
   _OutlinePainter(this.color, this.radius);
   final Color color;
@@ -381,8 +474,8 @@ class UiBlockIcon extends StatelessWidget {
   final double size;
   final Color? color;
 
-  /// 编辑块里图标网格的顺序。
-  static const keys = [
+  /// Stable legacy order, retained by the existing ungrouped picker draft.
+  static const legacyKeys = [
     'palette', 'brush', 'draw', 'color_lens', 'image', 'photo', 'filter', //
     'person', 'face', 'groups', 'heart', 'star', 'bolt', 'fire', 'sparkle',
     'moon', 'sun', 'cloud', 'snow', 'landscape', 'city', 'home', 'park',
@@ -390,6 +483,11 @@ class UiBlockIcon extends StatelessWidget {
     'pets', 'book', 'science', 'school', 'car', 'flight', 'shield', 'build',
     'tag',
   ];
+
+  /// Complete storage/tool catalog; presentation decides which groups to show.
+  static const keys = [...legacyKeys, ...additionalPromptIconNames];
+
+  static const groups = blockIconGroups;
 
   static const _paths = <String, String>{
     'palette': UiGlyphs.palette,
@@ -454,7 +552,7 @@ class UiBlockIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ink = color ?? IconTheme.of(context).color ?? context.ui.muted;
-    final path = _paths[name];
+    final path = _paths[name] ?? UiExtraIcons.paths[name];
     if (path == null) {
       return Icon(StudioIcons.promptBlocks, size: size, color: ink);
     }

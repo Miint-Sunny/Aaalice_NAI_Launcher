@@ -1263,7 +1263,6 @@
   "localGallery_sendToKrita": "傳送到 Krita",
   "localGallery_importImageMetadata": "匯入圖片後設資料",
   "localGallery_copyPrompt": "複製 Prompt",
-  "localGallery_copySeed": "複製 Seed",
   "localGallery_dragToShare": "拖曳以分享",
   "galleryDragCount": "{count} 張",
   "@galleryDragCount": {
@@ -8151,7 +8150,6 @@
   "gen_relatedSub": "補全時推薦常一起出現的標籤",
   "gen_translating": "正在翻譯…",
   "gen_translateNeedsModel": "還沒配翻譯模型，點一下去設定",
-  "gen_translateRestore": "顯示原文",
   "gen_translateWith": "翻譯（{route}）",
   "@gen_translateWith": {
     "placeholders": {
@@ -8326,7 +8324,7 @@
   "gen_countTip": "一次請求出幾張（1–4）",
   "gen_repeat": "重複",
   "gen_repeatTip": "連續發幾次請求",
-  "gen_repeatTotal": "重複 {times} 次，共 {total} 張（滾輪也能調）",
+  "gen_repeatTotal": "重複 {times} 次，共 {total} 張 · 按住左右拖動調節",
   "@gen_repeatTotal": {
     "placeholders": {
       "times": {},
@@ -11579,7 +11577,6 @@
   "ag_mentionTitle": "引用到這條訊息",
   "ag_mentionEmpty": "沒有匹配的內容",
   "ag_mentionSearchBlocks": "搜尋積木",
-  "ag_skillsTitle": "技能",
   "ag_keySelect": "選擇",
   "ag_keyInsert": "插入",
   "ag_keyCategory": "切類別",
@@ -11751,5 +11748,453 @@
   "mp_errorNetwork": "連線不可用",
   "mp_errorResponse": "回應無效",
   "mp_errorHttp": "請求失敗",
-  "mp_errorRateLimit": "請求過於頻繁"
+  "mp_errorRateLimit": "請求過於頻繁",
+  "ag_tool_prompt_set": "提示片語",
+  "ag_psCount": "{count} {unit}",
+  "@ag_psCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psPosition": "第 {index} {unit} / 共 {count} {unit}",
+  "@ag_psPosition": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psOverview": "總覽全部",
+  "ag_psSingle": "回到單項",
+  "ag_psPrompt": "提示詞",
+  "ag_psShared": "共同設定",
+  "ag_psThisItem": "這一{unit}",
+  "@ag_psThisItem": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psMain": "主提示詞",
+  "ag_psCharacter": "角色 {index}",
+  "@ag_psCharacter": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_psNegative": "負面",
+  "ag_psImport": "匯入畫布",
+  "ag_psImportTip": "寫入主提示詞、角色和負面；參數和參考圖不變",
+  "ag_psImported": "已把「{title}」寫入提示詞",
+  "@ag_psImported": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psGenerate": "生成",
+  "ag_psGenerating": "生成中",
+  "ag_psRevision": "v{revision} · 已改 {count} 項",
+  "@ag_psRevision": {
+    "placeholders": {
+      "revision": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_psSaveBlock": "存成積木",
+  "ag_psSavedBlock": "已存成積木「{title}」· {count} 項",
+  "@ag_psSavedBlock": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_psCopyItem": "複製這一{unit}的提示詞",
+  "@ag_psCopyItem": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psCopyAll": "複製全部",
+  "ag_psEditItem": "讓 Agent 修改這一{unit}",
+  "@ag_psEditItem": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psEditDraft": "修改「{title}」第 {index} {unit}（{item}）：",
+  "@ag_psEditDraft": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      },
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_psTooManyCharacters": "當前模型最多支援 {count} 個角色",
+  "@ag_psTooManyCharacters": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_psNoCharacters": "當前模型不支援角色提示詞",
+  "ag_psMissing": "這張卡的資料已不在",
+  "startup_dataTitle": "無法準備應用資料",
+  "startup_dataHelp": "應用資料尚未準備完成，請保留現有檔案。內容不同的檔案不會合並或覆蓋。請先備份並核對資料目錄，檢查磁碟空間和存取權限，再重試。",
+  "startup_dataCurrent": "當前資料目錄",
+  "startup_dataLegacy": "舊資料目錄",
+  "startup_dataOpenCurrent": "開啟當前目錄",
+  "startup_dataOpenLegacy": "開啟舊目錄",
+  "startup_dataDetails": "錯誤詳情",
+  "startup_dataActionFailed": "操作失敗：{error}",
+  "@startup_dataActionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_expandToText": "展開為文本",
+  "ag_answeredTitle": "向你提問 · 已回答",
+  "ag_historyButton": "歷史",
+  "ag_historyTitle": "對話歷史",
+  "ag_historySearch": "搜尋發言和卡片…",
+  "ag_historyAll": "全部",
+  "ag_historyMine": "我的發言",
+  "ag_historyCards": "卡片",
+  "ag_historyQuestions": "問答",
+  "ag_historyEmpty": "沒有匹配的條目",
+  "ag_historyBeforeCompaction": "這段在壓縮之前，點看摘要",
+  "ag_historyAuto": "自動壓縮",
+  "ag_historyManual": "手動壓縮",
+  "ag_historyImageMessage": "圖片訊息",
+  "ag_historyAnswer": "你選了：{answer}",
+  "@ag_historyAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_historyPromptSet": "提示片語",
+  "ag_historyImages": "生成卡 · {count} 張",
+  "@ag_historyImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_historyPromptChange": "提示詞修改",
+  "ag_historyParams": "生成參數",
+  "ag_historyPositions": "角色位置",
+  "ag_historySettings": "設定修改",
+  "ag_historyGallery": "圖庫卡片",
+  "ag_historyChanges": "修改摘要",
+  "gen_translateTapOriginal": "點按：顯示原文",
+  "gen_translateTapTranslated": "點按：顯示譯文",
+  "gen_translateClearRestore": "清除翻譯塊並還原",
+  "gen_translateClearRestoreSub": "全部變回普通原文，可復原",
+  "gen_translateCleared": "已清除翻譯塊並還原原文",
+  "gen_translateAdjust": "追加翻譯調整",
+  "gen_translateAdjustSub": "接著這次翻譯聊，重切、重譯、合併塊",
+  "gen_translateAdjustTitle": "翻譯調整",
+  "gen_translateAdjustContext": "續接本次翻譯 · {count} 塊",
+  "@gen_translateAdjustContext": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustSelected": "已選 {count} 塊",
+  "@gen_translateAdjustSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustCollapse": "收起 / 展開",
+  "gen_translateAdjustIntro": "接著本次翻譯調整。點選左側翻譯塊新增引用，改塊後可以復原。",
+  "gen_translateAdjustSplit": "重新切塊",
+  "gen_translateAdjustRetranslate": "重譯選中",
+  "gen_translateAdjustMerge": "合併選中",
+  "gen_translateAdjustSplitTemplate": "讀取當前塊，按語義細分引用的塊，保留精確原文。",
+  "gen_translateAdjustRetranslateTemplate": "讀取當前塊，重新翻譯引用的塊，不改原文。",
+  "gen_translateAdjustMergeTemplate": "讀取當前塊，按指定的原文順序合併引用的塊，無關塊不動。",
+  "gen_translateAdjustMarkers": "請使用 translation_blocks_read 返回的 marker 列表。",
+  "gen_translateAdjustHint": "接著說要怎麼調整…",
+  "gen_translateAdjustStartFailed": "無法啟動翻譯調整，請檢查模型與 Agent 執行時。",
+  "gen_translateAdjustRunFailed": "調整已中止或失敗，重試前請重新讀取當前塊。",
+  "gen_repeatDragTotal": "{times} 次 · 共 {total} 張",
+  "@gen_repeatDragTotal": {
+    "placeholders": {
+      "times": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "set_cvGroupBatches": "批次結果按批次分組",
+  "set_cvGroupBatchesSub": "關閉後逐張顯示，點歷史縮圖可直接定位單張圖片。適用於簡潔檢視器和無限畫布。",
+  "gen_groupBatches": "分組",
+  "gen_translateAdjustPickHint": "在左側點塊可引用",
+  "gen_translateAdjustClearRefs": "清除引用",
+  "gen_translateAdjustSplitInto": "{source} → {count} 塊",
+  "gen_translateAdjustContextNote": "上下文：本次翻譯的原文、切塊和譯文",
+  "ag_historyStats": "{messages} 條發言 · {cards} 張卡片",
+  "ag_historyKeySelect": "選擇",
+  "ag_historyKeyJump": "跳到對話",
+  "ag_historyKeyClose": "關閉",
+  "blocks_tempLabel": "臨時塊",
+  "blocks_tempEditedByAgent": "Agent{time} 改過這裡。",
+  "blocks_tempEditedByYou": "你{time} 改過這裡。",
+  "blocks_tempExplain": "它已和塊庫裡的「{title}」斷開，改動只留在這個位置，塊庫和其他提示詞裡的同名塊不受影響。",
+  "blocks_tempEdit": "編輯",
+  "blocks_tempCompare": "對比原塊",
+  "blocks_tempAdded": "新增",
+  "blocks_tempAddedCount": "新增 {count} 個詞",
+  "blocks_tempAddedNone": "沒有新增",
+  "blocks_tempRemoved": "刪除",
+  "blocks_tempRemovedHint": "刪了 {count} 個詞",
+  "blocks_tempRemovedNone": "沒有刪除",
+  "blocks_tempRevert": "還原為原塊",
+  "blocks_tempKeepEditing": "繼續編輯",
+  "blocks_tempApply": "應用修改",
+  "blocks_tempSaveAs": "另存為新塊",
+  "blocks_tempSaveAsHint": "另存為新塊後，這裡會換成新塊，原塊保持不變",
+  "blocks_tempSaveConfirm": "儲存並轉正",
+  "blocks_tempShowOriginal": "在塊庫中檢視原塊",
+  "gen_menuNew": "新",
+  "gen_repeatDragHint": "按住數字左右拖動調節 · 雙擊直接輸入",
+  "gen_groupBatchesOn": "按批次分組 · 點選改為逐張顯示",
+  "gen_groupBatchesOff": "逐張顯示 · 點選按批次分組",
+  "blocks_presetCustom": "自訂",
+  "blocks_presetHint": "應用附帶參數時品質詞和負面預設一併還原。換到別的模型時，檔位按目標模型自動換算；Turbo 沿用現有處理。",
+  "@gen_translateAdjustSplitInto": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@ag_historyStats": {
+    "placeholders": {
+      "messages": {
+        "type": "int"
+      },
+      "cards": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempEditedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempEditedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempExplain": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempAddedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempRemovedHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_vibeInpaintUnsupported": "Vibe 不支援局部重繪（Inpainting），本次不會生效。",
+  "set_stThumbnailCacheLimit": "縮圖快取上限",
+  "set_stThumbnailCacheLimitSub": "所有圖庫目錄合計。啟動或手動清理時，從最久沒看的縮圖刪到上限的 80%，不碰原圖。",
+  "ag_slashGroupSkills": "Skill",
+  "ag_slashGroupTemplates": "提示詞範本",
+  "ag_slashGroupBuiltin": "Studio 命令",
+  "ag_commandNew": "新增對話",
+  "ag_commandCompact": "壓縮上下文",
+  "ag_commandModel": "選擇模型",
+  "ag_commandThinking": "選擇思考檔位",
+  "ag_commandHistory": "開啟會話歷史",
+  "ag_commandRename": "重新命名當前對話",
+  "ag_commandCopy": "複製最後一條回覆",
+  "ag_commandExport": "匯出當前會話",
+  "ag_commandCompactArgs": "[說明]",
+  "ag_commandRenameArgs": "<名稱>",
+  "set_agNextSuggestion": "下一句建議",
+  "set_agNextSuggestionSub": "使用當前對話模型預測你的下一句訊息，會額外消耗 token；按 Tab 採納。",
+  "set_agCacheWarming": "提示快取預熱",
+  "set_agCacheWarmingSub": "在提示快取快過期前用 1 token 的請求續上（按 5 分鐘壽命，適配所有模型），下一步讀快取而不是重發整段上下文。",
+  "set_agCacheOff": "關閉",
+  "set_agCacheStreaming": "只在 Agent 執行時",
+  "set_agCacheIdle": "空閒時也預熱",
+  "set_agCacheIdleCost": "空閒時也預熱（最多 30 分鐘）會產生額外模型費用。",
+  "ag_suggestionAccept": "按 Tab 填入這句建議",
+  "ag_cacheWarmTitle": "快取預熱",
+  "ag_cacheWarmOff": "已關閉",
+  "ag_cacheWarmRefreshing": "正在續期快取…",
+  "ag_cacheWarmIdle": "待機，下次執行時開始",
+  "ag_cacheWarmNext": "{time} 後續期",
+  "@ag_cacheWarmNext": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "set_stOther": "其他檔案",
+  "set_stIncomplete": "部分目錄讀取失敗，數字不完整；懸停分類可檢視來源目錄。",
+  "set_stSliceIncomplete": "未完整讀取",
+  "localGallery_searchHistoryTitle": "最近搜尋",
+  "localGallery_searchHistoryClear": "清空",
+  "localGallery_searchHistoryRemove": "從歷史中刪除",
+  "ag_cacheWarmCount": "已續期 {count} 次",
+  "@ag_cacheWarmCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_cacheWarmLast": "上次 {time}",
+  "@ag_cacheWarmLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_cacheWarmTtl": "快取壽命 {minutes} 分鐘",
+  "@ag_cacheWarmTtl": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "set_workspaceFontScale": "創作區文字字號",
+  "set_promptAutocomplete": "提示詞自動補全",
+  "shortcut_action_open_resource_window": "開啟資源小窗",
+  "set_workspaceFontScaleSub": "提示詞框、角色框、塊與大圖提示詞裡的文字；和上面的介面字號分開調。",
+  "set_promptAutocompleteSub": "在提示詞框和角色框輸入時，從本地標籤庫給出候選；↑↓ 選擇，Tab 或 Enter 採納，Esc 關閉。",
+  "floating_open": "資源小窗",
+  "floating_searchGallery": "搜尋（整段 / 完整標籤）",
+  "floating_searchName": "搜尋名稱",
+  "floating_collapse": "收起為標題條",
+  "floating_expand": "展開",
+  "floating_empty": "沒有內容",
+  "floating_loadFailed": "載入失敗",
+  "floating_loadMore": "載入更多",
+  "set_stThumbQuotaTip": "{count} 張縮圖 · 統計於{time}",
+  "@set_stThumbQuotaTip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_autocompleteTitle": "補全",
+  "prompt_autocompleteHint": "↑↓ 選擇 · → 關聯 · ← 返回 · Tab / 回車 補全 · Esc 關閉",
+  "prompt_autocompleteHintRelated": "↑↓ 選擇 · ← 返回 · 回車 / 點選 追加 · Esc 關閉關聯",
+  "resourceWindow_pin": "視窗置頂",
+  "resourceWindow_newWindow": "新開一個資源視窗",
+  "resourceWindow_rowHeight": "行高",
+  "resourceWindow_cardSize": "卡片大小",
+  "resourceWindow_dragHint": "拖到生成頁對應區域使用",
+  "resourceWindow_dragHintBlocks": "拖到提示詞插入",
+  "resourceWindow_keyDrag": "拖動",
+  "resourceWindow_keyDouble": "雙擊",
+  "resourceWindow_hintDrag": "到生成頁使用",
+  "resourceWindow_hintView": "看大圖",
+  "resourceWindow_hintPrimary": "執行主操作",
+  "resourceWindow_connected": "主視窗已連線",
+  "resourceWindow_disconnected": "主視窗未連線",
+  "resourceWindow_currentModelUsable": "當前模型可用",
+  "resourceWindow_insertPositive": "插入正面",
+  "resourceWindow_insertNegative": "插入負面",
+  "resourceWindow_errorNotFound": "這一項已經不存在，列表已重新整理",
+  "resourceWindow_errorNotReady": "主視窗還沒準備好，請稍後再試",
+  "resourceWindow_errorUnsupported": "當前模型不支援這個操作",
+  "resourceWindow_errorFailed": "操作失敗",
+  "blocks_tempStandaloneExplain": "它只存在於當前提示詞中，沒有儲存到塊庫；想留著就另存為新塊。",
+  "blocks_tempCreatedByAgent": "Agent{time} 建了這個塊。",
+  "@blocks_tempCreatedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_tempCreatedByYou": "你{time} 建了這個塊。",
+  "@blocks_tempCreatedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -8,7 +8,7 @@ extension GalleryImageManagementQueries on GalleryDataSource {
     String newRoot, {
     Map<String, String> aliases = const {},
   }) async {
-    final count = await execute(
+    final count = await executeWrite(
       'relocateDirectoryRecords',
       (db) => db.transaction((txn) async {
         final rows = await txn.query(
@@ -51,7 +51,7 @@ extension GalleryImageManagementQueries on GalleryDataSource {
     return count;
   }
 
-  Future<Map<String, dynamic>> readCollectionManagementState() => execute(
+  Future<Map<String, dynamic>> readCollectionManagementState() => executeWrite(
     'readCollectionManagementState',
     (db) => db.transaction((txn) async {
       final collections = await txn.query(
@@ -81,6 +81,26 @@ extension GalleryImageManagementQueries on GalleryDataSource {
         );
         return rows.isEmpty ? null : GalleryImageRecord.fromMap(rows.single);
       });
+
+  /// File events must also see the native delete pool, without loading the library.
+  Future<List<GalleryImageRecord>> readImagesForPaths(
+    List<String> paths,
+  ) async {
+    final records = <GalleryImageRecord>[];
+    for (var offset = 0; offset < paths.length; offset += 800) {
+      final batch = paths.skip(offset).take(800).toList();
+      final rows = await execute(
+        'readImagesForPaths',
+        (db) => db.query(
+          GalleryDataSource._imagesTable,
+          where: 'file_path IN (${List.filled(batch.length, '?').join(',')})',
+          whereArgs: batch,
+        ),
+      );
+      records.addAll(rows.map(GalleryImageRecord.fromMap));
+    }
+    return records;
+  }
 
   Future<List<GalleryImageRecord>> queryDeletedImageRecords({
     required int offset,

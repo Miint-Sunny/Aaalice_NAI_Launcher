@@ -1,7 +1,9 @@
 // Private JSONL stdin/stdout transport. Credentials never enter argv or Pi files.
 import { createInterface } from 'node:readline';
 import { createStudioSession } from './lib/session.mjs';
+import { createTranslationSession } from './lib/translation-session.mjs';
 import { publicModel } from './lib/model.mjs';
+import { NextSuggestion } from './lib/next-suggestion.mjs';
 import { mcpRedactor } from './lib/mcp.mjs';
 import { SessionManager } from '@earendil-works/pi-coding-agent';
 
@@ -9,12 +11,18 @@ import { SessionManager } from '@earendil-works/pi-coding-agent';
 console.log = console.info = console.debug = (...values) => console.error(...values);
 
 let session, workspaceId, redact = value => value, closing = false;
-let initializing = false;
+let initializing = false, suggestions;
 let extensionsReady = Promise.resolve(), stopEpoch = 0;
 let created, requestCount = 0, requestLimit = 32, permitSequence = 0;
 const pending = new Map();
 const permits = new Map();
-let queued = [];
+let queued = [], activePromptId;
+function publishQueue(consumedQueueIds = []) {
+  const previous = queued.map(item => item.queueId);
+  const queue = queueState();
+  consumedQueueIds.push(...previous.filter(id => !queue.some(item => item.queueId === id)));
+  send({ type: 'queue', queue, consumedQueueIds });
+}
 let mcpStatus = '', readingMcpStatus = false;
 const send = value => process.stdout.write(JSON.stringify(redact({
   protocol: 1, workspaceId, sessionId: session?.sessionId, costKnown: false, ...value,
@@ -42,26 +50,30 @@ async function acquireRequest(signal) {
 }
 function queueState() {
   // Pi owns the queues. This sidecar only retains attachment bytes and UI IDs.
-  const remaining = { steer: [...session.getSteeringMessages()], followUp: [...session.getFollowUpMessages()] };
-  queued = queued.filter(item => {
-    const index = remaining[item.behavior].indexOf(item.text);
-    if (index < 0) return false;
-    remaining[item.behavior].splice(index, 1);
-    return true;
-  });
+  const consumed = {
+    steer: queued.filter(item => item.behavior === 'steer').length - session.getSteeringMessages().length,
+    followUp: queued.filter(item => item.behavior === 'followUp').length - session.getFollowUpMessages().length,
+  };
+  // Pi drains each behavior FIFO. Counts identify the consumed prefix even when
+  // several entries have identical text or Pi decorates attachment content.
+  queued = queued.filter(item => consumed[item.behavior]-- <= 0);
   return queued.map(({ images, ...item }) => ({ ...item, imageCount: images?.length ?? 0 }));
 }
 function usage() {
   const context = session.getContextUsage();
-  return { stats: session.getSessionStats(), context: context ? { ...context, windowKnown: created.contextWindowKnown } : null };
+  return { cacheWarming: created.cacheWarming?.status ?? { mode: session.settingsManager.getCacheWarmingMode(), ...session.cacheWarmingStatus },
+    stats: session.getSessionStats(), context: context ? { ...context, windowKnown: created.contextWindowKnown } : null };
 }
 function state() {
   return { messages: session.messages, sessionFile: session.sessionFile,
+    historyMessages: created.manager.getBranch().flatMap(entry => entry.type === 'message'
+      ? [entry.message] : entry.type === 'compaction'
+        ? [{role:'compactionSummary', summary:entry.summary, tokensBefore:entry.tokensBefore, timestamp:Date.parse(entry.timestamp)}] : []),
     entries: created.manager.getBranch().filter(entry => entry.type === 'message')
       .map(entry => ({ id: entry.id, parentId: entry.parentId, role: entry.message.role, timestamp: entry.message.timestamp })),
     userMessages: session.getUserMessagesForForking(), queue: queueState(),
     streaming: session.isStreaming, permissionMode: created.getPermissionMode(), ...usage(),
-    extensions: created.extensions, skills: created.skills, mcpStatus };
+    extensions: created.extensions, skills: created.skills, commands: created.commands ?? [], mcpStatus };
 }
 function requireIdle() {
   if (session.isStreaming || !session.isIdle) throw new Error('Wait for the current run or stop it first');
@@ -91,8 +103,12 @@ async function handle(message) {
     workspaceId = message.workspaceId;
     redact = mcpRedactor(message.config, message.mcp);
     requestLimit = Math.max(1, Math.min(200, message.config.maxRequestsPerRun ?? 32));
-    created = await createStudioSession({ ...message, executeTool, acquireRequest, deferBinding: true,
+    const create = message.sessionKind === 'translation' ? createTranslationSession : createStudioSession;
+    created = await create({ ...message, executeTool, acquireRequest, deferBinding: true,
       onSession: value => { session = value; },
+      onCacheWarmingChange: () => queueMicrotask(() => {
+        if (!closing) send({ type: 'usage', ...usage() });
+      }),
       onExtensionUi: event => {
         if (readingMcpStatus && event.method === 'notify' &&
             (event.level ?? 'info') === 'info') {
@@ -106,9 +122,23 @@ async function handle(message) {
     session = created.session;
     initializing = false;
     redact = created.redact;
+    if (message.sessionKind !== 'translation') suggestions = new NextSuggestion({ session, send,
+      enabled: message.config.nextSuggestion !== false,
+      onUsage: () => { if (!closing) send({ type: 'usage', ...usage() }); },
+    });
     session.subscribe(event => {
       send({ type: 'event', event });
-      if (['message_end', 'compaction_end', 'agent_settled'].includes(event.type))
+      if (event.type === 'agent_settled' && !event.aborted) {
+        const epoch = suggestions?.epoch;
+        queueMicrotask(() => { if (!closing && epoch === suggestions?.epoch) void suggestions?.generate(); });
+      }
+      if (event.type === 'message_start' && event.message.role === 'user') {
+        const consumed = activePromptId ? [activePromptId] : [];
+        activePromptId = undefined;
+        publishQueue(consumed);
+      }
+      if (['message_end', 'compaction_end', 'agent_settled'].includes(event.type)
+          || (event.type === 'entry_appended' && event.entry.type === 'usage'))
         queueMicrotask(() => {
           if (!closing) send({ type: 'usage', ...usage() });
         });
@@ -140,6 +170,19 @@ async function handle(message) {
     return;
   }
   switch (type) {
+    case 'suggestion_cancel':
+      suggestions?.invalidate(true); send({ type: 'response', id, forTurn: suggestions?.epoch }); break;
+    case 'settings':
+      if (message.nextSuggestion !== undefined) {
+        if (typeof message.nextSuggestion !== 'boolean') throw new Error('Invalid suggestion setting');
+        suggestions?.setEnabled(message.nextSuggestion);
+      }
+      if (message.cacheWarming !== undefined) {
+        if (!['off', 'streaming', 'idle'].includes(message.cacheWarming)) throw new Error('Invalid cache warming mode');
+        session.setCacheWarmingMode(message.cacheWarming);
+      }
+      send({ type: 'response', id, ...usage() });
+      break;
     case 'permission_mode':
       if (!['auto', 'ask', 'readonly', 'bypass'].includes(message.mode)) throw new Error('Invalid permission mode');
       created.setPermissionMode(message.mode);
@@ -163,10 +206,11 @@ async function handle(message) {
     case 'system_prompt_get':
       send({ type: 'response', id, text: session.systemPrompt }); break;
     case 'prompt': {
+      suggestions?.invalidate();
       const epoch = stopEpoch;
       await extensionsReady;
       if (epoch !== stopEpoch || closing) throw new Error('Stopped while preparing extensions');
-      if (!session.isStreaming) requestCount = 0;
+      if (!session.isStreaming) { requestCount = 0; activePromptId = message.queueId ?? id; }
       else {
         queueState();
         queued.push({ queueId: message.queueId ?? id, text: message.text, images: message.images,
@@ -180,6 +224,7 @@ async function handle(message) {
       send({ type: 'response', id, ...state() });
       break;
     }
+    case 'commands': send({ type: 'response', id, commands: created.commands ?? [] }); break;
     case 'state': send({ type: 'response', id, ...state() }); break;
     case 'session_list': {
       const sessions = await SessionManager.list(created.manager.getCwd(), created.sessionDirectory);
@@ -203,9 +248,11 @@ async function handle(message) {
         if (item.behavior === 'steer') await session.steer(item.text, item.images);
         else await session.followUp(item.text, item.images);
       }
+      publishQueue();
       send({ type: 'response', id, queue: queueState() }); break;
     }
     case 'navigate': {
+      suggestions?.invalidate();
       await extensionsReady;
       requireIdle();
       const entry = created.manager.getEntry(message.entryId);
@@ -226,15 +273,18 @@ async function handle(message) {
       send({ type: 'response', id, ...navigation, editorImages, ...state() });
       break; }
     case 'compact':
+      suggestions?.invalidate();
       requireIdle(); requestCount = 0;
       await session.compact(message.instructions);
       send({ type: 'response', id, ...state() }); break;
     case 'abort':
+      suggestions?.invalidate();
       stopEpoch++;
       session.clearQueue(); queued = [];
       created.cancelExtensionUi();
       await session.abort(); send({ type: 'response', id, ...state() }); break;
     case 'shutdown':
+      suggestions?.invalidate();
       stopEpoch++;
       closing = true;
       session.clearQueue(); queued = [];
@@ -259,6 +309,7 @@ input.on('line', line => {
 input.on('close', () => {
   if (!closing && session) {
     closing = true;
+    suggestions?.invalidate();
     void (created ? created.close() : session.abort().finally(() => session.dispose()))
       .finally(() => { process.exitCode = 0; });
   }

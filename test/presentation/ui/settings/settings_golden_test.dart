@@ -121,13 +121,38 @@ Future<void> _expectCenteredGolden(WidgetTester t, String name) async {
       final card = find.byKey(Key('theme-$mode'));
       if (card.evaluate().isNotEmpty) masks.add(t.getRect(card).inflate(2));
     }
+    // 2026-10-27 B05/B06（用户确认）：新增「创作区文字字号」「提示词自动补全」两行，
+    // 从新行顶边往下的主栏一起排除（下方各行整体下移）；新行上方与侧栏照旧逐像素锁定。
+    for (final key in ['workspaceFontScale', 'promptAutocomplete']) {
+      final row = find.byKey(Key('setting-$key'));
+      if (row.evaluate().isEmpty) continue;
+      final capture = t.getRect(find.byKey(const Key('settings-capture')));
+      final r = t.getRect(row);
+      masks.add(Rect.fromLTRB(r.left, r.top, r.right, capture.bottom));
+    }
     // F25：只豁免新增的“命中率”小字，原进度条、百分比及数量仍逐像素锁定。
     for (final label
         in find.byKey(const Key('cache-hit-rate-label')).evaluate()) {
       masks.add(t.getRect(find.byWidget(label.widget)));
     }
     final l = AppLocalizations.of(t.element(find.byType(SettingsHost)))!;
-    expect(find.text('新'), findsNothing);
+    // 2026-10-27 E04（用户确认）：「新」改为只在首次见到的那次启动显示，
+    // 只允许出现在本批两行新设置里（这两行已整体排除），别处仍不准有常驻角标。
+    final newRows = [
+      for (final k in ['workspaceFontScale', 'promptAutocomplete'])
+        find.byKey(Key('setting-$k')),
+    ];
+    for (final e in find.text('新').evaluate()) {
+      expect(
+        newRows.any(
+          (row) => find
+              .descendant(of: row, matching: find.byWidget(e.widget))
+              .evaluate()
+              .isNotEmpty,
+        ),
+        isTrue,
+      );
+    }
     // 只豁免旧“新”标签本身的矩形，标题、卡片及其下方的控件继续逐像素锁定。
     final badgeText = TextPainter(
       text: TextSpan(
@@ -187,9 +212,7 @@ Future<void> _expectCenteredGolden(WidgetTester t, String name) async {
       for (final e in find.text(l.set_agDesc).evaluate()) {
         masks.add(t.getRect(find.byWidget(e.widget)));
       }
-      masks.add(
-        Rect.fromLTRB(tabs.left, tabs.top, tabs.right, capture.bottom),
-      );
+      masks.add(Rect.fromLTRB(tabs.left, tabs.top, tabs.right, capture.bottom));
       final aside = find
           .byType(SettingsAsideCard)
           .evaluate()

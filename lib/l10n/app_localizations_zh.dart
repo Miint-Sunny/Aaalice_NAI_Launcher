@@ -2698,9 +2698,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localGallery_copyPrompt => '复制 Prompt';
 
   @override
-  String get localGallery_copySeed => '复制 Seed';
-
-  @override
   String get localGallery_dragToShare => '拖拽以分享';
 
   @override
@@ -14363,9 +14360,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gen_translateNeedsModel => '还没配翻译模型，点一下去设置';
 
   @override
-  String get gen_translateRestore => '显示原文';
-
-  @override
   String gen_translateWith(Object route) {
     return '翻译（$route）';
   }
@@ -14734,7 +14728,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String gen_repeatTotal(Object times, Object total) {
-    return '重复 $times 次，共 $total 张（滚轮也能调）';
+    return '重复 $times 次，共 $total 张 · 按住左右拖动调节';
   }
 
   @override
@@ -20662,9 +20656,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ag_mentionSearchBlocks => '搜索积木';
 
   @override
-  String get ag_skillsTitle => '技能';
-
-  @override
   String get ag_keySelect => '选择';
 
   @override
@@ -21047,6 +21038,662 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mp_errorRateLimit => '请求过于频繁';
+
+  @override
+  String get ag_tool_prompt_set => '提示词组';
+
+  @override
+  String ag_psCount(int count, String unit) {
+    return '$count $unit';
+  }
+
+  @override
+  String ag_psPosition(int index, int count, String unit) {
+    return '第 $index $unit / 共 $count $unit';
+  }
+
+  @override
+  String get ag_psOverview => '总览全部';
+
+  @override
+  String get ag_psSingle => '回到单项';
+
+  @override
+  String get ag_psPrompt => '提示词';
+
+  @override
+  String get ag_psShared => '共同设定';
+
+  @override
+  String ag_psThisItem(String unit) {
+    return '这一$unit';
+  }
+
+  @override
+  String get ag_psMain => '主提示词';
+
+  @override
+  String ag_psCharacter(int index) {
+    return '角色 $index';
+  }
+
+  @override
+  String get ag_psNegative => '负面';
+
+  @override
+  String get ag_psImport => '导入画布';
+
+  @override
+  String get ag_psImportTip => '写入主提示词、角色和负面；参数和参考图不变';
+
+  @override
+  String ag_psImported(String title) {
+    return '已把「$title」写入提示词';
+  }
+
+  @override
+  String get ag_psGenerate => '生成';
+
+  @override
+  String get ag_psGenerating => '生成中';
+
+  @override
+  String ag_psRevision(int revision, int count) {
+    return 'v$revision · 已改 $count 项';
+  }
+
+  @override
+  String get ag_psSaveBlock => '存成积木';
+
+  @override
+  String ag_psSavedBlock(String title, int count) {
+    return '已存成积木「$title」· $count 项';
+  }
+
+  @override
+  String ag_psCopyItem(String unit) {
+    return '复制这一$unit的提示词';
+  }
+
+  @override
+  String get ag_psCopyAll => '复制全部';
+
+  @override
+  String ag_psEditItem(String unit) {
+    return '让 Agent 修改这一$unit';
+  }
+
+  @override
+  String ag_psEditDraft(String title, int index, String unit, String item) {
+    return '修改「$title」第 $index $unit（$item）：';
+  }
+
+  @override
+  String ag_psTooManyCharacters(int count) {
+    return '当前模型最多支持 $count 个角色';
+  }
+
+  @override
+  String get ag_psNoCharacters => '当前模型不支持角色提示词';
+
+  @override
+  String get ag_psMissing => '这张卡的数据已不在';
+
+  @override
+  String get startup_dataTitle => '无法准备应用数据';
+
+  @override
+  String get startup_dataHelp =>
+      '应用数据尚未准备完成，请保留现有文件。内容不同的文件不会合并或覆盖。请先备份并核对数据目录，检查磁盘空间和访问权限，再重试。';
+
+  @override
+  String get startup_dataCurrent => '当前数据目录';
+
+  @override
+  String get startup_dataLegacy => '旧数据目录';
+
+  @override
+  String get startup_dataOpenCurrent => '打开当前目录';
+
+  @override
+  String get startup_dataOpenLegacy => '打开旧目录';
+
+  @override
+  String get startup_dataDetails => '错误详情';
+
+  @override
+  String startup_dataActionFailed(String error) {
+    return '操作失败：$error';
+  }
+
+  @override
+  String get blocks_expandToText => '展开为文本';
+
+  @override
+  String get ag_answeredTitle => '向你提问 · 已回答';
+
+  @override
+  String get ag_historyButton => '历史';
+
+  @override
+  String get ag_historyTitle => '对话历史';
+
+  @override
+  String get ag_historySearch => '搜索发言和卡片…';
+
+  @override
+  String get ag_historyAll => '全部';
+
+  @override
+  String get ag_historyMine => '我的发言';
+
+  @override
+  String get ag_historyCards => '卡片';
+
+  @override
+  String get ag_historyQuestions => '问答';
+
+  @override
+  String get ag_historyEmpty => '没有匹配的条目';
+
+  @override
+  String get ag_historyBeforeCompaction => '这段在压缩之前，点看摘要';
+
+  @override
+  String get ag_historyAuto => '自动压缩';
+
+  @override
+  String get ag_historyManual => '手动压缩';
+
+  @override
+  String get ag_historyImageMessage => '图片消息';
+
+  @override
+  String ag_historyAnswer(String answer) {
+    return '你选了：$answer';
+  }
+
+  @override
+  String get ag_historyPromptSet => '提示词组';
+
+  @override
+  String ag_historyImages(int count) {
+    return '生成卡 · $count 张';
+  }
+
+  @override
+  String get ag_historyPromptChange => '提示词修改';
+
+  @override
+  String get ag_historyParams => '生成参数';
+
+  @override
+  String get ag_historyPositions => '角色位置';
+
+  @override
+  String get ag_historySettings => '设置修改';
+
+  @override
+  String get ag_historyGallery => '图库卡片';
+
+  @override
+  String get ag_historyChanges => '修改摘要';
+
+  @override
+  String get gen_translateTapOriginal => '点按：显示原文';
+
+  @override
+  String get gen_translateTapTranslated => '点按：显示译文';
+
+  @override
+  String get gen_translateClearRestore => '清除翻译块并还原';
+
+  @override
+  String get gen_translateClearRestoreSub => '全部变回普通原文，可撤销';
+
+  @override
+  String get gen_translateCleared => '已清除翻译块并还原原文';
+
+  @override
+  String get gen_translateAdjust => '追加翻译调整';
+
+  @override
+  String get gen_translateAdjustSub => '接着这次翻译聊，重切、重译、合并块';
+
+  @override
+  String get gen_translateAdjustTitle => '翻译调整';
+
+  @override
+  String gen_translateAdjustContext(int count) {
+    return '续接本次翻译 · $count 块';
+  }
+
+  @override
+  String gen_translateAdjustSelected(int count) {
+    return '已选 $count 块';
+  }
+
+  @override
+  String get gen_translateAdjustCollapse => '收起 / 展开';
+
+  @override
+  String get gen_translateAdjustIntro => '接着本次翻译调整。点击左侧翻译块添加引用，改块后可以撤销。';
+
+  @override
+  String get gen_translateAdjustSplit => '重新切块';
+
+  @override
+  String get gen_translateAdjustRetranslate => '重译选中';
+
+  @override
+  String get gen_translateAdjustMerge => '合并选中';
+
+  @override
+  String get gen_translateAdjustSplitTemplate => '读取当前块，按语义细分引用的块，保留精确原文。';
+
+  @override
+  String get gen_translateAdjustRetranslateTemplate => '读取当前块，重新翻译引用的块，不改原文。';
+
+  @override
+  String get gen_translateAdjustMergeTemplate => '读取当前块，按指定的原文顺序合并引用的块，无关块不动。';
+
+  @override
+  String get gen_translateAdjustMarkers =>
+      '请使用 translation_blocks_read 返回的 marker 列表。';
+
+  @override
+  String get gen_translateAdjustHint => '接着说要怎么调整…';
+
+  @override
+  String get gen_translateAdjustStartFailed => '无法启动翻译调整，请检查模型与 Agent 运行时。';
+
+  @override
+  String get gen_translateAdjustRunFailed => '调整已中止或失败，重试前请重新读取当前块。';
+
+  @override
+  String gen_repeatDragTotal(int times, int total) {
+    return '$times 次 · 共 $total 张';
+  }
+
+  @override
+  String get set_cvGroupBatches => '批量结果按批次分组';
+
+  @override
+  String get set_cvGroupBatchesSub => '关闭后逐张显示，点历史缩略图可直接定位单张图片。适用于简洁查看器和无限画布。';
+
+  @override
+  String get gen_groupBatches => '分组';
+
+  @override
+  String get gen_translateAdjustPickHint => '在左侧点块可引用';
+
+  @override
+  String get gen_translateAdjustClearRefs => '清除引用';
+
+  @override
+  String gen_translateAdjustSplitInto(String source, int count) {
+    return '$source → $count 块';
+  }
+
+  @override
+  String get gen_translateAdjustContextNote => '上下文：本次翻译的原文、切块和译文';
+
+  @override
+  String ag_historyStats(int messages, int cards) {
+    return '$messages 条发言 · $cards 张卡片';
+  }
+
+  @override
+  String get ag_historyKeySelect => '选择';
+
+  @override
+  String get ag_historyKeyJump => '跳到对话';
+
+  @override
+  String get ag_historyKeyClose => '关闭';
+
+  @override
+  String get blocks_tempLabel => '临时块';
+
+  @override
+  String blocks_tempEditedByAgent(String time) {
+    return 'Agent$time 改过这里。';
+  }
+
+  @override
+  String blocks_tempEditedByYou(String time) {
+    return '你$time 改过这里。';
+  }
+
+  @override
+  String blocks_tempExplain(String title) {
+    return '它已和块库里的「$title」断开，改动只留在这个位置，块库和其他提示词里的同名块不受影响。';
+  }
+
+  @override
+  String get blocks_tempEdit => '编辑';
+
+  @override
+  String get blocks_tempCompare => '对比原块';
+
+  @override
+  String get blocks_tempAdded => '新增';
+
+  @override
+  String blocks_tempAddedCount(int count) {
+    return '新增 $count 个词';
+  }
+
+  @override
+  String get blocks_tempAddedNone => '没有新增';
+
+  @override
+  String get blocks_tempRemoved => '删除';
+
+  @override
+  String blocks_tempRemovedHint(int count) {
+    return '删了 $count 个词';
+  }
+
+  @override
+  String get blocks_tempRemovedNone => '没有删除';
+
+  @override
+  String get blocks_tempRevert => '还原为原块';
+
+  @override
+  String get blocks_tempKeepEditing => '继续编辑';
+
+  @override
+  String get blocks_tempApply => '应用修改';
+
+  @override
+  String get blocks_tempSaveAs => '另存为新块';
+
+  @override
+  String get blocks_tempSaveAsHint => '另存为新块后，这里会换成新块，原块保持不变';
+
+  @override
+  String get blocks_tempSaveConfirm => '保存并转正';
+
+  @override
+  String get blocks_tempShowOriginal => '在块库中查看原块';
+
+  @override
+  String get gen_menuNew => '新';
+
+  @override
+  String get gen_repeatDragHint => '按住数字左右拖动调节 · 双击直接输入';
+
+  @override
+  String get gen_groupBatchesOn => '按批次分组 · 点击改为逐张显示';
+
+  @override
+  String get gen_groupBatchesOff => '逐张显示 · 点击按批次分组';
+
+  @override
+  String get blocks_presetCustom => '自定义';
+
+  @override
+  String get blocks_presetHint =>
+      '应用附带参数时质量词和负面预设一并还原。换到别的模型时，档位按目标模型自动换算；Turbo 沿用现有处理。';
+
+  @override
+  String get gen_vibeInpaintUnsupported => 'Vibe 不支持局部重绘（Inpainting），本次不会生效。';
+
+  @override
+  String get set_stThumbnailCacheLimit => '缩略图缓存上限';
+
+  @override
+  String get set_stThumbnailCacheLimitSub =>
+      '所有图库目录合计。启动或手动清理时，从最久没看的缩略图删到上限的 80%，不碰原图。';
+
+  @override
+  String get ag_slashGroupSkills => 'Skill';
+
+  @override
+  String get ag_slashGroupTemplates => '提示词模板';
+
+  @override
+  String get ag_slashGroupBuiltin => 'Studio 命令';
+
+  @override
+  String get ag_commandNew => '新建对话';
+
+  @override
+  String get ag_commandCompact => '压缩上下文';
+
+  @override
+  String get ag_commandModel => '选择模型';
+
+  @override
+  String get ag_commandThinking => '选择思考档位';
+
+  @override
+  String get ag_commandHistory => '打开会话历史';
+
+  @override
+  String get ag_commandRename => '重命名当前对话';
+
+  @override
+  String get ag_commandCopy => '复制最后一条回复';
+
+  @override
+  String get ag_commandExport => '导出当前会话';
+
+  @override
+  String get ag_commandCompactArgs => '[说明]';
+
+  @override
+  String get ag_commandRenameArgs => '<名称>';
+
+  @override
+  String get set_agNextSuggestion => '下一句建议';
+
+  @override
+  String get set_agNextSuggestionSub =>
+      '使用当前对话模型预测你的下一句消息，会额外消耗 token；按 Tab 采纳。';
+
+  @override
+  String get set_agCacheWarming => '提示缓存预热';
+
+  @override
+  String get set_agCacheWarmingSub =>
+      '在提示缓存快过期前用 1 token 的请求续上（按 5 分钟寿命，适配所有模型），下一步读缓存而不是重发整段上下文。';
+
+  @override
+  String get set_agCacheOff => '关闭';
+
+  @override
+  String get set_agCacheStreaming => '只在 Agent 运行时';
+
+  @override
+  String get set_agCacheIdle => '空闲时也预热';
+
+  @override
+  String get set_agCacheIdleCost => '空闲时也预热（最多 30 分钟）会产生额外模型费用。';
+
+  @override
+  String get ag_suggestionAccept => '按 Tab 填入这句建议';
+
+  @override
+  String get ag_cacheWarmTitle => '缓存预热';
+
+  @override
+  String get ag_cacheWarmOff => '已关闭';
+
+  @override
+  String get ag_cacheWarmRefreshing => '正在续期缓存…';
+
+  @override
+  String get ag_cacheWarmIdle => '待机，下次运行时开始';
+
+  @override
+  String ag_cacheWarmNext(String time) {
+    return '$time 后续期';
+  }
+
+  @override
+  String get set_stOther => '其他文件';
+
+  @override
+  String get set_stIncomplete => '部分目录读取失败，数字不完整；悬停分类可查看来源目录。';
+
+  @override
+  String get set_stSliceIncomplete => '未完整读取';
+
+  @override
+  String get localGallery_searchHistoryTitle => '最近搜索';
+
+  @override
+  String get localGallery_searchHistoryClear => '清空';
+
+  @override
+  String get localGallery_searchHistoryRemove => '从历史中删除';
+
+  @override
+  String ag_cacheWarmCount(int count) {
+    return '已续期 $count 次';
+  }
+
+  @override
+  String ag_cacheWarmLast(String time) {
+    return '上次 $time';
+  }
+
+  @override
+  String ag_cacheWarmTtl(int minutes) {
+    return '缓存寿命 $minutes 分钟';
+  }
+
+  @override
+  String get set_workspaceFontScale => '创作区文字字号';
+
+  @override
+  String get set_promptAutocomplete => '提示词自动补全';
+
+  @override
+  String get shortcut_action_open_resource_window => '打开资源小窗';
+
+  @override
+  String get set_workspaceFontScaleSub => '提示词框、角色框、块与大图提示词里的文字；和上面的界面字号分开调。';
+
+  @override
+  String get set_promptAutocompleteSub =>
+      '在提示词框和角色框输入时，从本地标签库给出候选；↑↓ 选择，Tab 或 Enter 采纳，Esc 关闭。';
+
+  @override
+  String get floating_open => '资源小窗';
+
+  @override
+  String get floating_searchGallery => '搜索（整段 / 完整标签）';
+
+  @override
+  String get floating_searchName => '搜索名称';
+
+  @override
+  String get floating_collapse => '收起为标题条';
+
+  @override
+  String get floating_expand => '展开';
+
+  @override
+  String get floating_empty => '没有内容';
+
+  @override
+  String get floating_loadFailed => '加载失败';
+
+  @override
+  String get floating_loadMore => '加载更多';
+
+  @override
+  String set_stThumbQuotaTip(int count, String time) {
+    return '$count 张缩略图 · 统计于$time';
+  }
+
+  @override
+  String get prompt_autocompleteTitle => '补全';
+
+  @override
+  String get prompt_autocompleteHint =>
+      '↑↓ 选择 · → 关联 · ← 返回 · Tab / 回车 补全 · Esc 关闭';
+
+  @override
+  String get prompt_autocompleteHintRelated =>
+      '↑↓ 选择 · ← 返回 · 回车 / 点击 追加 · Esc 关闭关联';
+
+  @override
+  String get resourceWindow_pin => '窗口置顶';
+
+  @override
+  String get resourceWindow_newWindow => '新开一个资源窗口';
+
+  @override
+  String get resourceWindow_rowHeight => '行高';
+
+  @override
+  String get resourceWindow_cardSize => '卡片大小';
+
+  @override
+  String get resourceWindow_dragHint => '拖到生成页对应区域使用';
+
+  @override
+  String get resourceWindow_dragHintBlocks => '拖到提示词插入';
+
+  @override
+  String get resourceWindow_keyDrag => '拖动';
+
+  @override
+  String get resourceWindow_keyDouble => '双击';
+
+  @override
+  String get resourceWindow_hintDrag => '到生成页使用';
+
+  @override
+  String get resourceWindow_hintView => '看大图';
+
+  @override
+  String get resourceWindow_hintPrimary => '执行主操作';
+
+  @override
+  String get resourceWindow_connected => '主窗口已连接';
+
+  @override
+  String get resourceWindow_disconnected => '主窗口未连接';
+
+  @override
+  String get resourceWindow_currentModelUsable => '当前模型可用';
+
+  @override
+  String get resourceWindow_insertPositive => '插入正面';
+
+  @override
+  String get resourceWindow_insertNegative => '插入负面';
+
+  @override
+  String get resourceWindow_errorNotFound => '这一项已经不存在，列表已刷新';
+
+  @override
+  String get resourceWindow_errorNotReady => '主窗口还没准备好，请稍后再试';
+
+  @override
+  String get resourceWindow_errorUnsupported => '当前模型不支持这个操作';
+
+  @override
+  String get resourceWindow_errorFailed => '操作失败';
+
+  @override
+  String get blocks_tempStandaloneExplain => '它只存在于当前提示词中，没有保存到块库；想留着就另存为新块。';
+
+  @override
+  String blocks_tempCreatedByAgent(String time) {
+    return 'Agent$time 建了这个块。';
+  }
+
+  @override
+  String blocks_tempCreatedByYou(String time) {
+    return '你$time 建了这个块。';
+  }
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -23741,9 +24388,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get localGallery_copyPrompt => '複製 Prompt';
-
-  @override
-  String get localGallery_copySeed => '複製 Seed';
 
   @override
   String get localGallery_dragToShare => '拖曳以分享';
@@ -35408,9 +36052,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get gen_translateNeedsModel => '還沒配翻譯模型，點一下去設定';
 
   @override
-  String get gen_translateRestore => '顯示原文';
-
-  @override
   String gen_translateWith(Object route) {
     return '翻譯（$route）';
   }
@@ -35779,7 +36420,7 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String gen_repeatTotal(Object times, Object total) {
-    return '重複 $times 次，共 $total 張（滾輪也能調）';
+    return '重複 $times 次，共 $total 張 · 按住左右拖動調節';
   }
 
   @override
@@ -41707,9 +42348,6 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get ag_mentionSearchBlocks => '搜尋積木';
 
   @override
-  String get ag_skillsTitle => '技能';
-
-  @override
   String get ag_keySelect => '選擇';
 
   @override
@@ -42092,4 +42730,660 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get mp_errorRateLimit => '請求過於頻繁';
+
+  @override
+  String get ag_tool_prompt_set => '提示片語';
+
+  @override
+  String ag_psCount(int count, String unit) {
+    return '$count $unit';
+  }
+
+  @override
+  String ag_psPosition(int index, int count, String unit) {
+    return '第 $index $unit / 共 $count $unit';
+  }
+
+  @override
+  String get ag_psOverview => '總覽全部';
+
+  @override
+  String get ag_psSingle => '回到單項';
+
+  @override
+  String get ag_psPrompt => '提示詞';
+
+  @override
+  String get ag_psShared => '共同設定';
+
+  @override
+  String ag_psThisItem(String unit) {
+    return '這一$unit';
+  }
+
+  @override
+  String get ag_psMain => '主提示詞';
+
+  @override
+  String ag_psCharacter(int index) {
+    return '角色 $index';
+  }
+
+  @override
+  String get ag_psNegative => '負面';
+
+  @override
+  String get ag_psImport => '匯入畫布';
+
+  @override
+  String get ag_psImportTip => '寫入主提示詞、角色和負面；參數和參考圖不變';
+
+  @override
+  String ag_psImported(String title) {
+    return '已把「$title」寫入提示詞';
+  }
+
+  @override
+  String get ag_psGenerate => '生成';
+
+  @override
+  String get ag_psGenerating => '生成中';
+
+  @override
+  String ag_psRevision(int revision, int count) {
+    return 'v$revision · 已改 $count 項';
+  }
+
+  @override
+  String get ag_psSaveBlock => '存成積木';
+
+  @override
+  String ag_psSavedBlock(String title, int count) {
+    return '已存成積木「$title」· $count 項';
+  }
+
+  @override
+  String ag_psCopyItem(String unit) {
+    return '複製這一$unit的提示詞';
+  }
+
+  @override
+  String get ag_psCopyAll => '複製全部';
+
+  @override
+  String ag_psEditItem(String unit) {
+    return '讓 Agent 修改這一$unit';
+  }
+
+  @override
+  String ag_psEditDraft(String title, int index, String unit, String item) {
+    return '修改「$title」第 $index $unit（$item）：';
+  }
+
+  @override
+  String ag_psTooManyCharacters(int count) {
+    return '當前模型最多支援 $count 個角色';
+  }
+
+  @override
+  String get ag_psNoCharacters => '當前模型不支援角色提示詞';
+
+  @override
+  String get ag_psMissing => '這張卡的資料已不在';
+
+  @override
+  String get startup_dataTitle => '無法準備應用資料';
+
+  @override
+  String get startup_dataHelp =>
+      '應用資料尚未準備完成，請保留現有檔案。內容不同的檔案不會合並或覆蓋。請先備份並核對資料目錄，檢查磁碟空間和存取權限，再重試。';
+
+  @override
+  String get startup_dataCurrent => '當前資料目錄';
+
+  @override
+  String get startup_dataLegacy => '舊資料目錄';
+
+  @override
+  String get startup_dataOpenCurrent => '開啟當前目錄';
+
+  @override
+  String get startup_dataOpenLegacy => '開啟舊目錄';
+
+  @override
+  String get startup_dataDetails => '錯誤詳情';
+
+  @override
+  String startup_dataActionFailed(String error) {
+    return '操作失敗：$error';
+  }
+
+  @override
+  String get blocks_expandToText => '展開為文本';
+
+  @override
+  String get ag_answeredTitle => '向你提問 · 已回答';
+
+  @override
+  String get ag_historyButton => '歷史';
+
+  @override
+  String get ag_historyTitle => '對話歷史';
+
+  @override
+  String get ag_historySearch => '搜尋發言和卡片…';
+
+  @override
+  String get ag_historyAll => '全部';
+
+  @override
+  String get ag_historyMine => '我的發言';
+
+  @override
+  String get ag_historyCards => '卡片';
+
+  @override
+  String get ag_historyQuestions => '問答';
+
+  @override
+  String get ag_historyEmpty => '沒有匹配的條目';
+
+  @override
+  String get ag_historyBeforeCompaction => '這段在壓縮之前，點看摘要';
+
+  @override
+  String get ag_historyAuto => '自動壓縮';
+
+  @override
+  String get ag_historyManual => '手動壓縮';
+
+  @override
+  String get ag_historyImageMessage => '圖片訊息';
+
+  @override
+  String ag_historyAnswer(String answer) {
+    return '你選了：$answer';
+  }
+
+  @override
+  String get ag_historyPromptSet => '提示片語';
+
+  @override
+  String ag_historyImages(int count) {
+    return '生成卡 · $count 張';
+  }
+
+  @override
+  String get ag_historyPromptChange => '提示詞修改';
+
+  @override
+  String get ag_historyParams => '生成參數';
+
+  @override
+  String get ag_historyPositions => '角色位置';
+
+  @override
+  String get ag_historySettings => '設定修改';
+
+  @override
+  String get ag_historyGallery => '圖庫卡片';
+
+  @override
+  String get ag_historyChanges => '修改摘要';
+
+  @override
+  String get gen_translateTapOriginal => '點按：顯示原文';
+
+  @override
+  String get gen_translateTapTranslated => '點按：顯示譯文';
+
+  @override
+  String get gen_translateClearRestore => '清除翻譯塊並還原';
+
+  @override
+  String get gen_translateClearRestoreSub => '全部變回普通原文，可復原';
+
+  @override
+  String get gen_translateCleared => '已清除翻譯塊並還原原文';
+
+  @override
+  String get gen_translateAdjust => '追加翻譯調整';
+
+  @override
+  String get gen_translateAdjustSub => '接著這次翻譯聊，重切、重譯、合併塊';
+
+  @override
+  String get gen_translateAdjustTitle => '翻譯調整';
+
+  @override
+  String gen_translateAdjustContext(int count) {
+    return '續接本次翻譯 · $count 塊';
+  }
+
+  @override
+  String gen_translateAdjustSelected(int count) {
+    return '已選 $count 塊';
+  }
+
+  @override
+  String get gen_translateAdjustCollapse => '收起 / 展開';
+
+  @override
+  String get gen_translateAdjustIntro => '接著本次翻譯調整。點選左側翻譯塊新增引用，改塊後可以復原。';
+
+  @override
+  String get gen_translateAdjustSplit => '重新切塊';
+
+  @override
+  String get gen_translateAdjustRetranslate => '重譯選中';
+
+  @override
+  String get gen_translateAdjustMerge => '合併選中';
+
+  @override
+  String get gen_translateAdjustSplitTemplate => '讀取當前塊，按語義細分引用的塊，保留精確原文。';
+
+  @override
+  String get gen_translateAdjustRetranslateTemplate => '讀取當前塊，重新翻譯引用的塊，不改原文。';
+
+  @override
+  String get gen_translateAdjustMergeTemplate => '讀取當前塊，按指定的原文順序合併引用的塊，無關塊不動。';
+
+  @override
+  String get gen_translateAdjustMarkers =>
+      '請使用 translation_blocks_read 返回的 marker 列表。';
+
+  @override
+  String get gen_translateAdjustHint => '接著說要怎麼調整…';
+
+  @override
+  String get gen_translateAdjustStartFailed => '無法啟動翻譯調整，請檢查模型與 Agent 執行時。';
+
+  @override
+  String get gen_translateAdjustRunFailed => '調整已中止或失敗，重試前請重新讀取當前塊。';
+
+  @override
+  String gen_repeatDragTotal(int times, int total) {
+    return '$times 次 · 共 $total 張';
+  }
+
+  @override
+  String get set_cvGroupBatches => '批次結果按批次分組';
+
+  @override
+  String get set_cvGroupBatchesSub => '關閉後逐張顯示，點歷史縮圖可直接定位單張圖片。適用於簡潔檢視器和無限畫布。';
+
+  @override
+  String get gen_groupBatches => '分組';
+
+  @override
+  String get gen_translateAdjustPickHint => '在左側點塊可引用';
+
+  @override
+  String get gen_translateAdjustClearRefs => '清除引用';
+
+  @override
+  String gen_translateAdjustSplitInto(String source, int count) {
+    return '$source → $count 塊';
+  }
+
+  @override
+  String get gen_translateAdjustContextNote => '上下文：本次翻譯的原文、切塊和譯文';
+
+  @override
+  String ag_historyStats(int messages, int cards) {
+    return '$messages 條發言 · $cards 張卡片';
+  }
+
+  @override
+  String get ag_historyKeySelect => '選擇';
+
+  @override
+  String get ag_historyKeyJump => '跳到對話';
+
+  @override
+  String get ag_historyKeyClose => '關閉';
+
+  @override
+  String get blocks_tempLabel => '臨時塊';
+
+  @override
+  String blocks_tempEditedByAgent(String time) {
+    return 'Agent$time 改過這裡。';
+  }
+
+  @override
+  String blocks_tempEditedByYou(String time) {
+    return '你$time 改過這裡。';
+  }
+
+  @override
+  String blocks_tempExplain(String title) {
+    return '它已和塊庫裡的「$title」斷開，改動只留在這個位置，塊庫和其他提示詞裡的同名塊不受影響。';
+  }
+
+  @override
+  String get blocks_tempEdit => '編輯';
+
+  @override
+  String get blocks_tempCompare => '對比原塊';
+
+  @override
+  String get blocks_tempAdded => '新增';
+
+  @override
+  String blocks_tempAddedCount(int count) {
+    return '新增 $count 個詞';
+  }
+
+  @override
+  String get blocks_tempAddedNone => '沒有新增';
+
+  @override
+  String get blocks_tempRemoved => '刪除';
+
+  @override
+  String blocks_tempRemovedHint(int count) {
+    return '刪了 $count 個詞';
+  }
+
+  @override
+  String get blocks_tempRemovedNone => '沒有刪除';
+
+  @override
+  String get blocks_tempRevert => '還原為原塊';
+
+  @override
+  String get blocks_tempKeepEditing => '繼續編輯';
+
+  @override
+  String get blocks_tempApply => '應用修改';
+
+  @override
+  String get blocks_tempSaveAs => '另存為新塊';
+
+  @override
+  String get blocks_tempSaveAsHint => '另存為新塊後，這裡會換成新塊，原塊保持不變';
+
+  @override
+  String get blocks_tempSaveConfirm => '儲存並轉正';
+
+  @override
+  String get blocks_tempShowOriginal => '在塊庫中檢視原塊';
+
+  @override
+  String get gen_menuNew => '新';
+
+  @override
+  String get gen_repeatDragHint => '按住數字左右拖動調節 · 雙擊直接輸入';
+
+  @override
+  String get gen_groupBatchesOn => '按批次分組 · 點選改為逐張顯示';
+
+  @override
+  String get gen_groupBatchesOff => '逐張顯示 · 點選按批次分組';
+
+  @override
+  String get blocks_presetCustom => '自訂';
+
+  @override
+  String get blocks_presetHint =>
+      '應用附帶參數時品質詞和負面預設一併還原。換到別的模型時，檔位按目標模型自動換算；Turbo 沿用現有處理。';
+
+  @override
+  String get gen_vibeInpaintUnsupported => 'Vibe 不支援局部重繪（Inpainting），本次不會生效。';
+
+  @override
+  String get set_stThumbnailCacheLimit => '縮圖快取上限';
+
+  @override
+  String get set_stThumbnailCacheLimitSub =>
+      '所有圖庫目錄合計。啟動或手動清理時，從最久沒看的縮圖刪到上限的 80%，不碰原圖。';
+
+  @override
+  String get ag_slashGroupSkills => 'Skill';
+
+  @override
+  String get ag_slashGroupTemplates => '提示詞範本';
+
+  @override
+  String get ag_slashGroupBuiltin => 'Studio 命令';
+
+  @override
+  String get ag_commandNew => '新增對話';
+
+  @override
+  String get ag_commandCompact => '壓縮上下文';
+
+  @override
+  String get ag_commandModel => '選擇模型';
+
+  @override
+  String get ag_commandThinking => '選擇思考檔位';
+
+  @override
+  String get ag_commandHistory => '開啟會話歷史';
+
+  @override
+  String get ag_commandRename => '重新命名當前對話';
+
+  @override
+  String get ag_commandCopy => '複製最後一條回覆';
+
+  @override
+  String get ag_commandExport => '匯出當前會話';
+
+  @override
+  String get ag_commandCompactArgs => '[說明]';
+
+  @override
+  String get ag_commandRenameArgs => '<名稱>';
+
+  @override
+  String get set_agNextSuggestion => '下一句建議';
+
+  @override
+  String get set_agNextSuggestionSub =>
+      '使用當前對話模型預測你的下一句訊息，會額外消耗 token；按 Tab 採納。';
+
+  @override
+  String get set_agCacheWarming => '提示快取預熱';
+
+  @override
+  String get set_agCacheWarmingSub =>
+      '在提示快取快過期前用 1 token 的請求續上（按 5 分鐘壽命，適配所有模型），下一步讀快取而不是重發整段上下文。';
+
+  @override
+  String get set_agCacheOff => '關閉';
+
+  @override
+  String get set_agCacheStreaming => '只在 Agent 執行時';
+
+  @override
+  String get set_agCacheIdle => '空閒時也預熱';
+
+  @override
+  String get set_agCacheIdleCost => '空閒時也預熱（最多 30 分鐘）會產生額外模型費用。';
+
+  @override
+  String get ag_suggestionAccept => '按 Tab 填入這句建議';
+
+  @override
+  String get ag_cacheWarmTitle => '快取預熱';
+
+  @override
+  String get ag_cacheWarmOff => '已關閉';
+
+  @override
+  String get ag_cacheWarmRefreshing => '正在續期快取…';
+
+  @override
+  String get ag_cacheWarmIdle => '待機，下次執行時開始';
+
+  @override
+  String ag_cacheWarmNext(String time) {
+    return '$time 後續期';
+  }
+
+  @override
+  String get set_stOther => '其他檔案';
+
+  @override
+  String get set_stIncomplete => '部分目錄讀取失敗，數字不完整；懸停分類可檢視來源目錄。';
+
+  @override
+  String get set_stSliceIncomplete => '未完整讀取';
+
+  @override
+  String get localGallery_searchHistoryTitle => '最近搜尋';
+
+  @override
+  String get localGallery_searchHistoryClear => '清空';
+
+  @override
+  String get localGallery_searchHistoryRemove => '從歷史中刪除';
+
+  @override
+  String ag_cacheWarmCount(int count) {
+    return '已續期 $count 次';
+  }
+
+  @override
+  String ag_cacheWarmLast(String time) {
+    return '上次 $time';
+  }
+
+  @override
+  String ag_cacheWarmTtl(int minutes) {
+    return '快取壽命 $minutes 分鐘';
+  }
+
+  @override
+  String get set_workspaceFontScale => '創作區文字字號';
+
+  @override
+  String get set_promptAutocomplete => '提示詞自動補全';
+
+  @override
+  String get shortcut_action_open_resource_window => '開啟資源小窗';
+
+  @override
+  String get set_workspaceFontScaleSub => '提示詞框、角色框、塊與大圖提示詞裡的文字；和上面的介面字號分開調。';
+
+  @override
+  String get set_promptAutocompleteSub =>
+      '在提示詞框和角色框輸入時，從本地標籤庫給出候選；↑↓ 選擇，Tab 或 Enter 採納，Esc 關閉。';
+
+  @override
+  String get floating_open => '資源小窗';
+
+  @override
+  String get floating_searchGallery => '搜尋（整段 / 完整標籤）';
+
+  @override
+  String get floating_searchName => '搜尋名稱';
+
+  @override
+  String get floating_collapse => '收起為標題條';
+
+  @override
+  String get floating_expand => '展開';
+
+  @override
+  String get floating_empty => '沒有內容';
+
+  @override
+  String get floating_loadFailed => '載入失敗';
+
+  @override
+  String get floating_loadMore => '載入更多';
+
+  @override
+  String set_stThumbQuotaTip(int count, String time) {
+    return '$count 張縮圖 · 統計於$time';
+  }
+
+  @override
+  String get prompt_autocompleteTitle => '補全';
+
+  @override
+  String get prompt_autocompleteHint =>
+      '↑↓ 選擇 · → 關聯 · ← 返回 · Tab / 回車 補全 · Esc 關閉';
+
+  @override
+  String get prompt_autocompleteHintRelated =>
+      '↑↓ 選擇 · ← 返回 · 回車 / 點選 追加 · Esc 關閉關聯';
+
+  @override
+  String get resourceWindow_pin => '視窗置頂';
+
+  @override
+  String get resourceWindow_newWindow => '新開一個資源視窗';
+
+  @override
+  String get resourceWindow_rowHeight => '行高';
+
+  @override
+  String get resourceWindow_cardSize => '卡片大小';
+
+  @override
+  String get resourceWindow_dragHint => '拖到生成頁對應區域使用';
+
+  @override
+  String get resourceWindow_dragHintBlocks => '拖到提示詞插入';
+
+  @override
+  String get resourceWindow_keyDrag => '拖動';
+
+  @override
+  String get resourceWindow_keyDouble => '雙擊';
+
+  @override
+  String get resourceWindow_hintDrag => '到生成頁使用';
+
+  @override
+  String get resourceWindow_hintView => '看大圖';
+
+  @override
+  String get resourceWindow_hintPrimary => '執行主操作';
+
+  @override
+  String get resourceWindow_connected => '主視窗已連線';
+
+  @override
+  String get resourceWindow_disconnected => '主視窗未連線';
+
+  @override
+  String get resourceWindow_currentModelUsable => '當前模型可用';
+
+  @override
+  String get resourceWindow_insertPositive => '插入正面';
+
+  @override
+  String get resourceWindow_insertNegative => '插入負面';
+
+  @override
+  String get resourceWindow_errorNotFound => '這一項已經不存在，列表已重新整理';
+
+  @override
+  String get resourceWindow_errorNotReady => '主視窗還沒準備好，請稍後再試';
+
+  @override
+  String get resourceWindow_errorUnsupported => '當前模型不支援這個操作';
+
+  @override
+  String get resourceWindow_errorFailed => '操作失敗';
+
+  @override
+  String get blocks_tempStandaloneExplain => '它只存在於當前提示詞中，沒有儲存到塊庫；想留著就另存為新塊。';
+
+  @override
+  String blocks_tempCreatedByAgent(String time) {
+    return 'Agent$time 建了這個塊。';
+  }
+
+  @override
+  String blocks_tempCreatedByYou(String time) {
+    return '你$time 建了這個塊。';
+  }
 }

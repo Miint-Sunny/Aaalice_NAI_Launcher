@@ -1263,7 +1263,6 @@
   "localGallery_sendToKrita": "发送到 Krita",
   "localGallery_importImageMetadata": "导入图片元数据",
   "localGallery_copyPrompt": "复制 Prompt",
-  "localGallery_copySeed": "复制 Seed",
   "localGallery_dragToShare": "拖拽以分享",
   "galleryDragCount": "{count} 张",
   "@galleryDragCount": {
@@ -8151,7 +8150,6 @@
   "gen_relatedSub": "补全时推荐常一起出现的标签",
   "gen_translating": "正在翻译…",
   "gen_translateNeedsModel": "还没配翻译模型，点一下去设置",
-  "gen_translateRestore": "显示原文",
   "gen_translateWith": "翻译（{route}）",
   "@gen_translateWith": {
     "placeholders": {
@@ -8326,7 +8324,7 @@
   "gen_countTip": "一次请求出几张（1–4）",
   "gen_repeat": "重复",
   "gen_repeatTip": "连续发几次请求",
-  "gen_repeatTotal": "重复 {times} 次，共 {total} 张（滚轮也能调）",
+  "gen_repeatTotal": "重复 {times} 次，共 {total} 张 · 按住左右拖动调节",
   "@gen_repeatTotal": {
     "placeholders": {
       "times": {},
@@ -11119,7 +11117,6 @@
   "ag_mentionTitle": "引用到这条消息",
   "ag_mentionEmpty": "没有匹配的内容",
   "ag_mentionSearchBlocks": "搜索积木",
-  "ag_skillsTitle": "技能",
   "ag_keySelect": "选择",
   "ag_keyInsert": "插入",
   "ag_keyCategory": "切类别",
@@ -11256,5 +11253,363 @@
   "mp_errorNetwork": "连接不可用",
   "mp_errorResponse": "响应无效",
   "mp_errorHttp": "请求失败",
-  "mp_errorRateLimit": "请求过于频繁"
+  "mp_errorRateLimit": "请求过于频繁",
+  "ag_tool_prompt_set": "提示词组",
+  "ag_psCount": "{count} {unit}",
+  "@ag_psCount": {"placeholders": {"count": {"type": "int"}, "unit": {"type": "String"}}},
+  "ag_psPosition": "第 {index} {unit} / 共 {count} {unit}",
+  "@ag_psPosition": {"placeholders": {"index": {"type": "int"}, "count": {"type": "int"}, "unit": {"type": "String"}}},
+  "ag_psOverview": "总览全部",
+  "ag_psSingle": "回到单项",
+  "ag_psPrompt": "提示词",
+  "ag_psShared": "共同设定",
+  "ag_psThisItem": "这一{unit}",
+  "@ag_psThisItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psMain": "主提示词",
+  "ag_psCharacter": "角色 {index}",
+  "@ag_psCharacter": {"placeholders": {"index": {"type": "int"}}},
+  "ag_psNegative": "负面",
+  "ag_psImport": "导入画布",
+  "ag_psImportTip": "写入主提示词、角色和负面；参数和参考图不变",
+  "ag_psImported": "已把「{title}」写入提示词",
+  "@ag_psImported": {"placeholders": {"title": {"type": "String"}}},
+  "ag_psGenerate": "生成",
+  "ag_psGenerating": "生成中",
+  "ag_psRevision": "v{revision} · 已改 {count} 项",
+  "@ag_psRevision": {"placeholders": {"revision": {"type": "int"}, "count": {"type": "int"}}},
+  "ag_psSaveBlock": "存成积木",
+  "ag_psSavedBlock": "已存成积木「{title}」· {count} 项",
+  "@ag_psSavedBlock": {"placeholders": {"title": {"type": "String"}, "count": {"type": "int"}}},
+  "ag_psCopyItem": "复制这一{unit}的提示词",
+  "@ag_psCopyItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psCopyAll": "复制全部",
+  "ag_psEditItem": "让 Agent 修改这一{unit}",
+  "@ag_psEditItem": {"placeholders": {"unit": {"type": "String"}}},
+  "ag_psEditDraft": "修改「{title}」第 {index} {unit}（{item}）：",
+  "@ag_psEditDraft": {"placeholders": {"title": {"type": "String"}, "index": {"type": "int"}, "unit": {"type": "String"}, "item": {"type": "String"}}},
+  "ag_psTooManyCharacters": "当前模型最多支持 {count} 个角色",
+  "@ag_psTooManyCharacters": {"placeholders": {"count": {"type": "int"}}},
+  "ag_psNoCharacters": "当前模型不支持角色提示词",
+  "ag_psMissing": "这张卡的数据已不在",
+  "startup_dataTitle": "无法准备应用数据",
+  "startup_dataHelp": "应用数据尚未准备完成，请保留现有文件。内容不同的文件不会合并或覆盖。请先备份并核对数据目录，检查磁盘空间和访问权限，再重试。",
+  "startup_dataCurrent": "当前数据目录",
+  "startup_dataLegacy": "旧数据目录",
+  "startup_dataOpenCurrent": "打开当前目录",
+  "startup_dataOpenLegacy": "打开旧目录",
+  "startup_dataDetails": "错误详情",
+  "startup_dataActionFailed": "操作失败：{error}",
+  "@startup_dataActionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_expandToText": "展开为文本",
+  "ag_answeredTitle": "向你提问 · 已回答",
+  "ag_historyButton": "历史",
+  "ag_historyTitle": "对话历史",
+  "ag_historySearch": "搜索发言和卡片…",
+  "ag_historyAll": "全部",
+  "ag_historyMine": "我的发言",
+  "ag_historyCards": "卡片",
+  "ag_historyQuestions": "问答",
+  "ag_historyEmpty": "没有匹配的条目",
+  "ag_historyBeforeCompaction": "这段在压缩之前，点看摘要",
+  "ag_historyAuto": "自动压缩",
+  "ag_historyManual": "手动压缩",
+  "ag_historyImageMessage": "图片消息",
+  "ag_historyAnswer": "你选了：{answer}",
+  "@ag_historyAnswer": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_historyPromptSet": "提示词组",
+  "ag_historyImages": "生成卡 · {count} 张",
+  "@ag_historyImages": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_historyPromptChange": "提示词修改",
+  "ag_historyParams": "生成参数",
+  "ag_historyPositions": "角色位置",
+  "ag_historySettings": "设置修改",
+  "ag_historyGallery": "图库卡片",
+  "ag_historyChanges": "修改摘要",
+  "gen_translateTapOriginal": "点按：显示原文",
+  "gen_translateTapTranslated": "点按：显示译文",
+  "gen_translateClearRestore": "清除翻译块并还原",
+  "gen_translateClearRestoreSub": "全部变回普通原文，可撤销",
+  "gen_translateCleared": "已清除翻译块并还原原文",
+  "gen_translateAdjust": "追加翻译调整",
+  "gen_translateAdjustSub": "接着这次翻译聊，重切、重译、合并块",
+  "gen_translateAdjustTitle": "翻译调整",
+  "gen_translateAdjustContext": "续接本次翻译 · {count} 块",
+  "@gen_translateAdjustContext": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustSelected": "已选 {count} 块",
+  "@gen_translateAdjustSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_translateAdjustCollapse": "收起 / 展开",
+  "gen_translateAdjustIntro": "接着本次翻译调整。点击左侧翻译块添加引用，改块后可以撤销。",
+  "gen_translateAdjustSplit": "重新切块",
+  "gen_translateAdjustRetranslate": "重译选中",
+  "gen_translateAdjustMerge": "合并选中",
+  "gen_translateAdjustSplitTemplate": "读取当前块，按语义细分引用的块，保留精确原文。",
+  "gen_translateAdjustRetranslateTemplate": "读取当前块，重新翻译引用的块，不改原文。",
+  "gen_translateAdjustMergeTemplate": "读取当前块，按指定的原文顺序合并引用的块，无关块不动。",
+  "gen_translateAdjustMarkers": "请使用 translation_blocks_read 返回的 marker 列表。",
+  "gen_translateAdjustHint": "接着说要怎么调整…",
+  "gen_translateAdjustStartFailed": "无法启动翻译调整，请检查模型与 Agent 运行时。",
+  "gen_translateAdjustRunFailed": "调整已中止或失败，重试前请重新读取当前块。",
+  "gen_repeatDragTotal": "{times} 次 · 共 {total} 张",
+  "@gen_repeatDragTotal": {
+    "placeholders": {
+      "times": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "set_cvGroupBatches": "批量结果按批次分组",
+  "set_cvGroupBatchesSub": "关闭后逐张显示，点历史缩略图可直接定位单张图片。适用于简洁查看器和无限画布。",
+  "gen_groupBatches": "分组",
+  "gen_translateAdjustPickHint": "在左侧点块可引用",
+  "gen_translateAdjustClearRefs": "清除引用",
+  "gen_translateAdjustSplitInto": "{source} → {count} 块",
+  "gen_translateAdjustContextNote": "上下文：本次翻译的原文、切块和译文",
+  "ag_historyStats": "{messages} 条发言 · {cards} 张卡片",
+  "ag_historyKeySelect": "选择",
+  "ag_historyKeyJump": "跳到对话",
+  "ag_historyKeyClose": "关闭",
+  "blocks_tempLabel": "临时块",
+  "blocks_tempEditedByAgent": "Agent{time} 改过这里。",
+  "blocks_tempEditedByYou": "你{time} 改过这里。",
+  "blocks_tempExplain": "它已和块库里的「{title}」断开，改动只留在这个位置，块库和其他提示词里的同名块不受影响。",
+  "blocks_tempEdit": "编辑",
+  "blocks_tempCompare": "对比原块",
+  "blocks_tempAdded": "新增",
+  "blocks_tempAddedCount": "新增 {count} 个词",
+  "blocks_tempAddedNone": "没有新增",
+  "blocks_tempRemoved": "删除",
+  "blocks_tempRemovedHint": "删了 {count} 个词",
+  "blocks_tempRemovedNone": "没有删除",
+  "blocks_tempRevert": "还原为原块",
+  "blocks_tempKeepEditing": "继续编辑",
+  "blocks_tempApply": "应用修改",
+  "blocks_tempSaveAs": "另存为新块",
+  "blocks_tempSaveAsHint": "另存为新块后，这里会换成新块，原块保持不变",
+  "blocks_tempSaveConfirm": "保存并转正",
+  "blocks_tempShowOriginal": "在块库中查看原块",
+  "gen_menuNew": "新",
+  "gen_repeatDragHint": "按住数字左右拖动调节 · 双击直接输入",
+  "gen_groupBatchesOn": "按批次分组 · 点击改为逐张显示",
+  "gen_groupBatchesOff": "逐张显示 · 点击按批次分组",
+  "blocks_presetCustom": "自定义",
+  "blocks_presetHint": "应用附带参数时质量词和负面预设一并还原。换到别的模型时，档位按目标模型自动换算；Turbo 沿用现有处理。",
+  "@gen_translateAdjustSplitInto": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@ag_historyStats": {
+    "placeholders": {
+      "messages": {
+        "type": "int"
+      },
+      "cards": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempEditedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempEditedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempExplain": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "@blocks_tempAddedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@blocks_tempRemovedHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gen_vibeInpaintUnsupported": "Vibe 不支持局部重绘（Inpainting），本次不会生效。",
+  "set_stThumbnailCacheLimit": "缩略图缓存上限",
+  "set_stThumbnailCacheLimitSub": "所有图库目录合计。启动或手动清理时，从最久没看的缩略图删到上限的 80%，不碰原图。",
+  "ag_slashGroupSkills": "Skill",
+  "ag_slashGroupTemplates": "提示词模板",
+  "ag_slashGroupBuiltin": "Studio 命令",
+  "ag_commandNew": "新建对话",
+  "ag_commandCompact": "压缩上下文",
+  "ag_commandModel": "选择模型",
+  "ag_commandThinking": "选择思考档位",
+  "ag_commandHistory": "打开会话历史",
+  "ag_commandRename": "重命名当前对话",
+  "ag_commandCopy": "复制最后一条回复",
+  "ag_commandExport": "导出当前会话",
+  "ag_commandCompactArgs": "[说明]",
+  "ag_commandRenameArgs": "<名称>",
+  "set_agNextSuggestion": "下一句建议",
+  "set_agNextSuggestionSub": "使用当前对话模型预测你的下一句消息，会额外消耗 token；按 Tab 采纳。",
+  "set_agCacheWarming": "提示缓存预热",
+  "set_agCacheWarmingSub": "在提示缓存快过期前用 1 token 的请求续上（按 5 分钟寿命，适配所有模型），下一步读缓存而不是重发整段上下文。",
+  "set_agCacheOff": "关闭",
+  "set_agCacheStreaming": "只在 Agent 运行时",
+  "set_agCacheIdle": "空闲时也预热",
+  "set_agCacheIdleCost": "空闲时也预热（最多 30 分钟）会产生额外模型费用。",
+  "ag_suggestionAccept": "按 Tab 填入这句建议",
+  "ag_cacheWarmTitle": "缓存预热",
+  "ag_cacheWarmOff": "已关闭",
+  "ag_cacheWarmRefreshing": "正在续期缓存…",
+  "ag_cacheWarmIdle": "待机，下次运行时开始",
+  "ag_cacheWarmNext": "{time} 后续期",
+  "@ag_cacheWarmNext": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "set_stOther": "其他文件",
+  "set_stIncomplete": "部分目录读取失败，数字不完整；悬停分类可查看来源目录。",
+  "set_stSliceIncomplete": "未完整读取",
+  "localGallery_searchHistoryTitle": "最近搜索",
+  "localGallery_searchHistoryClear": "清空",
+  "localGallery_searchHistoryRemove": "从历史中删除",
+  "ag_cacheWarmCount": "已续期 {count} 次",
+  "@ag_cacheWarmCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ag_cacheWarmLast": "上次 {time}",
+  "@ag_cacheWarmLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ag_cacheWarmTtl": "缓存寿命 {minutes} 分钟",
+  "@ag_cacheWarmTtl": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "set_workspaceFontScale": "创作区文字字号",
+  "set_promptAutocomplete": "提示词自动补全",
+  "shortcut_action_open_resource_window": "打开资源小窗",
+  "set_workspaceFontScaleSub": "提示词框、角色框、块与大图提示词里的文字；和上面的界面字号分开调。",
+  "set_promptAutocompleteSub": "在提示词框和角色框输入时，从本地标签库给出候选；↑↓ 选择，Tab 或 Enter 采纳，Esc 关闭。",
+  "floating_open": "资源小窗",
+  "floating_searchGallery": "搜索（整段 / 完整标签）",
+  "floating_searchName": "搜索名称",
+  "floating_collapse": "收起为标题条",
+  "floating_expand": "展开",
+  "floating_empty": "没有内容",
+  "floating_loadFailed": "加载失败",
+  "floating_loadMore": "加载更多",
+  "set_stThumbQuotaTip": "{count} 张缩略图 · 统计于{time}",
+  "@set_stThumbQuotaTip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "prompt_autocompleteTitle": "补全",
+  "prompt_autocompleteHint": "↑↓ 选择 · → 关联 · ← 返回 · Tab / 回车 补全 · Esc 关闭",
+  "prompt_autocompleteHintRelated": "↑↓ 选择 · ← 返回 · 回车 / 点击 追加 · Esc 关闭关联",
+  "resourceWindow_pin": "窗口置顶",
+  "resourceWindow_newWindow": "新开一个资源窗口",
+  "resourceWindow_rowHeight": "行高",
+  "resourceWindow_cardSize": "卡片大小",
+  "resourceWindow_dragHint": "拖到生成页对应区域使用",
+  "resourceWindow_dragHintBlocks": "拖到提示词插入",
+  "resourceWindow_keyDrag": "拖动",
+  "resourceWindow_keyDouble": "双击",
+  "resourceWindow_hintDrag": "到生成页使用",
+  "resourceWindow_hintView": "看大图",
+  "resourceWindow_hintPrimary": "执行主操作",
+  "resourceWindow_connected": "主窗口已连接",
+  "resourceWindow_disconnected": "主窗口未连接",
+  "resourceWindow_currentModelUsable": "当前模型可用",
+  "resourceWindow_insertPositive": "插入正面",
+  "resourceWindow_insertNegative": "插入负面",
+  "resourceWindow_errorNotFound": "这一项已经不存在，列表已刷新",
+  "resourceWindow_errorNotReady": "主窗口还没准备好，请稍后再试",
+  "resourceWindow_errorUnsupported": "当前模型不支持这个操作",
+  "resourceWindow_errorFailed": "操作失败",
+  "blocks_tempStandaloneExplain": "它只存在于当前提示词中，没有保存到块库；想留着就另存为新块。",
+  "blocks_tempCreatedByAgent": "Agent{time} 建了这个块。",
+  "@blocks_tempCreatedByAgent": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "blocks_tempCreatedByYou": "你{time} 建了这个块。",
+  "@blocks_tempCreatedByYou": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  }
 }

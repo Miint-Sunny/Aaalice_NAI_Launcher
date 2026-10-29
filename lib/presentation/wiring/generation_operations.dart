@@ -28,6 +28,7 @@ import '../providers/local_gallery_provider.dart';
 import '../providers/vibe_library_provider.dart';
 import '../providers/precise_ref_library_provider.dart';
 import '../providers/pill_workspace_provider.dart';
+import '../widgets/common/undo_snack_bar.dart';
 import '../providers/subscription_provider.dart';
 import '../screens/generation/handlers/vibe_import_handler.dart';
 import '../screens/generation/widgets/canvas/generated_image_actions.dart';
@@ -109,15 +110,11 @@ class GenerationOperations {
     final undo = await backend.clearPrompt(target, alive: () => mounted);
     if (undo == null || !context.mounted || !alive()) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      undoSnackBar(
         duration: const Duration(seconds: 2),
-        persist: false,
         content: Text(context.l10n.common_clear),
-        action: SnackBarAction(
-          label: context.l10n.common_undo,
-          onPressed: () =>
-              run(() => backend.undoPrompt(undo, alive: () => mounted)),
-        ),
+        undoLabel: context.l10n.common_undo,
+        onUndo: () => run(() => backend.undoPrompt(undo, alive: () => mounted)),
       ),
     );
   }
@@ -400,18 +397,9 @@ class GenerationOperations {
   }
 
   Future<void> placeSource() async {
-    final params = ref.read(generationParamsNotifierProvider);
-    final bytes = params.sourceImage;
-    if (bytes == null) return;
-    final id = await ref
-        .read(imageGenerationNotifierProvider.notifier)
-        .registerExternalImage(
-          bytes,
-          params: params,
-          addToDisplay: true,
-          canApply: () => mounted,
-        );
-    if (id != null && mounted) history.focusTile(id);
+    if (!mounted || backend.busy) return;
+    final bytes = ref.read(generationParamsNotifierProvider).sourceImage;
+    if (bytes != null) ImageWorkflowLauncher.placeOnCanvas(ref, bytes);
   }
 
   GeneratedImage input(String id) {

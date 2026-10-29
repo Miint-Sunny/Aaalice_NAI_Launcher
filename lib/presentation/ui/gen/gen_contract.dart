@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 
+import '../kit/ui_resource_kind.dart';
 import '../channel/channel_contract.dart';
 
 export '../channel/channel_contract.dart' show ChannelSettings;
@@ -260,6 +261,7 @@ class GenPreviewSection with _GenValue {
 class GenPromptTools with _GenValue {
   const GenPromptTools({
     this.palettePinned = false,
+    this.resourceWindowsPinned = false,
     this.dockPinned = true,
     this.translatePinned = true,
     this.agentPinned = true,
@@ -271,6 +273,7 @@ class GenPromptTools with _GenValue {
 
   /// 积木板按钮钉在头部。
   final bool palettePinned;
+  final bool resourceWindowsPinned;
 
   /// 块库侧栏按钮钉在头部。
   final bool dockPinned;
@@ -295,6 +298,7 @@ class GenPromptTools with _GenValue {
   @override
   List<Object?> get _values => [
     palettePinned,
+    resourceWindowsPinned,
     dockPinned,
     translatePinned,
     agentPinned,
@@ -307,6 +311,7 @@ class GenPromptTools with _GenValue {
 
 enum GenPromptTool {
   palettePinned,
+  resourceWindowsPinned,
   dockPinned,
   translatePinned,
   agentPinned,
@@ -319,18 +324,36 @@ enum GenPromptTool {
 /// 翻译按钮（`promptTranslationCoordinator`）。
 @immutable
 class GenTranslate with _GenValue {
-  const GenTranslate({this.busy = false, this.showing = false, this.route});
+  const GenTranslate({
+    this.busy = false,
+    this.showing = false,
+    this.hasTranslations = false,
+    this.canAdjust = false,
+    this.route,
+  });
 
   /// 正在翻译：图标转圈、按钮不可点。
   final bool busy;
 
-  /// 当前这一面有译文正在显示（再点一下 = 全部还原）。
+  /// 当前这一面有译文正在显示（再点一下 = 全部显示原文）。
   final bool showing;
+
+  /// 存在翻译块，不受当前显示原文还是译文影响。
+  final bool hasTranslations;
+
+  /// 本次翻译的请求/回复上下文仍可续接。
+  final bool canAdjust;
 
   /// “DeepSeek · deepseek-chat”这类线路名；null = 没配翻译模型（点了先引导去设置）。
   final String? route;
   @override
-  List<Object?> get _values => [busy, showing, route];
+  List<Object?> get _values => [
+    busy,
+    showing,
+    hasTranslations,
+    canAdjust,
+    route,
+  ];
 }
 
 @immutable
@@ -642,6 +665,7 @@ class GenRefsData with _GenValue {
     this.vibes,
     this.precise,
     this.dropHover,
+    this.vibeSuspendedForInpaint = false,
   });
 
   final GenImg2Img img2img;
@@ -655,7 +679,16 @@ class GenRefsData with _GenValue {
   /// 文件正拖在哪一行上（接线方的 [GenSlots.drop] 报进出），界面画投放高亮。
   final GenDropTarget? dropHover;
   @override
-  List<Object?> get _values => [img2img, vibes, precise, dropHover];
+  List<Object?> get _values => [
+    img2img,
+    vibes,
+    precise,
+    dropHover,
+    vibeSuspendedForInpaint,
+  ];
+
+  /// 局部重绘中且有启用的 Vibe：本次不发送、不编码、不计费，参考区出备注。
+  final bool vibeSuspendedForInpaint;
 }
 
 // ───────────────────────── 图像 ─────────────────────────
@@ -1191,6 +1224,7 @@ class GenBatch with _GenValue {
     this.pending = 0,
     this.pendingWidth,
     this.pendingHeight,
+    this.pendingPreview,
   });
 
   final String id;
@@ -1204,6 +1238,7 @@ class GenBatch with _GenValue {
   /// 未提供时保留旧界面的默认比例；成图之后使用图片自身尺寸。
   final int? pendingWidth;
   final int? pendingHeight;
+  final ImageProvider? pendingPreview;
 
   int get count => images.length + pending;
   @override
@@ -1214,6 +1249,7 @@ class GenBatch with _GenValue {
     pending,
     pendingWidth,
     pendingHeight,
+    pendingPreview,
   ];
 }
 
@@ -1224,6 +1260,7 @@ class GenHistoryData with _GenValue {
     this.selected,
     this.autoSave = true,
     this.pinned = 0,
+    this.openDetailOnClick = false,
   });
 
   /// 新到旧。
@@ -1238,9 +1275,18 @@ class GenHistoryData with _GenValue {
   /// 画布上钉住的张数（> 0 时标题旁显示“钉住 N”，点了把画布飞到钉住区）。
   final int pinned;
 
+  /// 单击缩略图直接打开大图；false 时单击联动预览、双击打开大图。
+  final bool openDetailOnClick;
+
   int get total => batches.fold(0, (s, b) => s + b.images.length);
   @override
-  List<Object?> get _values => [batches, selected, autoSave, pinned];
+  List<Object?> get _values => [
+    batches,
+    selected,
+    autoSave,
+    pinned,
+    openDetailOnClick,
+  ];
 }
 
 // ───────────────────────── 整页 ─────────────────────────
@@ -1404,6 +1450,7 @@ class GenSlots {
     this.emptyCanvas,
     this.translationGuide,
     this.agentToggle,
+    this.viewerControls,
     this.historyCaptionInset = true,
     this.preserveHistory = false,
   });
@@ -1419,6 +1466,9 @@ class GenSlots {
 
   /// 仅应用启用 Agent 集成时提供。
   final Widget? agentToggle;
+
+  /// 简洁查看器的展示选项，不改变画布数据。
+  final Widget? viewerControls;
 
   /// Agent 停靠右侧时，历史栏不再占用窗口按钮所在的一行。
   final bool historyCaptionInset;
@@ -1464,9 +1514,12 @@ class GenActions {
     required this.onTransparentChanged,
     required this.onPromptTool,
     required this.onOpenPalette,
+    this.onOpenResourceWindow,
     required this.onTranslate,
     required this.onToggleTranslation,
     required this.onTranslationSettings,
+    this.onClearTranslations,
+    this.onTranslationAdjust,
     required this.onOpenBridge,
     required this.onAddCharacter,
     required this.onClearCharacters,
@@ -1562,9 +1615,12 @@ class GenActions {
     onTransparentChanged: (v) => log('onTransparentChanged($v)'),
     onPromptTool: (tool, value) => log('onPromptTool($tool, $value)'),
     onOpenPalette: (_) => log('onOpenPalette'),
+    onOpenResourceWindow: (kind) => log('onOpenResourceWindow($kind)'),
     onTranslate: () => log('onTranslate'),
     onToggleTranslation: () => log('onToggleTranslation'),
     onTranslationSettings: () => log('onTranslationSettings'),
+    onClearTranslations: () => log('onClearTranslations'),
+    onTranslationAdjust: (_) => log('onTranslationAdjust'),
     onOpenBridge: (_) => log('onOpenBridge'),
     onAddCharacter: (v) => log('onAddCharacter($v)'),
     onClearCharacters: () => log('onClearCharacters'),
@@ -1663,9 +1719,12 @@ class GenActions {
         onTransparentChanged: onTransparentChanged,
         onPromptTool: onPromptTool,
         onOpenPalette: onOpenPalette,
+        onOpenResourceWindow: onOpenResourceWindow,
         onTranslate: onTranslate,
         onToggleTranslation: onToggleTranslation,
         onTranslationSettings: onTranslationSettings,
+        onClearTranslations: onClearTranslations,
+        onTranslationAdjust: onTranslationAdjust,
         onOpenBridge: onOpenBridge,
         onAddCharacter: onAddCharacter,
         onClearCharacters: onClearCharacters,
@@ -1773,6 +1832,9 @@ class GenActions {
   /// 积木板按钮（现有 `PromptBlockPalette` 弹层由接线方贴着 [Rect] 弹）。
   final GenAnchorCallback onOpenPalette;
 
+  /// Resource opener contract only; header visuals are owned by the main agent.
+  final ValueChanged<FloatingResourceKind>? onOpenResourceWindow;
+
   /// 翻译当前这一面（`coordinator.translate`）。
   final VoidCallback onTranslate;
 
@@ -1781,6 +1843,8 @@ class GenActions {
 
   /// 去设置里配翻译模型。
   final VoidCallback onTranslationSettings;
+  final VoidCallback? onClearTranslations;
+  final GenAnchorCallback? onTranslationAdjust;
 
   /// 桥接图标（弹现有桥接面板）。
   final GenAnchorCallback onOpenBridge;

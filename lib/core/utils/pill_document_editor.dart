@@ -11,8 +11,89 @@ bool isPillMarkerCodeUnit(int codeUnit) {
   return codeUnit >= kPillMarkerBase && codeUnit <= kPillMarkerEnd;
 }
 
+/// A UTF-16 range in the original (marker-containing) document.
+typedef PillAnchorRange = ({int start, int end});
+
+/// Validated inline content, independent of any library block. Ranges refer to
+/// the document before the operation, never to an intermediate replacement.
+class PillInlineEdit {
+  const PillInlineEdit({
+    required this.start,
+    required this.end,
+    this.temp,
+    this.translation,
+    this.enabled = true,
+  }) : assert((temp == null) != (translation == null));
+  final int start;
+  final int end;
+  final PillTempContent? temp;
+  final TranslationPill? translation;
+  final bool enabled;
+}
+
+class PillAnchorException implements Exception {
+  const PillAnchorException(this.code, {this.matches = 0});
+  final String code;
+  final int matches;
+}
+
 /// 药丸文档的不可变纯操作集。不依赖 Flutter，可独立单测。
 abstract final class PillDocumentEditor {
+  /// Match in stripMarkers(text), retaining original UTF-16 positions. A match
+  /// may touch a marker, but must never span one or split a surrogate pair.
+  static PillAnchorRange resolveAnchor(
+    String text,
+    String anchor, {
+    int? occurrence,
+  }) {
+    if (anchor.isEmpty || stripMarkers(anchor) != anchor) {
+      throw const PillAnchorException('invalid_position');
+    }
+    final offsets = <int>[];
+    for (var i = 0; i < text.length; i++) {
+      if (!isPillMarkerCodeUnit(text.codeUnitAt(i))) offsets.add(i);
+    }
+    final visible = stripMarkers(text);
+    final matches = <int>[];
+    var from = 0;
+    while (from <= visible.length - anchor.length) {
+      final index = visible.indexOf(anchor, from);
+      if (index < 0) break;
+      if (isUtf16Boundary(visible, index) &&
+          isUtf16Boundary(visible, index + anchor.length)) {
+        matches.add(index);
+      }
+      from = index + 1;
+    }
+    if (matches.isEmpty ||
+        (occurrence != null &&
+            (occurrence < 0 || occurrence >= matches.length))) {
+      throw PillAnchorException('anchor_missing', matches: matches.length);
+    }
+    if (occurrence == null && matches.length > 1) {
+      throw PillAnchorException('anchor_ambiguous', matches: matches.length);
+    }
+    final index = matches[occurrence ?? 0];
+    final start = offsets[index], end = offsets[index + anchor.length - 1] + 1;
+    if (end - start != anchor.length) {
+      throw PillAnchorException(
+        'anchor_crosses_marker',
+        matches: matches.length,
+      );
+    }
+    return (start: start, end: end);
+  }
+
+  static bool isUtf16Boundary(String text, int offset) =>
+      offset >= 0 &&
+      offset <= text.length &&
+      !(offset > 0 &&
+          offset < text.length &&
+          text.codeUnitAt(offset - 1) >= 0xD800 &&
+          text.codeUnitAt(offset - 1) <= 0xDBFF &&
+          text.codeUnitAt(offset) >= 0xDC00 &&
+          text.codeUnitAt(offset) <= 0xDFFF);
+
   /// 分配最小空闲标记字符；区间耗尽时抛 [StateError]（上限 6400 个实例）。
   static String allocateMarker(PillDocument document) {
     for (var code = kPillMarkerBase; code <= kPillMarkerEnd; code++) {
@@ -86,7 +167,10 @@ abstract final class PillDocumentEditor {
         !document.text.contains(marker)) {
       return document;
     }
-    final plain = stripMarkers(source);
+    final instance = document.instances[marker]!;
+    final plain = instance.enabled
+        ? stripMarkers(instance.temporary ? instance.tempProjection! : source)
+        : '';
     final instances = Map<String, PillInstance>.of(document.instances)
       ..remove(marker);
     return document.copyWith(
@@ -111,12 +195,66 @@ abstract final class PillDocumentEditor {
       if (translation == null) {
         text.writeCharCode(codeUnit);
       } else {
-        text.write(stripMarkers(translation.source));
+        if (document.instances[String.fromCharCode(codeUnit)]!.enabled) {
+          final instance = document.instances[String.fromCharCode(codeUnit)]!;
+          text.write(
+            stripMarkers(
+              instance.temporary
+                  ? instance.tempProjection!
+                  : translation.source,
+            ),
+          );
+        }
       }
     }
     final instances = Map<String, PillInstance>.of(document.instances)
       ..removeWhere((marker, _) => translations.containsKey(marker));
     return document.copyWith(text: text.toString(), instances: instances);
+  }
+
+  /// Expand just the selected occurrence using the same projection as sending.
+  static PillDocument expandOccurrence(
+    PillDocument document,
+    String marker, {
+    int occurrence = 0,
+    required String? Function(String, PillInstance) resolveMarker,
+    String? temporaryContent,
+  }) {
+    final index = _occurrenceIndex(document.text, marker, occurrence);
+    if (index < 0 || !document.instances.containsKey(marker)) return document;
+    final instance = document.instances[marker]!;
+    final projection = temporaryContent != null && instance.temporary
+        ? (instance.enabled ? stripMarkers(temporaryContent) : '')
+        : projectWithMarker(document.copyWith(text: marker), resolveMarker);
+    return reconcile(
+      document,
+      document.text.replaceRange(index, index + 1, projection),
+    );
+  }
+
+  /// Split a shared marker before editing one occurrence. Return its new ID.
+  static (PillDocument, String) isolateOccurrence(
+    PillDocument document,
+    String marker, {
+    int occurrence = 0,
+  }) {
+    final index = _occurrenceIndex(document.text, marker, occurrence);
+    if (index < 0 || !document.instances.containsKey(marker)) {
+      return (document, marker);
+    }
+    if (!document.text.replaceRange(index, index + 1, '').contains(marker)) {
+      return (document, marker);
+    }
+    final fresh = allocateMarker(document);
+    final instances = Map<String, PillInstance>.of(document.instances)
+      ..[fresh] = document.instances[marker]!;
+    return (
+      document.copyWith(
+        text: document.text.replaceRange(index, index + 1, fresh),
+        instances: instances,
+      ),
+      fresh,
+    );
   }
 
   /// 设置实例启用态；实例不存在时原样返回。
@@ -165,6 +303,10 @@ abstract final class PillDocumentEditor {
       final marker = String.fromCharCode(codeUnit);
       final instance = document.instances[marker];
       if (instance == null || !instance.enabled) continue;
+      if (instance.temporary) {
+        buffer.write(instance.tempProjection);
+        continue;
+      }
       if (instance.translation case final translation?) {
         buffer.write(translation.source);
         continue;

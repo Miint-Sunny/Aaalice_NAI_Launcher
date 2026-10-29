@@ -14,6 +14,7 @@ import 'package:nai_launcher/data/models/image/image_stream_chunk.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
 import 'package:nai_launcher/presentation/providers/image_generation_provider.dart';
 import 'package:nai_launcher/presentation/providers/simple_output_viewer_provider.dart';
+import 'package:nai_launcher/presentation/providers/simple_viewer_group_batches_provider.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_history.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_page.dart';
 import 'package:nai_launcher/presentation/wiring/generation_wiring.dart';
@@ -497,7 +498,8 @@ void main() {
   testWidgets(
     'generation preview makes completed single and grid images draggable',
     (tester) async {
-      final container = _createContainerWithPreviewImage();
+      // 网格只在“按批次分组”开启时出现；默认逐张显示。
+      final container = _createContainerWithPreviewImage(grouped: true);
       addTearDown(container.dispose);
 
       await tester.pumpWidget(_buildPreviewApp(container));
@@ -731,6 +733,11 @@ void _noop() {}
 
 /// 画布（G11）是默认预览实现；这些用例断言经典网格/单卡语义，
 /// 一律强制 simpleOutputViewer=true 走回退档。
+class _GroupedBatches extends SimpleViewerGroupBatches {
+  @override
+  bool build() => true;
+}
+
 class _SimpleViewerNotifier extends SimpleOutputViewerNotifier {
   @override
   bool build() => true;
@@ -738,6 +745,7 @@ class _SimpleViewerNotifier extends SimpleOutputViewerNotifier {
 
 ProviderContainer _createContainerWithPreviewImage({
   ImageClipboardWriter? clipboardWriter,
+  bool grouped = false,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -747,6 +755,8 @@ ProviderContainer _createContainerWithPreviewImage({
       ),
       if (clipboardWriter != null)
         imageClipboardWriterProvider.overrideWithValue(clipboardWriter),
+      if (grouped)
+        simpleViewerGroupBatchesProvider.overrideWith(_GroupedBatches.new),
     ],
   );
   final bytes = Uint8List.fromList(

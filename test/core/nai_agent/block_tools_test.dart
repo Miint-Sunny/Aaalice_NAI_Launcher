@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:nai_launcher/core/krita/bridge_draft_guard.dart';
 import 'package:nai_launcher/core/nai_agent/agent_tool.dart';
 import 'package:nai_launcher/core/nai_agent/block_tools.dart';
+import 'package:nai_launcher/core/nai_agent/block_organization_tools.dart';
 import 'package:nai_launcher/core/storage/prompt_block_storage.dart';
 import 'package:nai_launcher/data/models/prompt_block/prompt_block.dart';
 import 'package:nai_launcher/data/models/prompt_block/prompt_block_collection.dart';
@@ -41,6 +42,7 @@ void main() {
   late bool busy, alive;
   Future<void> Function()? duringBackup;
   late NaiAgentBlockTools tools;
+  late int backups, instanceEdits;
   setUp(() async {
     root = await Directory.systemTemp.createTemp('nai-agent-block-guards-');
     Hive.init(root.path);
@@ -51,19 +53,30 @@ void main() {
     busy = false;
     alive = true;
     duringBackup = null;
+    backups = 0;
+    instanceEdits = 0;
     tools = NaiAgentBlockTools(
       readLibrary: repository.load,
       repository: repository,
       refresh: () async {},
       readDraft: () => current,
       backup: (_, __, ___) async {
+        backups++;
         await duringBackup?.call();
         return 'synthetic-backup';
       },
       isBusy: () => busy,
       isAlive: () => alive,
       validateInstance: (_, __, ___) {},
-      editInstance: (_, __) => {},
+      editInstance: (_, __) {
+        instanceEdits++;
+        return {};
+      },
+      promoteInstance: (_, check) async {
+        check();
+        instanceEdits++;
+        return {};
+      },
     );
   });
   tearDown(() async {
@@ -84,6 +97,149 @@ void main() {
       'changes': {'content': 'model edit'},
     }, token ?? NaiAgentCancellation());
   }
+
+  test(
+    'all new instance actions are admitted and require fresh draft before backup',
+    () async {
+      for (final action in naiAgentBlockInstanceActions.where(
+        (a) => a != 'insert',
+      )) {
+        final params = {
+          'action': action,
+          'expected_draft_version': current.acknowledgementVersion,
+          if (action == 'instance_promote')
+            'expected_library_version': naiAgentBlockLibraryVersion(
+              await repository.load(),
+            ),
+        };
+        await expectLater(
+          tools.manage({
+            ...params,
+            'expected_draft_version': 'stale',
+          }, NaiAgentCancellation()),
+          throwsA(error('draft_conflict')),
+        );
+        final count = backups;
+        await tools.manage(params, NaiAgentCancellation());
+        expect(backups, count + 1);
+      }
+      expect(instanceEdits, 6);
+      await expectLater(
+        tools.manage({'action': 'not_an_action'}, NaiAgentCancellation()),
+        throwsA(error('invalid_action')),
+      );
+    },
+  );
+
+  test(
+    'promote guards whole library before backup and after asynchronous backup',
+    () async {
+      final version = naiAgentBlockLibraryVersion(await repository.load());
+      final params = {
+        'action': 'instance_promote',
+        'expected_draft_version': current.acknowledgementVersion,
+        'expected_library_version': version,
+      };
+      await expectLater(
+        tools.manage({
+          ...params,
+          'expected_library_version': 'stale',
+        }, NaiAgentCancellation()),
+        throwsA(error('library_conflict')),
+      );
+      expect(backups, 0);
+      duringBackup = () async {
+        await repository.createBlock(title: 'human edit', content: 'new');
+      };
+      await expectLater(
+        tools.manage(params, NaiAgentCancellation()),
+        throwsA(error('library_conflict')),
+      );
+      expect(instanceEdits, 0);
+      expect(backups, 1);
+    },
+  );
+
+  test(
+    'new instance actions recheck busy, closed and cancellation after backup',
+    () async {
+      for (final action in naiAgentBlockInstanceActions.where(
+        (a) => a != 'insert',
+      )) {
+        for (final code in ['busy', 'closed', 'cancelled', 'draft_conflict']) {
+          busy = false;
+          alive = true;
+          final token = NaiAgentCancellation();
+          duringBackup = () async {
+            if (code == 'busy') busy = true;
+            if (code == 'closed') alive = false;
+            if (code == 'cancelled') token.cancel();
+            if (code == 'draft_conflict') {
+              current = BridgeDraftSnapshot(
+                fields: {'prompt': '$action newer'},
+              );
+            }
+          };
+          await expectLater(
+            tools.manage({
+              'action': action,
+              'expected_draft_version': current.acknowledgementVersion,
+              if (action == 'instance_promote')
+                'expected_library_version': naiAgentBlockLibraryVersion(
+                  await repository.load(),
+                ),
+            }, token),
+            throwsA(error(code)),
+          );
+        }
+      }
+      expect(instanceEdits, 0);
+    },
+  );
+
+  test(
+    'Agent create and update accept preset settings and reject invalid values',
+    () async {
+      final created =
+          (await tools.manage({
+                'action': 'create',
+                'changes': {
+                  'title': 'preset',
+                  'content': '',
+                  'generationSettings': {
+                    'qualityPreset': 'light',
+                    'ucPreset': 7,
+                  },
+                },
+              }, NaiAgentCancellation()))['details']
+              as Map;
+      final saved = (await repository.load()).blocks.single;
+      expect(created['block'], isNotNull);
+      await tools.manage({
+        'action': 'update',
+        'id': saved.id,
+        'expected_version': naiAgentBlockVersion(saved),
+        'changes': {
+          'generationSettings': {'qualityPreset': 'none', 'ucPreset': 9},
+        },
+      }, NaiAgentCancellation());
+      expect(
+        (await repository.getBlock(saved.id))!.generationSettings!.ucPreset,
+        9,
+      );
+      for (final settings in [
+        {'qualityPreset': 'wrong'},
+        {'ucPreset': 4},
+        {'ucPreset': 1.5},
+        {'qualityCustomBlockId': 5},
+      ]) {
+        expect(
+          () => validateNaiAgentBlockChanges({'generationSettings': settings}),
+          throwsA(error('invalid_changes')),
+        );
+      }
+    },
+  );
 
   test(
     'final Hive comparison detects an edit after the repository has read its old row',

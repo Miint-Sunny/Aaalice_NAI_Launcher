@@ -8,10 +8,12 @@ import { getCurrentSystemMessage } from '@earendil-works/pi-ai';
 import { createStudioModelRuntime } from './model.mjs';
 import { domainTools } from './domain-tools.mjs';
 import { createNaiInteractionExtension } from './extensions/interaction.mjs';
+import { StudioCacheWarming } from './extensions/cache-warming.mjs';
 import { createNaiPermissions } from './extensions/permissions.mjs';
 import { createStudioExtensionUi } from './extensions/ui.mjs';
 import { createStudioMcp, mcpRedactor, validateStudioMcp } from './mcp.mjs';
 import { builtinSkillsDirectory, resolveStudioSkills } from './skills.mjs';
+import { resolveStudioPromptTemplates } from './prompt-templates.mjs';
 
 // Pi caches loader overrides on reload; Studio prompt edits apply on the next turn.
 class StudioResourceLoader extends DefaultResourceLoader {
@@ -29,10 +31,10 @@ export function studioTools(execute, extraToolNames = []) {
   });
   return [
     tool('studio_context', 'Read current Studio state on demand. scope=draft returns RAW editable fields, pill documents and field_versions. Never write effective preset text back.',
-      Type.Object({ scope: Type.Optional(Type.Union([Type.Literal('summary'), Type.Literal('draft')])) })),
+      Type.Object({ scope: Type.Optional(Type.Unsafe({ type: 'string', enum: ['summary', 'draft'] })) })),
     tool('image_read', 'Read one actual canvas/history or library image by image_id (selected means current canvas selection; gallery:<ID> comes from gallery_query), or any image file using its workspace-relative path (including attachments/ and outputs/). metadata_only=true reads original dimensions and metadata locally without returning pixels or requiring vision. Default returns a separate visual copy and original metadata, without altering the original file or draft.',
       Type.Object({ image_id: Type.Optional(Type.String()), path: Type.Optional(Type.String()), metadata_only: Type.Optional(Type.Boolean()) })),
-    tool('prompt_update', 'Patch Studio draft after studio_context(scope=draft). Send expected field_versions for each affected field; changing model also checks sampler. Version aliases: clear_characters -> characters, seed_lock -> seed, quality_toggle -> quality_preset. Backs up and rechecks before writing; returns actual readback.',
+    tool('prompt_update', 'Patch draft fields read by studio_context(scope=draft); expected maps each changed field to its field_version (aliases: clear_characters->characters, seed_lock->seed, quality_toggle->quality_preset). Backs up, rechecks and returns readback. Lanes containing blocks only accept unchanged text (else pill_conflict): edit those with block_manage instance_*.',
       Type.Object({ changes: Type.Record(Type.String(), Type.Unknown()),
         expected: Type.Record(Type.String(), Type.String()) })),
     ...domainTools.filter(definition => extraToolNames.includes(definition.name))
@@ -49,7 +51,7 @@ export function studioTools(execute, extraToolNames = []) {
 
 export async function createStudioSession({ config, cwd, agentDir, systemPrompt, executeTool,
   sessionDirectory, sessionFile, sessionName, acquireRequest, extraToolNames = [],
-  extensionPaths = [], mcp = {}, skills = {}, onSession, onExtensionUi, onExtensionError, deferBinding = false }) {
+  extensionPaths = [], mcp = {}, skills = {}, prompts = {}, onSession, onExtensionUi, onExtensionError, onCacheWarmingChange, deferBinding = false }) {
   if (!systemPrompt?.trim()) throw new Error('NAI system prompt is required');
   const data = resolve(agentDir), sessions = resolve(sessionDirectory ?? join(data, 'sessions'));
   await Promise.all([resolve(cwd), data, sessions].map(path => mkdir(path, { recursive: true })));
@@ -91,7 +93,9 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
   const settingsManager = SettingsManager.inMemory({
     retry: { enabled: (config.retryAttempts ?? 0) > 0, maxRetries: config.retryAttempts ?? 0 },
     images: { autoResize: false },
+    cacheWarming: config.cacheWarming ?? 'streaming',
   });
+  const cacheWarming = new StudioCacheWarming({ model, settingsManager, onChange: onCacheWarmingChange });
   const reserved = new Set([...definitions.map(tool => tool.name), '_nai_extension_ui', 'codemode', 'tool_search',
     'read', 'write', 'edit', 'bash', 'powershell', 'grep', 'find', 'ls']);
   function validateExtensions(extensions) {
@@ -103,13 +107,15 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
     }
     return extensions;
   }
+  const templateSet = await resolveStudioPromptTemplates({ cwd: root, agentDir: data, ...prompts });
   const resourceLoader = new StudioResourceLoader({
     cwd: root, agentDir: data, settingsManager,
     noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
     additionalExtensionPaths: [...new Set(extensionPaths)],
+    promptsOverride: () => ({ prompts: templateSet.prompts, diagnostics: templateSet.diagnostics }),
     // Studio resolves sources, overrides and switches; Pi formats the catalog and expands /skill:.
     skillsOverride: () => ({ skills: skillSet.active, diagnostics: [] }),
-    extensionFactories: [createNaiInteractionExtension(interactionTools),
+    extensionFactories: [cacheWarming.extension, createNaiInteractionExtension(interactionTools),
       { name: 'nai-codemode', factory: createCodemodeExtension({ mode: 'on', models: false }) },
       { name: 'nai-tool-search', factory: createToolSearchExtension() },
       { name: 'nai-mcp', factory: createStudioMcp({ mcp, definitions: businessTools,
@@ -135,6 +141,7 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
     sessionManager: manager,
     resourceLoader, settingsManager,
   });
+  cacheWarming.attach(session);
   const ui = createStudioExtensionUi(executeTool, onExtensionUi);
   let closed = false, binding;
   const bind = () => binding ??= session.bindExtensions({
@@ -155,12 +162,13 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
     try { await bind(); } catch (error) { await close(); throw error; }
   }
   if (sessionName && manager.getSessionName() !== sessionName) session.setSessionName(sessionName);
-  return { session, manager, redact, model, sessionDirectory: sessions,
+  return { session, manager, redact, model, cacheWarming, sessionDirectory: sessions,
     close, bind, cancelExtensionUi: () => ui.cancel(),
     setPermissionMode: permissions.setMode, getPermissionMode: permissions.getMode,
     contextWindowKnown: Number.isFinite(config.contextWindow) && config.contextWindow > 0,
     extensions: extensions.extensions.map(extension => ({ path: extension.path })),
     skills: skillSet.report,
+    commands: templateSet.commands,
     setSystemPrompt(text) {
       if (!text?.trim()) throw new Error('NAI system prompt is required');
       prompt = text;

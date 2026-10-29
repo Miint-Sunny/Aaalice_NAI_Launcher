@@ -53,6 +53,10 @@ class AgentViewData {
     this.quick,
     this.bypassWarned = false,
     this.runLimit,
+    this.history = const [],
+    this.slashCommands = const [],
+    this.localAction,
+    this.localActionRevision = 0,
   });
 
   /// 当前时间（欢迎语「上午好 / 下午好」、相对时间）。测试里固定。
@@ -94,6 +98,11 @@ class AgentViewData {
 
   /// `/` 技能候选（已启用、可手动调用的 Skill）。
   final List<AgentSkillOption> skills;
+  final List<AgentSlashCommand> slashCommands;
+
+  /// Minimal hook: open the existing model/thinking/history panel once per revision.
+  final AgentLocalAction? localAction;
+  final int localActionRevision;
 
   /// 欢迎页的「当前草稿」卡；null = 不显示（例如不在生图页）。
   final AgentDraftSummary? draft;
@@ -125,6 +134,31 @@ class AgentViewData {
   /// 上一次运行因「单次任务最多请求」停下时的上限值；非 null 时对话末尾显示
   /// 步数上限卡（继续 / 调整上限），不再把它当错误显示。发出新消息后清掉。
   final int? runLimit;
+  final List<AgentHistoryEntry> history;
+}
+
+enum AgentHistoryKind { user, card, questions, compaction }
+
+@immutable
+class AgentHistoryEntry {
+  const AgentHistoryEntry({
+    required this.id,
+    required this.turnId,
+    required this.kind,
+    required this.title,
+    this.subtitle = '',
+    this.at,
+    this.number,
+    this.blockIndex,
+    this.beforeCompaction = false,
+    this.auto = false,
+    this.tokensBefore,
+  });
+  final String id, turnId, title, subtitle;
+  final AgentHistoryKind kind;
+  final DateTime? at;
+  final int? number, blockIndex, tokensBefore;
+  final bool beforeCompaction, auto;
 }
 
 /// 聊天正文搜索的一条命中。
@@ -258,6 +292,95 @@ class AgentReply {
 
   /// 最后一轮且没在运行时为 true，显示「重新回答」。
   final bool canRegenerate;
+}
+
+class AgentPromptSetShared {
+  const AgentPromptSetShared({
+    this.main = '',
+    this.characters = const [],
+    this.negative = '',
+    this.positions = const [],
+  });
+  final String main, negative;
+  final List<String> characters;
+  final List<Offset?> positions;
+}
+
+class AgentPromptSetItem {
+  const AgentPromptSetItem({
+    required this.icon,
+    required this.title,
+    this.note = '',
+    this.main = '',
+    this.characters = const [],
+    this.positions = const [],
+  });
+  final String icon, title, note, main;
+  final List<String> characters;
+  final List<Offset?> positions;
+
+  Offset? positionAt(AgentPromptSetShared shared, int index) =>
+      (index < positions.length ? positions[index] : null) ??
+      (index < shared.positions.length ? shared.positions[index] : null);
+
+  List<AgentPositionMark> positionMarks(AgentPromptSetShared shared) => [
+    for (var j = 0; j < shared.characters.length; j++)
+      if (positionAt(shared, j) case final position?)
+        AgentPositionMark(index: j, after: position, added: true),
+  ];
+}
+
+class AgentPromptSet {
+  const AgentPromptSet({
+    required this.setId,
+    required this.revision,
+    required this.kind,
+    required this.kindIcon,
+    required this.title,
+    required this.unit,
+    required this.ordered,
+    required this.shared,
+    required this.items,
+    this.changedItems = const [],
+    this.images = const {},
+    this.unitAnlas,
+    this.importedIndex,
+    this.canUndoImport = false,
+    this.busyIndex,
+    this.aspect,
+  });
+  final String setId, kind, kindIcon, title, unit;
+  final int revision;
+  final bool ordered;
+  final AgentPromptSetShared shared;
+  final List<AgentPromptSetItem> items;
+  final List<int> changedItems;
+  final Map<int, List<AgentImage>> images;
+  final int? unitAnlas, importedIndex, busyIndex;
+  final bool canUndoImport;
+  final double? aspect;
+}
+
+final class AgentPromptSetBlock extends AgentBlock {
+  const AgentPromptSetBlock({
+    required this.setId,
+    required this.revision,
+    this.changedItems = const [],
+    this.data,
+  });
+  final String setId;
+  final int revision;
+  final List<int> changedItems;
+  final AgentPromptSet? data;
+}
+
+enum AgentPromptSetAction {
+  import,
+  generate,
+  undo,
+  saveBlock,
+  copyItem,
+  copyAll,
 }
 
 sealed class AgentBlock {
@@ -563,6 +686,27 @@ enum AgentGalleryAction {
   export,
 }
 
+enum AgentAnswerKind { option, free }
+
+@immutable
+class AgentAnsweredQuestion {
+  const AgentAnsweredQuestion({
+    required this.question,
+    required this.answer,
+    required this.kind,
+    this.optionLabel,
+  });
+  final String question, answer;
+  final AgentAnswerKind kind;
+  final String? optionLabel;
+}
+
+final class AgentAnsweredQuestionsBlock extends AgentBlock {
+  const AgentAnsweredQuestionsBlock({required this.questions, this.at});
+  final List<AgentAnsweredQuestion> questions;
+  final DateTime? at;
+}
+
 /// 上下文压缩分隔线：之前的对话被压缩成 [summary]（点开看）。
 final class AgentCompactionBlock extends AgentBlock {
   const AgentCompactionBlock({
@@ -864,6 +1008,7 @@ class AgentComposerData {
     this.importing = 0,
     this.canAttachCanvas = false,
     this.enterSends = true,
+    this.suggestion,
   });
 
   /// 输入框草稿（切聊天会换）。界面只在 id 或文字被外部改写时同步，不打断正在输入。
@@ -890,6 +1035,9 @@ class AgentComposerData {
 
   /// Enter 发送（否则 Ctrl+Enter 发送）。
   final bool enterSends;
+
+  /// Only effective while text is empty; Tab calls onAcceptSuggestion.
+  final String? suggestion;
 }
 
 enum AgentSendBlock { noModel, starting, importing }
@@ -1082,6 +1230,7 @@ class AgentUsageData {
     this.assistantMessages,
     this.toolCalls,
     this.anlas,
+    this.cacheWarming,
   });
 
   /// 当前上下文 tokens 与模型窗口；任一为 null = 未知（圆环显示虚线）。
@@ -1093,10 +1242,55 @@ class AgentUsageData {
 
   /// 本聊天里生图类工具的报价合计（估算，实际以账户为准）；null / 0 = 没花。
   final int? anlas;
+  final AgentCacheWarmingData? cacheWarming;
 
   double? get fraction => tokens == null || window == null || window! <= 0
       ? null
       : (tokens! / window!).clamp(0.0, 1.0);
+}
+
+/// Pi status only; Studio does not invent model cache lifetimes or prices.
+@immutable
+class AgentCacheWarmingData {
+  const AgentCacheWarmingData({
+    required this.mode,
+    required this.state,
+    this.nextWarmAt,
+    this.lastWarmAt,
+    this.warmCount = 0,
+    this.ttlSeconds,
+    this.expectedSavings,
+    this.action,
+    this.reason,
+  });
+  final String mode, state;
+  final DateTime? nextWarmAt, lastWarmAt;
+  final int warmCount;
+  final int? ttlSeconds;
+  final double? expectedSavings;
+  final String? action, reason;
+  factory AgentCacheWarmingData.fromJson(Map<String, dynamic> value) {
+    final decision = value['decision'] as Map?;
+    return AgentCacheWarmingData(
+      mode: value['mode'] as String? ?? 'streaming',
+      state: value['state'] as String? ?? 'inactive',
+      nextWarmAt: value['nextWarmAt'] is num
+          ? DateTime.fromMillisecondsSinceEpoch(
+              (value['nextWarmAt'] as num).toInt(),
+            )
+          : null,
+      lastWarmAt: value['lastWarmAt'] is num
+          ? DateTime.fromMillisecondsSinceEpoch(
+              (value['lastWarmAt'] as num).toInt(),
+            )
+          : null,
+      warmCount: (value['warmCount'] as num?)?.toInt() ?? 0,
+      ttlSeconds: (value['ttlSeconds'] as num?)?.toInt(),
+      expectedSavings: (decision?['expectedSavings'] as num?)?.toDouble(),
+      action: decision?['action'] as String?,
+      reason: value['reason'] as String?,
+    );
+  }
 }
 
 enum AgentMentionKind { prompt, negative, character, image, block }
@@ -1119,6 +1313,28 @@ class AgentMention {
   /// 右侧小字（「24 个标签」「832×1216」）。
   final String? detail;
   final ImageProvider? image;
+}
+
+enum AgentSlashCommandKind { skill, template, builtin }
+
+enum AgentLocalAction { model, thinking, history }
+
+@immutable
+class AgentSlashCommand {
+  const AgentSlashCommand({
+    required this.kind,
+    required this.name,
+    required this.description,
+    this.argumentHint,
+    this.source,
+  });
+  final AgentSlashCommandKind kind;
+  final String name, description;
+  final String? argumentHint, source;
+  String get insertion =>
+      kind == AgentSlashCommandKind.skill ? '/skill:$name ' : '/$name ';
+  bool get executesOnSelect =>
+      kind == AgentSlashCommandKind.builtin && argumentHint == null;
 }
 
 @immutable
@@ -1209,7 +1425,20 @@ class AgentActions {
     required this.onContinue,
     required this.onAdjustLimit,
     required this.onOpenSettingAt,
+    this.onPromptSetAction,
+    this.onSelectSlashCommand,
+    this.onAcceptSuggestion,
   });
+
+  final Future<bool> Function(
+    String setId,
+    int index,
+    AgentPromptSetAction action,
+  )?
+  onPromptSetAction;
+
+  final Future<bool> Function(AgentSlashCommand command)? onSelectSlashCommand;
+  final Future<bool> Function()? onAcceptSuggestion;
 
   /// 收起侧栏。
   final VoidCallback onClose;

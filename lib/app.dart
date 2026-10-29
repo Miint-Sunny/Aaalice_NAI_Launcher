@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'core/services/desktop_app_shutdown_service.dart';
+import 'core/utils/studio_sandbox.dart';
 import 'presentation/widgets/common/update_capsule.dart';
 import 'presentation/widgets/common/update_check_dialog.dart';
 import 'presentation/widgets/branding/entry_language_button.dart';
@@ -12,11 +16,14 @@ import 'package:window_manager/window_manager.dart';
 import 'core/shortcuts/default_shortcuts.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/guest_session_provider.dart';
+import 'presentation/providers/new_badge_provider.dart';
 import 'presentation/router/app_router.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/widgets/common/workspace_typography_scope.dart';
+import 'presentation/widgets/common/workspace_text_scale_scope.dart';
 import 'presentation/widgets/common/numpad_editing_shortcuts.dart';
 import 'presentation/widgets/common/mac_text_editing_shortcuts.dart';
+import 'presentation/widgets/common/text_editing_shortcuts.dart';
 import 'presentation/providers/locale_provider.dart';
 import 'presentation/providers/background_refresh_provider.dart';
 import 'presentation/providers/krita/krita_bridge_notifier.dart';
@@ -27,8 +34,12 @@ import 'presentation/providers/subscription_provider.dart'
 import 'presentation/widgets/shortcuts/shortcut_aware_widget.dart';
 import 'presentation/widgets/shortcuts/shortcut_help_dialog.dart';
 import 'presentation/wiring/nai_agent_generation_host.dart';
-import 'core/services/desktop_app_shutdown_service.dart';
 import 'presentation/widgets/common/macos_app_integration.dart';
+import 'presentation/wiring/clipboard_history_paste.dart';
+import 'presentation/wiring/floating_resource_window.dart';
+import 'presentation/wiring/floating_resource_windows_host.dart';
+import 'presentation/providers/floating_resource_windows_provider.dart';
+import 'presentation/wiring/resource_window_wiring.dart';
 
 double windowCaptionHeightForRoute(String path) => switch (path) {
   AppRoutes.localGallery => 62,
@@ -66,6 +77,7 @@ class AppBootstrapEffects extends ConsumerStatefulWidget {
 }
 
 class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
+  final _clipboardHistoryPaste = ClipboardHistoryPaste();
   ProviderSubscription<dynamic>? _anlasWatcherSubscription;
   ProviderSubscription<dynamic>? _backgroundRefreshSubscription;
   ProviderSubscription<dynamic>? _kritaBridgeSubscription;
@@ -75,6 +87,7 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   @override
   void initState() {
     super.initState();
+    _clipboardHistoryPaste.register();
     _anlasWatcherSubscription = ref.listenManual(
       widget.anlasWatcher ?? anlasBalanceWatcherProvider,
       (_, __) {},
@@ -101,6 +114,7 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
 
   @override
   void dispose() {
+    _clipboardHistoryPaste.dispose();
     _anlasWatcherSubscription?.close();
     _backgroundRefreshSubscription?.close();
     _kritaBridgeSubscription?.close();
@@ -158,6 +172,14 @@ class NAILauncherApp extends ConsumerWidget {
         router.go(AppRoutes.tagWiki);
       },
 
+      ShortcutIds.openResourceWindow: () {
+        unawaited(
+          ref
+              .read(resourceWindowOpenerProvider)
+              .open(FloatingResourceKind.gallery),
+        );
+      },
+
       // 全局应用快捷键
       ShortcutIds.showShortcutHelp: () {
         final dialogContext = router.routerDelegate.navigatorKey.currentContext;
@@ -169,7 +191,7 @@ class NAILauncherApp extends ConsumerWidget {
       ShortcutIds.quitApp: () {
         // windowManager.close() 在这里等于藏到托盘，「退出应用」并不会退出；
         // 走托盘「退出」同一套关闭流程
-        DesktopAppShutdownService.shutdownAndExit(0);
+        unawaited(DesktopAppShutdownService.shutdownAndExit(0));
       },
       ShortcutIds.toggleTheme: () {
         ref.read(themeNotifierProvider.notifier).nextTheme();
@@ -180,7 +202,7 @@ class NAILauncherApp extends ConsumerWidget {
       child: GlobalShortcuts(
         shortcuts: globalShortcuts,
         child: MaterialApp.router(
-          title: Brand.name,
+          title: studioWindowTitle(Brand.name),
           debugShowCheckedModeBanner: false,
 
           theme: ref.watch(studioLightThemeProvider),
@@ -205,21 +227,33 @@ class NAILauncherApp extends ConsumerWidget {
             // macOS：菜单「设置…」和系统退出请求（⌘Q、程序坞、注销关机）
             return MacOSAppIntegration(
               onOpenSettings: () => router.go(AppRoutes.settings),
-              child: NaiAgentIntegrationScope(
-                child: WorkspaceTypographyScope(
-                  child: _RouteAwareTitleBar(
-                    router: router,
-                    // 首个路由解析前按认证状态先行判断，未登录时不先闪 Logo 标题栏；
-                    // 认证尚未建立（例如测试里）时不在这里触发它
-                    initialImmersive: () =>
-                        ref.exists(authNotifierProvider) &&
-                        !ref.read(authNotifierProvider).isAuthenticated &&
-                        !ref.read(guestSessionNotifierProvider),
-                    onToggleTheme: () =>
-                        ref.read(themeNotifierProvider.notifier).nextTheme(),
-                    child: NumpadEditingShortcuts(
-                      child: MacTextEditingShortcuts(
-                        child: child ?? const SizedBox.shrink(),
+              child: WorkspaceTextScaleHost(
+                child: NaiAgentIntegrationScope(
+                  child: WorkspaceTypographyScope(
+                    child: _RouteAwareTitleBar(
+                      router: router,
+                      // 首个路由解析前按认证状态先行判断，未登录时不先闪 Logo 标题栏；
+                      // 认证尚未建立（例如测试里）时不在这里触发它
+                      initialImmersive: () =>
+                          ref.exists(authNotifierProvider) &&
+                          !ref.read(authNotifierProvider).isAuthenticated &&
+                          !ref.read(guestSessionNotifierProvider),
+                      onToggleTheme: () =>
+                          ref.read(themeNotifierProvider.notifier).nextTheme(),
+                      child: NumpadEditingShortcuts(
+                        child: TextEditingShortcuts(
+                          // 浮动资源小窗也在这一层里面，⌘Y 对小窗里的输入框同样有效
+                          child: MacTextEditingShortcuts(
+                            child: NewBadgeScope(
+                              child: FloatingResourceWindowsHost(
+                                builder: floatingResourceWindowBuilder,
+                                child: ResourceWindowBridge(
+                                  child: child ?? const SizedBox.shrink(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

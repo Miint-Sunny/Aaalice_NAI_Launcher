@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/presentation/ui/kit/ui_keycap.dart';
 import 'package:nai_launcher/presentation/ui/gen/gen_contract.dart';
+import 'package:nai_launcher/presentation/ui/gen/gen_parts.dart' show GenTokenBar;
 import 'package:nai_launcher/presentation/ui/gen/gen_fixture.dart';
+import 'package:nai_launcher/presentation/ui/kit/ui_preview_image.dart';
 
 import '../../../helpers/studio_capture_fonts.dart';
 import '../../../helpers/uiux_frontend_capture.dart';
@@ -162,6 +166,18 @@ void main() {
       expect(r.last('onNegativeTab'), 'onNegativeTab(true)');
     });
 
+    testWidgets('没有角色时第一个页签同样叫“基础提示词”', (t) async {
+      await pump(t, GenFixture.empty());
+      expect(find.text('基础提示词'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('gen-tab-positive')),
+          matching: find.text('正面'),
+        ),
+        findsNothing,
+      );
+    });
+
     testWidgets('编辑器槽位按目标填：基础正面 + 角色 0 正面', (t) async {
       final targets = <GenEditorTarget>[];
       await pumpGen(
@@ -183,10 +199,13 @@ void main() {
       );
     });
 
-    testWidgets('右上角 × 清空这一块', (t) async {
+    testWidgets('提示词框不再有内联清空 ×，清空只在全屏顶栏', (t) async {
       await pump(t);
-      await tapKey(t, 'gen-clear-base');
-      expect(r.last('onClearPrompt'), 'onClearPrompt(base)');
+      expect(find.byKey(const Key('gen-clear-base')), findsNothing);
+      await tapKey(t, 'gen-tool-menu');
+      await tapKey(t, 'gen-fullscreen');
+      await tapKey(t, 'gen-clear-base-full');
+      expect(r.last('onClearPrompt'), 'onClearPrompt(base-full)');
     });
 
     testWidgets('V5 有透明背景，点了切换；V4.5 没有', (t) async {
@@ -220,6 +239,33 @@ void main() {
       );
     });
 
+    testWidgets('资源窗口：可钉到头部，头部按钮弹出四类入口', (t) async {
+      await pump(t);
+      await tapKey(t, 'gen-tool-menu');
+      await tapKey(t, 'gen-pin-resources');
+      expect(
+        r.last('onPromptTool'),
+        'onPromptTool(GenPromptTool.resourceWindowsPinned, true)',
+      );
+      await t.pumpWidget(const SizedBox());
+      final d = GenFixture.view();
+      await pump(
+        t,
+        d.copyWith(
+          prompt: GenPromptData(
+            qualityPresets: d.prompt.qualityPresets,
+            tools: const GenPromptTools(resourceWindowsPinned: true),
+          ),
+        ),
+      );
+      await tapKey(t, 'gen-tool-resources');
+      await tapKey(t, 'gen-tool-resource-vibe');
+      expect(
+        r.last('onOpenResourceWindow'),
+        'onOpenResourceWindow(FloatingResourceKind.vibe)',
+      );
+    });
+
     testWidgets('全屏编辑：弹窗里放同一块编辑器（fullscreen 目标）', (t) async {
       await pump(t);
       await tapKey(t, 'gen-tool-menu');
@@ -244,6 +290,79 @@ void main() {
       await tapKey(t, 'gen-translate-run');
       expect(r.called('onTranslationSettings'), isTrue);
     });
+
+    testWidgets('translation primary toggles repeatedly even without a route', (
+      t,
+    ) async {
+      final d = GenFixture.view();
+      for (final showing in [true, false, true]) {
+        await pump(
+          t,
+          d.copyWith(
+            prompt: GenPromptData(
+              qualityPresets: d.prompt.qualityPresets,
+              translate: GenTranslate(hasTranslations: true, showing: showing),
+            ),
+          ),
+        );
+        await tapKey(t, 'gen-translate-run');
+      }
+      expect(r.calls.where((call) => call == 'onToggleTranslation').length, 3);
+      expect(r.called('onTranslate'), isFalse);
+      expect(r.called('onTranslationSettings'), isFalse);
+    });
+
+    testWidgets(
+      'new translation calls translate, clear and adjustment menus are gated',
+      (t) async {
+        final d = GenFixture.view();
+        await pump(
+          t,
+          d.copyWith(
+            prompt: GenPromptData(
+              qualityPresets: d.prompt.qualityPresets,
+              translate: const GenTranslate(route: 'fake'),
+            ),
+          ),
+        );
+        await tapKey(t, 'gen-translate-run');
+        expect(r.called('onTranslate'), isTrue);
+        await tapKey(t, 'gen-translate-menu');
+        expect(find.byKey(const Key('gen-translate-adjust')), findsOneWidget);
+        expect(find.byKey(const Key('gen-translate-clear')), findsOneWidget);
+        await tapKey(t, 'gen-translate-adjust');
+        await tapKey(t, 'gen-translate-clear');
+        expect(r.called('onTranslationAdjust'), isFalse);
+        expect(r.called('onClearTranslations'), isFalse);
+        // Replace the page to close the still-open, disabled menu.
+        await t.pumpWidget(const SizedBox());
+        await pump(
+          t,
+          d.copyWith(
+            prompt: GenPromptData(
+              qualityPresets: d.prompt.qualityPresets,
+              translate: const GenTranslate(
+                route: 'fake',
+                hasTranslations: true,
+                canAdjust: true,
+              ),
+            ),
+          ),
+        );
+        await tapKey(t, 'gen-translate-menu');
+        await captureUiuxRegion(
+          t,
+          find.byKey(const Key('gen-capture')),
+          'translate-menu',
+          const Rect.fromLTWH(0, 0, 700, 520),
+        );
+        await tapKey(t, 'gen-translate-clear');
+        expect(r.called('onClearTranslations'), isTrue);
+        await tapKey(t, 'gen-translate-menu');
+        await tapKey(t, 'gen-translate-adjust');
+        expect(r.called('onTranslationAdjust'), isTrue);
+      },
+    );
 
     testWidgets('块库侧栏按钮开关 dock', (t) async {
       await pump(t);
@@ -448,6 +567,121 @@ void main() {
       );
     });
 
+    testWidgets('重复次数滚轮不改值，拖动 36px 松手只提交一次', (t) async {
+      await pump(t);
+      final value = find.byKey(const Key('gen-repeat-value'));
+      final center = t.getCenter(value);
+      await t.sendEventToBinding(
+        PointerScrollEvent(position: center, scrollDelta: const Offset(0, -40)),
+      );
+      await t.pump();
+      expect(r.called('onRepeatChanged'), isFalse);
+      final gesture = await t.startGesture(
+        center,
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(36, 0));
+      await t.pump();
+      expect(r.called('onRepeatChanged'), isFalse);
+      expect(find.byKey(const Key('gen-repeat-bubble')), findsOneWidget);
+      expect(find.byKey(const Key('gen-repeat-ruler')), findsNothing);
+      expect(
+        find.descendant(of: value, matching: find.text('4')),
+        findsOneWidget,
+      );
+      final stepper = t.getRect(find.byKey(const Key('gen-repeat')));
+      await captureUiuxRegion(
+        t,
+        find.byKey(const Key('gen-capture')),
+        'repeat-drag',
+        Rect.fromLTRB(
+          stepper.left - 80,
+          stepper.top - 60,
+          stepper.right + 80,
+          stepper.bottom + 30,
+        ),
+      );
+      await gesture.up();
+      await t.pumpAndSettle();
+      expect(r.calls.where((c) => c.startsWith('onRepeatChanged')), [
+        'onRepeatChanged(4)',
+      ]);
+    });
+
+    testWidgets('重复次数 Shift 拖动每格五次，负方向夹紧且取消不提交', (t) async {
+      await pump(t);
+      final value = find.byKey(const Key('gen-repeat-value'));
+      await t.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+      final gesture = await t.startGesture(
+        t.getCenter(value),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(24, 0));
+      await gesture.up();
+      await t.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+      await t.pumpAndSettle();
+      expect(r.last('onRepeatChanged'), 'onRepeatChanged(11)');
+      r.calls.clear();
+      final cancelled = await t.startGesture(
+        t.getCenter(value),
+        kind: PointerDeviceKind.mouse,
+      );
+      await cancelled.moveBy(const Offset(10000, 0));
+      await cancelled.cancel();
+      await t.pumpAndSettle();
+      expect(r.called('onRepeatChanged'), isFalse);
+      await t.drag(value, const Offset(-60, 0));
+      await t.pumpAndSettle();
+      expect(r.called('onRepeatChanged'), isFalse);
+    });
+
+    testWidgets('重复拖动上限夹紧，只在松手提交', (t) async {
+      await pump(t);
+      final gesture = await t.startGesture(
+        t.getCenter(find.byKey(const Key('gen-repeat-value'))),
+      );
+      await gesture.moveBy(const Offset(9999, 0));
+      await t.pump();
+      expect(r.called('onRepeatChanged'), false);
+      await gesture.up();
+      await t.pumpAndSettle();
+      expect(
+        r.last('onRepeatChanged'),
+        'onRepeatChanged(${GenFixture.view().image.maxRepeat})',
+      );
+    });
+
+    testWidgets('重复次数双击输入夹紧，回车确认、Esc 取消、失焦确认', (t) async {
+      await pump(t);
+      final value = find.byKey(const Key('gen-repeat-value'));
+      Future<void> edit(String text) async {
+        await t.tap(value);
+        await t.pump(const Duration(milliseconds: 50));
+        await t.tap(value);
+        await t.pumpAndSettle();
+        await t.enterText(find.byKey(const Key('gen-repeat-input')), text);
+      }
+
+      await edit('999999');
+      await t.testTextInput.receiveAction(TextInputAction.done);
+      await t.pumpAndSettle();
+      expect(
+        r.last('onRepeatChanged'),
+        'onRepeatChanged(${GenFixture.view().image.maxRepeat})',
+      );
+      r.calls.clear();
+      await edit('9');
+      await t.sendKeyEvent(LogicalKeyboardKey.escape);
+      await t.pumpAndSettle();
+      expect(r.called('onRepeatChanged'), isFalse);
+      await edit('6');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await t.pumpAndSettle();
+      expect(r.calls.where((c) => c.startsWith('onRepeatChanged')), [
+        'onRepeatChanged(6)',
+      ]);
+    });
+
     testWidgets('参数条：点种子解除固定，点采样器出分组菜单', (t) async {
       await pump(t);
       expect(find.text('种子 · 固定'), findsOneWidget);
@@ -531,6 +765,67 @@ void main() {
       expect(r.last('onBackdropChanged'), 'onBackdropChanged(checkerDark)');
       await tapKey(t, 'gen-zoom-fill');
       expect(r.last('onZoomToFillChanged'), 'onZoomToFillChanged(true)');
+    });
+
+    testWidgets('显示设置：矮窗口里内部滚动，底部几节不被裁掉', (t) async {
+      final v = GenFixture.view();
+      await pump(
+        t,
+        v.copyWith(canvas: v.canvas.withChannel(const ChannelSettings())),
+        1100,
+        620,
+      );
+      await tapKey(t, 'gen-display');
+      final pop = t.getRect(find.byKey(const Key('gen-display-popover')));
+      expect(pop.height, lessThanOrEqualTo(620));
+      expect(t.takeException(), isNull);
+      final scroll = find.byKey(const Key('gen-display-scroll'));
+      expect(scroll, findsOneWidget);
+      final last = find.byKey(const Key('gen-zoom-fill'));
+      await t.scrollUntilVisible(
+        find.byKey(const Key('channel-motion')),
+        80,
+        scrollable: find
+            .descendant(of: scroll, matching: find.byType(Scrollable))
+            .first,
+      );
+      expect(last, findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('token 条提示在条的上方，不盖住下面的角色标题行', (t) async {
+      await pump(t, GenFixture.characters());
+      final tip = find.byType(GenTokenBar).first;
+      final bar = t.getRect(tip);
+      final g = await t.createGesture(kind: PointerDeviceKind.mouse);
+      await g.addPointer(location: Offset.zero);
+      await g.moveTo(bar.center);
+      await t.pump();
+      await t.pump(const Duration(seconds: 1));
+      await t.pumpAndSettle();
+      final label = find.textContaining(' tokens');
+      expect(label, findsOneWidget);
+      expect(t.getRect(label).bottom, lessThan(bar.top));
+      await g.removePointer();
+    });
+
+    testWidgets('局部重绘：Vibe 行与展开区写明本次不生效，不显示附加费', (t) async {
+      final v = GenFixture.refsFull();
+      await pump(
+        t,
+        v.copyWith(
+          refs: GenRefsData(
+            img2img: v.refs.img2img,
+            vibes: v.refs.vibes,
+            vibeSuspendedForInpaint: true,
+          ),
+        ),
+      );
+      const note = 'Vibe 不支持局部重绘（Inpainting），本次不会生效。';
+      expect(find.text(note), findsOneWidget);
+      await tapKey(t, 'gen-ref-vibe-row');
+      expect(find.byKey(const Key('gen-vibe-inpaint-note')), findsOneWidget);
+      expect(find.text(note), findsNWidgets(2));
     });
 
     testWidgets('垫底：自定义色回车提交；V4.5 不出透明图就没有这一节', (t) async {
@@ -697,5 +992,43 @@ void main() {
       await pump(t, GenFixture.generating());
       expect(find.text('· 还剩 3 张'), findsOneWidget);
     });
+
+    testWidgets('流式生成：首图前历史封面显示同一帧模糊预览', (t) async {
+      final g = GenFixture.generating();
+      final first = g.history.batches.first;
+      final preview = MemoryImage(base64Decode(_png1x1));
+      await pump(
+        t,
+        g.copyWith(
+          history: GenHistoryData(
+            selected: 'b0',
+            batches: [
+              GenBatch(
+                id: 'b0',
+                time: first.time,
+                images: const [],
+                pending: 4,
+                pendingPreview: preview,
+              ),
+              ...g.history.batches.skip(1),
+            ],
+          ),
+        ),
+      );
+      expect(find.byKey(const Key('gen-batch-stream-b0')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('gen-batch-stream-b0')),
+          matching: find.byWidgetPredicate(
+            (w) => w is UiPreviewImage && identical(w.image, preview),
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('生成中'), findsNothing);
+    });
   });
 }
+
+const _png1x1 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';

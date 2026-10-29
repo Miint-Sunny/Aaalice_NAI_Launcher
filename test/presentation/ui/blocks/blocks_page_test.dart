@@ -1,3 +1,6 @@
+import 'package:flutter/rendering.dart';
+import 'dart:ui' as ui;
+import 'dart:io';
 // 块系统交互测试：每个按钮 / 快捷键 / 拖放都回调到契约，接线方照着这些回调接 provider。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -11,9 +14,13 @@ import 'package:nai_launcher/presentation/ui/blocks/blocks_page.dart';
 import 'package:nai_launcher/presentation/ui/blocks/blocks_quick.dart';
 import 'package:nai_launcher/presentation/ui/kit/ui_block_pill.dart';
 
+import '../../../helpers/studio_capture_fonts.dart';
 import 'blocks_test_harness.dart';
 
 void main() {
+  if (Platform.environment['CAPTURE_BLOCKS_PANEL'] != null) {
+    setUpAll(loadStudioCaptureFonts);
+  }
   late RecordingBlocks rec;
   setUp(() => rec = RecordingBlocks());
 
@@ -559,6 +566,22 @@ void main() {
       expect(rec.drafts.single.thumb!.scale, closeTo(2.0, 1e-9));
     });
 
+    testWidgets('附带参数质量词与 UC 预设可编辑并随保存返回', (t) async {
+      await open(t);
+      await tapKey(t, 'block-edit-params');
+      await tapKey(t, 'block-param-quality-standard');
+      await tapKey(t, 'block-param-uc');
+      await tapKey(t, 'block-param-uc-1');
+      expect(find.byKey(const Key('block-param-quality-row')), findsOneWidget);
+      expect(find.textContaining('masterpiece'), findsWidgets);
+      await captureBlocksPanel(t, 'block-params-presets');
+      await t.tap(find.text('完成'));
+      await t.pumpAndSettle();
+      await tapKey(t, 'block-edit-save');
+      expect(rec.drafts.single.params!.qualityPreset, 'standard');
+      expect(rec.drafts.single.params!.ucPreset, 1);
+    });
+
     testWidgets('新建块：没内容时保存不可点，有内容后 onCreate', (t) async {
       await lib(t);
       await tapKey(t, 'blocks-create');
@@ -771,5 +794,20 @@ void main() {
       await tapKey(t, 'block-sel-lookup');
       expect(calls, ['save', 'copy', 'lookup']);
     });
+  });
+}
+
+Future<void> captureBlocksPanel(WidgetTester t, String name) async {
+  final dir = Platform.environment['CAPTURE_BLOCKS_PANEL'];
+  if (dir == null) return;
+  await t.runAsync(() async {
+    final boundary = t.renderObject<RenderRepaintBoundary>(
+      find.byKey(const Key('blocks-capture')),
+    );
+    final image = await boundary.toImage(pixelRatio: 1);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    await Directory(dir).create(recursive: true);
+    await File('$dir/$name.png').writeAsBytes(bytes!.buffer.asUint8List());
   });
 }
