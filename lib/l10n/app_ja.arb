@@ -9809,6 +9809,12 @@
       "size": {}
     }
   },
+  "set_stFreeMac": "空き {size}",
+  "@set_stFreeMac": {
+    "placeholders": {
+      "size": {}
+    }
+  },
   "set_stRecount": "再集計",
   "set_stCounting": "集計中…",
   "set_stImages": "画像",

@@ -17883,6 +17883,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String set_stFreeMac(Object size) {
+    return '空き $size';
+  }
+
+  @override
   String get set_stRecount => '再集計';
 
   @override

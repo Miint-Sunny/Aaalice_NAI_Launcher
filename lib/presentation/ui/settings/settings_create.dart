@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../../../core/utils/app_bundle_paths.dart';
 import '../../../core/utils/desktop_platform.dart';
 import '../../../core/utils/localization_extension.dart';
+import '../../utils/platform_labels.dart';
 import '../kit/ui_colors.dart';
 import '../kit/ui_glyph.dart';
 import '../kit/ui_lib_controls.dart';
@@ -562,7 +563,8 @@ class SettingsStoragePage extends StatelessWidget {
                         const Spacer(),
                         if (st.diskFree != null)
                           Text(
-                            l.set_stFree(
+                            diskFreeLabel(
+                              l,
                               st.diskLabel,
                               SettingsFormat.bytes(st.diskFree!),
                             ),

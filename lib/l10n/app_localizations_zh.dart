@@ -17663,6 +17663,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String set_stFreeMac(Object size) {
+    return '剩余 $size';
+  }
+
+  @override
   String get set_stRecount => '重新统计';
 
   @override
@@ -39389,6 +39394,11 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   @override
   String set_stFree(Object disk, Object size) {
     return '$disk 盤剩餘 $size';
+  }
+
+  @override
+  String set_stFreeMac(Object size) {
+    return '剩餘 $size';
   }
 
   @override

@@ -32092,6 +32092,12 @@ abstract class AppLocalizations {
   /// **'{size} free on {disk}'**
   String set_stFree(Object disk, Object size);
 
+  /// No description provided for @set_stFreeMac.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} free'**
+  String set_stFreeMac(Object size);
+
   /// No description provided for @set_stRecount.
   ///
   /// In en, this message translates to:

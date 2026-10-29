@@ -17935,6 +17935,11 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
+  String set_stFreeMac(Object size) {
+    return '여유 $size';
+  }
+
+  @override
   String get set_stRecount => '다시 계산';
 
   @override

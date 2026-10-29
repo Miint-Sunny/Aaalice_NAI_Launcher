@@ -9811,6 +9811,12 @@
       "size": {}
     }
   },
+  "set_stFreeMac": "{size} free",
+  "@set_stFreeMac": {
+    "placeholders": {
+      "size": {}
+    }
+  },
   "set_stRecount": "Recount",
   "set_stCounting": "Counting…",
   "set_stImages": "Images",

@@ -18412,6 +18412,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String set_stFreeMac(Object size) {
+    return '$size free';
+  }
+
+  @override
   String get set_stRecount => 'Recount';
 
   @override

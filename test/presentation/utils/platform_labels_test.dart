@@ -20,6 +20,9 @@ void main() {
     expect(minimizeToTrayLabel(en), 'Hide to Menu Bar');
     expect(imageMissingHintLabel(zh), '可能已经在访达里被移动、改名或删除');
     expect(followSystemAppearanceLabel(zh), '按 macOS 设置自动切换');
+    // 盘符在 Mac 上只是「/」，剩余空间不带它
+    expect(diskFreeLabel(zh, '/', '120 GB'), '剩余 120 GB');
+    expect(diskFreeLabel(en, '/', '120 GB'), '120 GB free');
     expect(
       settingsShortcutLabel(zh, 'shortcut_action_minimize_to_tray'),
       '隐藏到菜单栏',
@@ -34,6 +37,7 @@ void main() {
     expect(minimizeToTrayLabel(zh), '最小化到托盘');
     expect(imageMissingHintLabel(zh), '可能已经在资源管理器里被移动、改名或删除');
     expect(followSystemAppearanceLabel(zh), '按 Windows 设置自动切换');
+    expect(diskFreeLabel(zh, 'E:', '120 GB'), 'E: 盘剩余 120 GB');
     expect(
       settingsShortcutLabel(zh, 'shortcut_action_minimize_to_tray'),
       '最小化到托盘',

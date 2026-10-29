@@ -9809,6 +9809,12 @@
       "size": {}
     }
   },
+  "set_stFreeMac": "여유 {size}",
+  "@set_stFreeMac": {
+    "placeholders": {
+      "size": {}
+    }
+  },
   "set_stRecount": "다시 계산",
   "set_stCounting": "계산 중…",
   "set_stImages": "이미지",

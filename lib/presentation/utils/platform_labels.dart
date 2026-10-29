@@ -22,3 +22,10 @@ String imageMissingHintLabel(AppLocalizations l10n) => usesMacOSConventions
 /// 外观「跟随系统」的说明：macOS 上说「按 macOS 设置」。
 String followSystemAppearanceLabel(AppLocalizations l10n) =>
     usesMacOSConventions ? l10n.set_apSystemSubMac : l10n.set_apSystemSub;
+
+/// 存储页的剩余空间：Windows 带盘符（「E: 盘剩余 …」）；macOS 没有盘符（这里拿到的盘只是「/」），
+/// 只写剩余多少。
+String diskFreeLabel(AppLocalizations l10n, String disk, String size) =>
+    usesMacOSConventions
+    ? l10n.set_stFreeMac(size)
+    : l10n.set_stFree(disk, size);
