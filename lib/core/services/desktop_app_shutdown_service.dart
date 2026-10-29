@@ -16,7 +16,7 @@ class DesktopAppShutdownService {
   DesktopAppShutdownService._();
 
   static Future<void>? _shutdownFuture;
-  // 退出开始后，托盘点击不再把窗口打开
+  // 退出开始后，macOS 上菜单栏图标的点击不再把窗口打开（见 AppTrayListener）
   static bool get isShuttingDown => _shutdownFuture != null;
   static final _cleanups = <Future<void> Function()>{};
 

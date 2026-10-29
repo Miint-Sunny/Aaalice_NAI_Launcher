@@ -151,19 +151,26 @@ class WindowStateObserver extends WidgetsBindingObserver {
 }
 
 /// 系统托盘监听器，处理托盘图标交互
-// 从托盘显示窗口前先恢复最小化（macOS 上 ⌘M 收进程序坞的窗口）
-Future<void> _restoreWindowIfMinimized() async {
-  if (await windowManager.isMinimized()) await windowManager.restore();
-}
-
+///
+/// macOS 上（[macOS] 默认按真实系统）退出过程中点菜单栏图标不再把窗口打开；Windows 照原来的行为。
+/// 最小化的窗口（macOS 上 ⌘M 收进程序坞的）由 windowManager.show() 自己先恢复，两个平台都是。
 class AppTrayListener extends TrayListener {
+  AppTrayListener({bool? macOS, bool Function()? shuttingDown})
+    : _macOS = macOS ?? Platform.isMacOS,
+      _shuttingDown =
+          shuttingDown ?? (() => DesktopAppShutdownService.isShuttingDown);
+
+  final bool _macOS;
+  final bool Function() _shuttingDown;
+
+  /// macOS：退出开始后，菜单栏图标的点击不再响应
+  bool get _ignoredWhileQuitting => _macOS && _shuttingDown();
+
   @override
   Future<void> onTrayIconMouseDown() async {
-    // 退出过程中不再打开窗口
-    if (DesktopAppShutdownService.isShuttingDown) return;
+    if (_ignoredWhileQuitting) return;
     // 左键点击托盘图标 - 恢复窗口
     try {
-      await _restoreWindowIfMinimized();
       await windowManager.show();
       await windowManager.focus();
       await refreshWindowFrame();
@@ -175,18 +182,17 @@ class AppTrayListener extends TrayListener {
 
   @override
   void onTrayIconRightMouseDown() {
-    if (DesktopAppShutdownService.isShuttingDown) return;
+    if (_ignoredWhileQuitting) return;
     // 右键点击托盘图标 - 显示上下文菜单 (Windows)
     trayManager.popUpContextMenu();
   }
 
   @override
   Future<void> onTrayMenuItemClick(MenuItem menuItem) async {
-    if (DesktopAppShutdownService.isShuttingDown) return;
+    if (_ignoredWhileQuitting) return;
     try {
       if (menuItem.key == 'show') {
         // 显示窗口
-        await _restoreWindowIfMinimized();
         await windowManager.show();
         await windowManager.focus();
         await refreshWindowFrame();
