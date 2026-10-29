@@ -576,6 +576,7 @@ class SettingsViewData {
     SettingsUpscaleData? upscale,
     SettingsDictionaryData? dictionaries,
     SettingsStorageData? storage,
+    SettingsBackupData? backup,
   }) => SettingsViewData(
     page: page ?? this.page,
     values: values ?? this.values,
@@ -600,7 +601,7 @@ class SettingsViewData {
     bridges: bridges,
     network: network,
     privacy: privacy ?? this.privacy,
-    backup: backup,
+    backup: backup ?? this.backup,
     about: about,
   );
 }
@@ -1908,6 +1909,7 @@ class SettingsBackupData {
     this.lastImportAt,
     this.backups = const [],
     this.shortcutsCustomized = 0,
+    this.legacy,
   });
 
   /// 有值时“撤销上次导入”可用。
@@ -1916,6 +1918,42 @@ class SettingsBackupData {
   /// 自动备份（新增：保留最近 5 份）。
   final List<SettingsBackup> backups;
   final int shortcutsCustomized;
+
+  /// “旧版数据”一节；只在 macOS、不是沙箱、检测到旧版数据时有值。
+  final SettingsLegacyData? legacy;
+}
+
+/// 旧版（1.x）数据：从旧版同步、撤销上次同步。两者都在下次启动、数据打开前进行。
+@immutable
+class SettingsLegacyData {
+  const SettingsLegacyData({
+    required this.appName,
+    this.copiedAt,
+    this.syncedAt,
+    this.undoBackup,
+    this.undoAt,
+    this.undoneAt,
+    this.running = false,
+  });
+
+  /// 程序坞里旧版的名字。
+  final String appName;
+
+  /// 现在的数据来自首次启动时的复制。
+  final DateTime? copiedAt;
+
+  /// 现在的数据来自这次同步。
+  final DateTime? syncedAt;
+
+  /// 有值时“撤销上次同步”可用：最近一份备份是这次同步前留下的。
+  final String? undoBackup;
+  final DateTime? undoAt;
+
+  /// 最近一份备份是撤销时留下的：上次同步已经撤销。
+  final DateTime? undoneAt;
+
+  /// 旧版正在运行（同步前要先退出）。
+  final bool running;
 }
 
 // ── 关于
@@ -2083,6 +2121,8 @@ class SettingsActions {
     this.onUndoImport = _none,
     this.onResetScopes = _noScopes,
     this.onRestoreBackup = _noId,
+    this.onLegacySync = _none,
+    this.onLegacyUndo = _noId,
     // 关于
     this.onCheckUpdate = _none,
     this.onInstallUpdate = _none,
@@ -2308,6 +2348,10 @@ class SettingsActions {
   /// 界面已确认过；接线方先自动备份再重置。
   final ValueChanged<Set<SettingsResetScope>> onResetScopes;
   final ValueChanged<String> onRestoreBackup;
+
+  /// 界面已确认过；接线方记下请求并重启，下次启动时同步或撤销。
+  final VoidCallback onLegacySync;
+  final ValueChanged<String> onLegacyUndo;
 
   final VoidCallback onCheckUpdate;
   final VoidCallback onInstallUpdate;

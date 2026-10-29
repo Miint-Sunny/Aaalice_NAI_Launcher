@@ -61,6 +61,133 @@ class AppLocalizationsJa extends AppLocalizations {
   String get legacyImport_startWithout => 'コピーせずに起動';
 
   @override
+  String legacySync_title(Object app) {
+    return '$app からデータを同期しています';
+  }
+
+  @override
+  String legacySync_body(Object app) {
+    return 'ここにある設定、履歴、各種ライブラリとお気に入りを、$app の現在のデータに置き換えています。このバージョンのデータは先にバックアップしました。';
+  }
+
+  @override
+  String get legacySync_runningBody =>
+      '同期では旧版の設定、履歴、各種ライブラリとお気に入りを読み込みます。メニューバーのアイコンも含めて旧版を完全に終了すると、自動的に同期が始まります。';
+
+  @override
+  String legacySync_failedTitle(Object app) {
+    return '$app からデータを同期できません';
+  }
+
+  @override
+  String get legacySync_failedBody =>
+      '同期前のデータに戻しました。途中までの同期も残っていません。ディスクの空き容量を確認してから、もう一度お試しください。';
+
+  @override
+  String get legacySync_startWithout => '同期せずに起動';
+
+  @override
+  String get legacyUndo_title => '前回の同期を取り消しています';
+
+  @override
+  String get legacyUndo_body => '同期前のデータに戻しています。同期後のデータはバックアップとして残します。';
+
+  @override
+  String get legacyUndo_failedTitle => '前回の同期を取り消せません';
+
+  @override
+  String get legacyUndo_failedBody =>
+      'データは変更されておらず、途中までの切り替えも残っていません。ディスクの空き容量を確認してから、もう一度お試しください。';
+
+  @override
+  String get legacyUndo_startWithout => '取り消さずに起動';
+
+  @override
+  String get set_bkLegacy => '旧版のデータ';
+
+  @override
+  String set_bkLegacySub(Object app) {
+    return '旧版 $app のデータです。読み込むだけで変更はしません。バックアップは直近 2 件を保持します。';
+  }
+
+  @override
+  String get set_bkLegacySync => '旧版から同期';
+
+  @override
+  String set_bkLegacySyncCopied(Object time) {
+    return '初回起動時にコピー済み（$time）。もう一度同期すると、ここにある設定、履歴、各種ライブラリを旧版の現在のデータに置き換えます。置き換える前に自動でバックアップします。';
+  }
+
+  @override
+  String set_bkLegacySyncSynced(Object time) {
+    return '前回の同期：$time。もう一度同期すると、ここにある設定、履歴、各種ライブラリを旧版の現在のデータに置き換えます。置き換える前に自動でバックアップします。';
+  }
+
+  @override
+  String get set_bkLegacySyncNever =>
+      '初回起動時はコピーしませんでした。同期すると、ここにある設定、履歴、各種ライブラリを旧版のデータに置き換えます。置き換える前に自動でバックアップします。';
+
+  @override
+  String get set_bkLegacySyncBtn => '同期…';
+
+  @override
+  String get set_bkLegacyUndo => '前回の同期を取り消す';
+
+  @override
+  String set_bkLegacyUndoSub(Object time) {
+    return '$time の同期前のデータに戻します';
+  }
+
+  @override
+  String set_bkLegacyUndone(Object time) {
+    return '前回の同期は $time に取り消しました';
+  }
+
+  @override
+  String get set_bkLegacyNoSync => 'まだ同期していません';
+
+  @override
+  String get set_bkLegacyUndoBtn => '復元…';
+
+  @override
+  String get set_bkLegacySyncTitle => '旧版のデータで置き換えますか？';
+
+  @override
+  String set_bkLegacySyncBody(Object app) {
+    return '$app の現在の設定、履歴、各種ライブラリとお気に入りをコピーし、ここにある同じ種類のデータを置き換えます。\n\n· 現在のデータは先にすべてバックアップし、「前回の同期を取り消す」で元に戻せます\n· このバージョンにしかないデータ（Agent の会話、設定のバックアップなど）はそのまま残ります\n· 画像と Vibe ファイルには影響しません\n· アプリを再起動します。旧版が起動中なら先に終了してください';
+  }
+
+  @override
+  String set_bkLegacySyncRunning(Object app) {
+    return '⚠ $app が起動中です。先に終了してください。終了しないと、再起動後に終了を待つ画面で止まります。';
+  }
+
+  @override
+  String get set_bkLegacySyncConfirm => '同期して再起動';
+
+  @override
+  String get set_bkLegacyUndoTitle => '前回の同期を取り消しますか？';
+
+  @override
+  String set_bkLegacyUndoBody(Object time) {
+    return '$time の同期前のデータに戻します。同期後にここで行った変更はバックアップとして残します。アプリを再起動します。';
+  }
+
+  @override
+  String get set_bkLegacyUndoConfirm => '取り消して再起動';
+
+  @override
+  String get set_bkLegacyBusy => '実行中のタスクがあります。終わってからもう一度お試しください。';
+
+  @override
+  String get set_bkLegacySyncFailed =>
+      '同期を開始できません。ディスクの空き容量を確認してから、もう一度お試しください。';
+
+  @override
+  String get set_bkLegacyUndoFailed =>
+      '同期を取り消せません。ディスクの空き容量を確認してから、もう一度お試しください。';
+
+  @override
   String get app_subtitle => 'NovelAI サードパーティ クライアント';
 
   @override

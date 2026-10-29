@@ -13,18 +13,11 @@ import '../../widgets/auth/entry_controls.dart';
 import '../../widgets/branding/brand_logo.dart';
 import '../../widgets/branding/entry_field.dart';
 
-/// Name of the previous macOS app in the copy screen, as its Dock icon
-/// shows it. A build that sets `MAC_LEGACY_BUNDLE_ID` to another app names
-/// that app with `--dart-define=MAC_LEGACY_APP_NAME=<name>`.
-const macLegacyAppName = String.fromEnvironment(
-  'MAC_LEGACY_APP_NAME',
-  defaultValue: 'Aaalice NAI Launcher',
-);
-
-/// Shows the first-launch copy of the previous macOS version's data (see
-/// [MacLegacyDataImport]) in the window, before Hive and the databases open.
-/// Nothing is shown unless data is copied or the user has to decide; the app
-/// replaces this screen with its own once startup continues.
+/// Shows the first-launch copy of the previous macOS version's data, or a
+/// sync or undo requested in Settings (see [MacLegacyDataImport]), in the
+/// window before Hive and the databases open. Nothing is shown unless data
+/// is copied or switched or the user has to decide; the app replaces this
+/// screen with its own once startup continues.
 class LegacyDataImportGate implements MacLegacyDataImportPresenter {
   LegacyDataImportGate({
     this.appName = macLegacyAppName,
@@ -41,6 +34,7 @@ class LegacyDataImportGate implements MacLegacyDataImportPresenter {
   final _view = ValueNotifier<LegacyDataImportView>(
     const LegacyDataImportView(LegacyDataImportStep.copying),
   );
+  var _task = MacLegacyDataTask.import;
   var _shown = false;
 
   void _set(LegacyDataImportView view) {
@@ -51,30 +45,42 @@ class LegacyDataImportGate implements MacLegacyDataImportPresenter {
   }
 
   @override
-  void showCopying() =>
-      _set(const LegacyDataImportView(LegacyDataImportStep.copying));
+  void showCopying(MacLegacyDataTask task) => _set(
+    LegacyDataImportView(LegacyDataImportStep.copying, task: _task = task),
+  );
 
   @override
-  void showLegacyRunning({required void Function() onSkip}) =>
-      _set(LegacyDataImportView(LegacyDataImportStep.waiting, onSkip: onSkip));
+  void showLegacyRunning(
+    MacLegacyDataTask task, {
+    required void Function() onSkip,
+  }) => _set(
+    LegacyDataImportView(
+      LegacyDataImportStep.waiting,
+      task: _task = task,
+      onSkip: onSkip,
+    ),
+  );
 
   @override
   void showFailed(
+    MacLegacyDataTask task,
     Object error, {
     required void Function() onRetry,
     required void Function() onSkip,
   }) => _set(
     LegacyDataImportView(
       LegacyDataImportStep.failed,
+      task: _task = task,
       error: error,
       onRetry: onRetry,
       onSkip: onSkip,
     ),
   );
 
+  /// Keeps the task's title while the app takes over.
   @override
   void showStarting() =>
-      _set(const LegacyDataImportView(LegacyDataImportStep.starting));
+      _set(LegacyDataImportView(LegacyDataImportStep.starting, task: _task));
 }
 
 enum LegacyDataImportStep { copying, waiting, failed, starting }
@@ -83,12 +89,16 @@ enum LegacyDataImportStep { copying, waiting, failed, starting }
 class LegacyDataImportView {
   const LegacyDataImportView(
     this.step, {
+    this.task = MacLegacyDataTask.import,
     this.error,
     this.onRetry,
     this.onSkip,
   });
 
   final LegacyDataImportStep step;
+
+  /// First-launch copy, or a sync or undo requested in Settings.
+  final MacLegacyDataTask task;
   final Object? error;
   final VoidCallback? onRetry;
   final VoidCallback? onSkip;
@@ -159,18 +169,39 @@ class _LegacyDataImportPageState extends State<LegacyDataImportPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final palette = EntryPalette.of(context);
-    final (title, body) = switch (view.step) {
-      LegacyDataImportStep.copying || LegacyDataImportStep.starting => (
-        l10n.legacyImport_copyingTitle(appName),
-        l10n.legacyImport_copyingBody(appName),
-      ),
-      LegacyDataImportStep.waiting => (
+    final (title, body) = switch ((view.step, view.task)) {
+      (LegacyDataImportStep.waiting, MacLegacyDataTask.import) => (
         l10n.legacyImport_runningTitle(appName),
         l10n.legacyImport_runningBody,
       ),
-      LegacyDataImportStep.failed => (
+      // Only a sync reads the previous version; an undo never waits.
+      (LegacyDataImportStep.waiting, _) => (
+        l10n.legacyImport_runningTitle(appName),
+        l10n.legacySync_runningBody,
+      ),
+      (LegacyDataImportStep.failed, MacLegacyDataTask.import) => (
         l10n.legacyImport_failedTitle(appName),
         l10n.legacyImport_failedBody(appName),
+      ),
+      (LegacyDataImportStep.failed, MacLegacyDataTask.sync) => (
+        l10n.legacySync_failedTitle(appName),
+        l10n.legacySync_failedBody,
+      ),
+      (LegacyDataImportStep.failed, MacLegacyDataTask.undo) => (
+        l10n.legacyUndo_failedTitle,
+        l10n.legacyUndo_failedBody,
+      ),
+      (_, MacLegacyDataTask.import) => (
+        l10n.legacyImport_copyingTitle(appName),
+        l10n.legacyImport_copyingBody(appName),
+      ),
+      (_, MacLegacyDataTask.sync) => (
+        l10n.legacySync_title(appName),
+        l10n.legacySync_body(appName),
+      ),
+      (_, MacLegacyDataTask.undo) => (
+        l10n.legacyUndo_title,
+        l10n.legacyUndo_body,
       ),
     };
     return Scaffold(
@@ -235,7 +266,11 @@ class _LegacyDataImportPageState extends State<LegacyDataImportPage> {
     final l10n = context.l10n;
     final skip = EntryGhostButton(
       key: const Key('legacy_import_skip'),
-      label: l10n.legacyImport_startWithout,
+      label: switch (view.task) {
+        MacLegacyDataTask.import => l10n.legacyImport_startWithout,
+        MacLegacyDataTask.sync => l10n.legacySync_startWithout,
+        MacLegacyDataTask.undo => l10n.legacyUndo_startWithout,
+      },
       onPressed: view.onSkip,
     );
     return switch (view.step) {

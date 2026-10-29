@@ -61,6 +61,136 @@ class AppLocalizationsEn extends AppLocalizations {
   String get legacyImport_startWithout => 'Start Without Copying';
 
   @override
+  String legacySync_title(Object app) {
+    return 'Syncing your data from $app';
+  }
+
+  @override
+  String legacySync_body(Object app) {
+    return 'The settings, history, libraries and favorites here are being replaced with the current ones from $app. This version\'s data was backed up first.';
+  }
+
+  @override
+  String get legacySync_runningBody =>
+      'Syncing reads the previous version\'s settings, history, libraries and favorites. Quit it completely, including its menu bar icon, and syncing starts by itself.';
+
+  @override
+  String legacySync_failedTitle(Object app) {
+    return 'Can\'t sync your data from $app';
+  }
+
+  @override
+  String get legacySync_failedBody =>
+      'Your previous data is back in place and nothing half-synced was left. Make sure there\'s enough free disk space, then try again.';
+
+  @override
+  String get legacySync_startWithout => 'Start Without Syncing';
+
+  @override
+  String get legacyUndo_title => 'Undoing the last sync';
+
+  @override
+  String get legacyUndo_body =>
+      'Switching back to the data from before the sync. The data from after it is kept as a backup.';
+
+  @override
+  String get legacyUndo_failedTitle => 'Can\'t undo the last sync';
+
+  @override
+  String get legacyUndo_failedBody =>
+      'Your data is unchanged and nothing half-switched was left. Make sure there\'s enough free disk space, then try again.';
+
+  @override
+  String get legacyUndo_startWithout => 'Start Without Undoing';
+
+  @override
+  String get set_bkLegacy => 'Previous version';
+
+  @override
+  String set_bkLegacySub(Object app) {
+    return 'From the previous version, $app. Its data is only read, never changed. The latest 2 backups are kept.';
+  }
+
+  @override
+  String get set_bkLegacySync => 'Sync from previous version';
+
+  @override
+  String set_bkLegacySyncCopied(Object time) {
+    return 'Copied on first launch ($time). Syncing again replaces the settings, history and libraries here with the previous version\'s current data, after a backup.';
+  }
+
+  @override
+  String set_bkLegacySyncSynced(Object time) {
+    return 'Last synced $time. Syncing again replaces the settings, history and libraries here with the previous version\'s current data, after a backup.';
+  }
+
+  @override
+  String get set_bkLegacySyncNever =>
+      'Not copied on first launch. Syncing replaces the settings, history and libraries here with the previous version\'s, after a backup.';
+
+  @override
+  String get set_bkLegacySyncBtn => 'Sync…';
+
+  @override
+  String get set_bkLegacyUndo => 'Undo last sync';
+
+  @override
+  String set_bkLegacyUndoSub(Object time) {
+    return 'Go back to the data from before the $time sync';
+  }
+
+  @override
+  String set_bkLegacyUndone(Object time) {
+    return 'The last sync was undone on $time';
+  }
+
+  @override
+  String get set_bkLegacyNoSync => 'No sync yet';
+
+  @override
+  String get set_bkLegacyUndoBtn => 'Restore…';
+
+  @override
+  String get set_bkLegacySyncTitle =>
+      'Replace this version\'s data with the previous version\'s?';
+
+  @override
+  String set_bkLegacySyncBody(Object app) {
+    return 'Copies the current settings, history, libraries and favorites of $app and replaces the same data here.\n\n· This version\'s data is backed up first; use Undo Last Sync to switch back\n· Data only this version has (Agent sessions, preference backups and more) stays\n· Images and Vibe files are not affected\n· Restarts the app; quit $app first if it is open';
+  }
+
+  @override
+  String set_bkLegacySyncRunning(Object app) {
+    return '⚠ $app is running. Quit it first, or the restart waits on a screen until you do.';
+  }
+
+  @override
+  String get set_bkLegacySyncConfirm => 'Sync and Restart';
+
+  @override
+  String get set_bkLegacyUndoTitle => 'Undo the last sync?';
+
+  @override
+  String set_bkLegacyUndoBody(Object time) {
+    return 'Switches back to the data from before the $time sync. Changes made here since then are kept as a backup. Restarts the app.';
+  }
+
+  @override
+  String get set_bkLegacyUndoConfirm => 'Undo and Restart';
+
+  @override
+  String get set_bkLegacyBusy =>
+      'A task is still running. Try again when it finishes.';
+
+  @override
+  String get set_bkLegacySyncFailed =>
+      'Can\'t start the sync. Make sure there\'s enough free disk space, then try again.';
+
+  @override
+  String get set_bkLegacyUndoFailed =>
+      'Can\'t undo the sync. Make sure there\'s enough free disk space, then try again.';
+
+  @override
   String get app_subtitle => 'NovelAI Third-party Client';
 
   @override

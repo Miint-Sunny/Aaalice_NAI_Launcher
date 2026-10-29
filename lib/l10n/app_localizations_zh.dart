@@ -61,6 +61,129 @@ class AppLocalizationsZh extends AppLocalizations {
   String get legacyImport_startWithout => '跳过复制并启动';
 
   @override
+  String legacySync_title(Object app) {
+    return '正在从 $app 同步数据';
+  }
+
+  @override
+  String legacySync_body(Object app) {
+    return '正在用 $app 现在的设置、历史记录、各类库和收藏替换这里的同类数据，当前数据已先备份。';
+  }
+
+  @override
+  String get legacySync_runningBody =>
+      '同步要读取旧版的设置、历史记录、各类库和收藏。请完全退出旧版（包括菜单栏里的图标），退出后会自动开始同步。';
+
+  @override
+  String legacySync_failedTitle(Object app) {
+    return '无法从 $app 同步数据';
+  }
+
+  @override
+  String get legacySync_failedBody => '已换回同步前的数据，没有留下同步了一半的文件。请确认磁盘空间足够，然后重试。';
+
+  @override
+  String get legacySync_startWithout => '取消同步并启动';
+
+  @override
+  String get legacyUndo_title => '正在撤销上次同步';
+
+  @override
+  String get legacyUndo_body => '正在换回同步前的数据，同步之后的数据另存为一份备份。';
+
+  @override
+  String get legacyUndo_failedTitle => '无法撤销上次同步';
+
+  @override
+  String get legacyUndo_failedBody => '数据保持原样，没有留下换了一半的文件。请确认磁盘空间足够，然后重试。';
+
+  @override
+  String get legacyUndo_startWithout => '取消撤销并启动';
+
+  @override
+  String get set_bkLegacy => '旧版数据';
+
+  @override
+  String set_bkLegacySub(Object app) {
+    return '来自旧版 $app。只读取它的数据，不会改动；备份保留最近 2 份。';
+  }
+
+  @override
+  String get set_bkLegacySync => '从旧版同步';
+
+  @override
+  String set_bkLegacySyncCopied(Object time) {
+    return '首次启动时已复制（$time）。再次同步会用旧版现在的设置、历史和各类库替换这里的，替换前自动备份。';
+  }
+
+  @override
+  String set_bkLegacySyncSynced(Object time) {
+    return '上次同步：$time。再次同步会用旧版现在的设置、历史和各类库替换这里的，替换前自动备份。';
+  }
+
+  @override
+  String get set_bkLegacySyncNever =>
+      '首次启动时没有复制。同步会用旧版的设置、历史和各类库替换这里的，替换前自动备份。';
+
+  @override
+  String get set_bkLegacySyncBtn => '同步…';
+
+  @override
+  String get set_bkLegacyUndo => '撤销上次同步';
+
+  @override
+  String set_bkLegacyUndoSub(Object time) {
+    return '回到 $time 同步前的数据';
+  }
+
+  @override
+  String set_bkLegacyUndone(Object time) {
+    return '上次同步已于 $time 撤销';
+  }
+
+  @override
+  String get set_bkLegacyNoSync => '还没有同步过';
+
+  @override
+  String get set_bkLegacyUndoBtn => '恢复…';
+
+  @override
+  String get set_bkLegacySyncTitle => '用旧版数据替换当前数据？';
+
+  @override
+  String set_bkLegacySyncBody(Object app) {
+    return '会复制 $app 现在的设置、历史记录、各类库和收藏，替换这里的同类数据。\n\n· 当前数据先完整备份，可以用“撤销上次同步”换回来\n· 只有新版才有的数据（Agent 会话、偏好备份等）保持不变\n· 图片和 Vibe 文件不受影响\n· 需要重启；旧版还开着的话，请先退出它';
+  }
+
+  @override
+  String set_bkLegacySyncRunning(Object app) {
+    return '⚠ $app 正在运行。请先退出它，否则重启后会停在等待页面，等你退出后再继续。';
+  }
+
+  @override
+  String get set_bkLegacySyncConfirm => '同步并重启';
+
+  @override
+  String get set_bkLegacyUndoTitle => '撤销上次同步？';
+
+  @override
+  String set_bkLegacyUndoBody(Object time) {
+    return '会换回 $time 同步前的数据。同步之后在这里做的改动另存为一份备份。需要重启。';
+  }
+
+  @override
+  String get set_bkLegacyUndoConfirm => '撤销并重启';
+
+  @override
+  String get set_bkLegacyBusy => '还有任务在进行，请等它结束后再试。';
+
+  @override
+  String get set_bkLegacySyncFailed => '无法开始同步。请确认磁盘空间足够，然后重试。';
+
+  @override
+  String get set_bkLegacyUndoFailed => '无法撤销同步。请确认磁盘空间足够，然后重试。';
+
+  @override
   String get app_subtitle => 'NovelAI 第三方客户端';
 
   @override
@@ -21793,6 +21916,129 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get legacyImport_startWithout => '跳過複製並啟動';
+
+  @override
+  String legacySync_title(Object app) {
+    return '正在從 $app 同步資料';
+  }
+
+  @override
+  String legacySync_body(Object app) {
+    return '正在用 $app 現在的設定、歷史記錄、各類庫和收藏替換這裡的同類資料，當前資料已先備份。';
+  }
+
+  @override
+  String get legacySync_runningBody =>
+      '同步要讀取舊版的設定、歷史記錄、各類庫和收藏。請完全退出舊版（包括選單列裡的圖示），退出後會自動開始同步。';
+
+  @override
+  String legacySync_failedTitle(Object app) {
+    return '無法從 $app 同步資料';
+  }
+
+  @override
+  String get legacySync_failedBody => '已換回同步前的資料，沒有留下同步了一半的檔案。請確認磁碟空間足夠，然後重試。';
+
+  @override
+  String get legacySync_startWithout => '取消同步並啟動';
+
+  @override
+  String get legacyUndo_title => '正在復原上次同步';
+
+  @override
+  String get legacyUndo_body => '正在換回同步前的資料，同步之後的資料另存為一份備份。';
+
+  @override
+  String get legacyUndo_failedTitle => '無法復原上次同步';
+
+  @override
+  String get legacyUndo_failedBody => '資料保持原樣，沒有留下換了一半的檔案。請確認磁碟空間足夠，然後重試。';
+
+  @override
+  String get legacyUndo_startWithout => '取消復原並啟動';
+
+  @override
+  String get set_bkLegacy => '舊版資料';
+
+  @override
+  String set_bkLegacySub(Object app) {
+    return '來自舊版 $app。只讀取它的資料，不會改動；備份保留最近 2 份。';
+  }
+
+  @override
+  String get set_bkLegacySync => '從舊版同步';
+
+  @override
+  String set_bkLegacySyncCopied(Object time) {
+    return '首次啟動時已複製（$time）。再次同步會用舊版現在的設定、歷史和各類庫替換這裡的，替換前自動備份。';
+  }
+
+  @override
+  String set_bkLegacySyncSynced(Object time) {
+    return '上次同步：$time。再次同步會用舊版現在的設定、歷史和各類庫替換這裡的，替換前自動備份。';
+  }
+
+  @override
+  String get set_bkLegacySyncNever =>
+      '首次啟動時沒有複製。同步會用舊版的設定、歷史和各類庫替換這裡的，替換前自動備份。';
+
+  @override
+  String get set_bkLegacySyncBtn => '同步…';
+
+  @override
+  String get set_bkLegacyUndo => '復原上次同步';
+
+  @override
+  String set_bkLegacyUndoSub(Object time) {
+    return '回到 $time 同步前的資料';
+  }
+
+  @override
+  String set_bkLegacyUndone(Object time) {
+    return '上次同步已於 $time 復原';
+  }
+
+  @override
+  String get set_bkLegacyNoSync => '還沒有同步過';
+
+  @override
+  String get set_bkLegacyUndoBtn => '恢復…';
+
+  @override
+  String get set_bkLegacySyncTitle => '用舊版資料替換當前資料？';
+
+  @override
+  String set_bkLegacySyncBody(Object app) {
+    return '會複製 $app 現在的設定、歷史記錄、各類庫和收藏，替換這裡的同類資料。\n\n· 當前資料先完整備份，可以用“復原上次同步”換回來\n· 只有新版才有的資料（Agent 會話、偏好備份等）保持不變\n· 圖片和 Vibe 檔案不受影響\n· 需要重啟；舊版還開著的話，請先退出它';
+  }
+
+  @override
+  String set_bkLegacySyncRunning(Object app) {
+    return '⚠ $app 正在執行。請先退出它，否則重啟後會停在等待頁面，等你退出後再繼續。';
+  }
+
+  @override
+  String get set_bkLegacySyncConfirm => '同步並重啟';
+
+  @override
+  String get set_bkLegacyUndoTitle => '復原上次同步？';
+
+  @override
+  String set_bkLegacyUndoBody(Object time) {
+    return '會換回 $time 同步前的資料。同步之後在這裡做的改動另存為一份備份。需要重啟。';
+  }
+
+  @override
+  String get set_bkLegacyUndoConfirm => '復原並重啟';
+
+  @override
+  String get set_bkLegacyBusy => '還有任務在進行，請等它結束後再試。';
+
+  @override
+  String get set_bkLegacySyncFailed => '無法開始同步。請確認磁碟空間足夠，然後重試。';
+
+  @override
+  String get set_bkLegacyUndoFailed => '無法復原同步。請確認磁碟空間足夠，然後重試。';
 
   @override
   String get app_subtitle => 'NovelAI 第三方客戶端';

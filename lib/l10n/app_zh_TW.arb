@@ -43,6 +43,94 @@
     }
   },
   "legacyImport_startWithout": "跳過複製並啟動",
+  "legacySync_title": "正在從 {app} 同步資料",
+  "@legacySync_title": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacySync_body": "正在用 {app} 現在的設定、歷史記錄、各類庫和收藏替換這裡的同類資料，當前資料已先備份。",
+  "@legacySync_body": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacySync_runningBody": "同步要讀取舊版的設定、歷史記錄、各類庫和收藏。請完全退出舊版（包括選單列裡的圖示），退出後會自動開始同步。",
+  "legacySync_failedTitle": "無法從 {app} 同步資料",
+  "@legacySync_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacySync_failedBody": "已換回同步前的資料，沒有留下同步了一半的檔案。請確認磁碟空間足夠，然後重試。",
+  "legacySync_startWithout": "取消同步並啟動",
+  "legacyUndo_title": "正在復原上次同步",
+  "legacyUndo_body": "正在換回同步前的資料，同步之後的資料另存為一份備份。",
+  "legacyUndo_failedTitle": "無法復原上次同步",
+  "legacyUndo_failedBody": "資料保持原樣，沒有留下換了一半的檔案。請確認磁碟空間足夠，然後重試。",
+  "legacyUndo_startWithout": "取消復原並啟動",
+  "set_bkLegacy": "舊版資料",
+  "set_bkLegacySub": "來自舊版 {app}。只讀取它的資料，不會改動；備份保留最近 2 份。",
+  "@set_bkLegacySub": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "set_bkLegacySync": "從舊版同步",
+  "set_bkLegacySyncCopied": "首次啟動時已複製（{time}）。再次同步會用舊版現在的設定、歷史和各類庫替換這裡的，替換前自動備份。",
+  "@set_bkLegacySyncCopied": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacySyncSynced": "上次同步：{time}。再次同步會用舊版現在的設定、歷史和各類庫替換這裡的，替換前自動備份。",
+  "@set_bkLegacySyncSynced": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacySyncNever": "首次啟動時沒有複製。同步會用舊版的設定、歷史和各類庫替換這裡的，替換前自動備份。",
+  "set_bkLegacySyncBtn": "同步…",
+  "set_bkLegacyUndo": "復原上次同步",
+  "set_bkLegacyUndoSub": "回到 {time} 同步前的資料",
+  "@set_bkLegacyUndoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndone": "上次同步已於 {time} 復原",
+  "@set_bkLegacyUndone": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyNoSync": "還沒有同步過",
+  "set_bkLegacyUndoBtn": "恢復…",
+  "set_bkLegacySyncTitle": "用舊版資料替換當前資料？",
+  "set_bkLegacySyncBody": "會複製 {app} 現在的設定、歷史記錄、各類庫和收藏，替換這裡的同類資料。\n\n· 當前資料先完整備份，可以用“復原上次同步”換回來\n· 只有新版才有的資料（Agent 會話、偏好備份等）保持不變\n· 圖片和 Vibe 檔案不受影響\n· 需要重啟；舊版還開著的話，請先退出它",
+  "@set_bkLegacySyncBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "set_bkLegacySyncRunning": "⚠ {app} 正在執行。請先退出它，否則重啟後會停在等待頁面，等你退出後再繼續。",
+  "@set_bkLegacySyncRunning": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "set_bkLegacySyncConfirm": "同步並重啟",
+  "set_bkLegacyUndoTitle": "復原上次同步？",
+  "set_bkLegacyUndoBody": "會換回 {time} 同步前的資料。同步之後在這裡做的改動另存為一份備份。需要重啟。",
+  "@set_bkLegacyUndoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoConfirm": "復原並重啟",
+  "set_bkLegacyBusy": "還有任務在進行，請等它結束後再試。",
+  "set_bkLegacySyncFailed": "無法開始同步。請確認磁碟空間足夠，然後重試。",
+  "set_bkLegacyUndoFailed": "無法復原同步。請確認磁碟空間足夠，然後重試。",
   "app_subtitle": "NovelAI 第三方客戶端",
   "common_cancel": "取消",
   "common_confirm": "確定",
