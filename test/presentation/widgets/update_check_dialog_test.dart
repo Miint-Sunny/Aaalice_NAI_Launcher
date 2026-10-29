@@ -135,6 +135,50 @@ void main() {
     });
   }
 
+  testWidgets(
+    'macOS downloads inside the app with only the GitHub digest, then shows it in Finder',
+    (tester) async {
+      final asset = ReleaseAssetInfo.fromGitHubAsset({
+        'name': 'WOF_NAI_Studio_macOS_2.2.0_Portable.zip',
+        'browser_download_url': 'https://example.com/macos.zip',
+        'digest': 'sha256:${'a' * 64}',
+      });
+      final notifier = _DialogUpdateNotifier(
+        UpdateState(
+          status: UpdateStatus.available,
+          versionInfo: VersionInfo(version: '2.2.0', primaryAsset: asset),
+        ),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            updateStateNotifierProvider.overrideWith(() => notifier),
+            updateTaskBusyProvider.overrideWithValue(false),
+          ],
+          child: const MaterialApp(
+            locale: Locale('en'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            home: Scaffold(body: UpdateCheckDialog()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(UpdateCheckDialog)),
+      )!;
+      expect(find.text(l10n.goToDownload), findsNothing);
+      await tester.tap(find.text(l10n.updateDownload));
+      await tester.pump();
+      expect(notifier.downloads, 1);
+      expect(find.text(l10n.updateInstallAndRestart), findsNothing);
+      await tester.tap(find.text(l10n.updateShowInFinder));
+      await tester.pump();
+      expect(notifier.installs, 1);
+    },
+  );
+
   testWidgets('manual fallback opens the release page instead of the raw ZIP', (
     tester,
   ) async {

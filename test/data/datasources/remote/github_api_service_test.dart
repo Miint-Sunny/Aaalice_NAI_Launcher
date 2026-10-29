@@ -7,11 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/data/datasources/remote/github_api_service.dart';
 import 'package:nai_launcher/data/models/version/release_asset_info.dart';
 
-/// 用固定的 Release 数据代替 GitHub，不发真实请求。
+/// 用固定的 Release 数据代替 GitHub，不发真实请求。[octetStream] 里的地址像 GitHub 的
+/// Release 附件那样按 application/octet-stream 返回。
 class _ReleaseAdapter implements HttpClientAdapter {
-  _ReleaseAdapter(this.routes);
+  _ReleaseAdapter(this.routes, {this.octetStream = const {}});
 
   final Map<String, Object> routes;
+  final Set<String> octetStream;
   final requested = <String>[];
 
   @override
@@ -28,7 +30,11 @@ class _ReleaseAdapter implements HttpClientAdapter {
       jsonEncode(body),
       200,
       headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
+        Headers.contentTypeHeader: [
+          octetStream.contains(url)
+              ? 'application/octet-stream'
+              : Headers.jsonContentType,
+        ],
       },
     );
   }
@@ -298,6 +304,52 @@ void main() {
       expect(info.primaryAsset?.fileName, mac);
       expect(info.primaryAsset?.sha256, 'mac-sha');
       expect(info.downloadUrl, '$_download/$mac');
+      expect(info.supportsInAppInstall, isTrue);
+    });
+
+    test('macOS reads the manifest GitHub serves as octet-stream', () async {
+      final info =
+          await _service(
+            _ReleaseAdapter(
+              routes,
+              octetStream: {'$_download/release_manifest.json'},
+            ),
+          ).fetchLatestRelease(
+            owner: 'owner',
+            repo: 'repo',
+            currentVersion: '2.0.0',
+            platform: 'macos',
+          );
+
+      expect(info.primaryAsset?.fileName, mac);
+      expect(info.primaryAsset?.sha256, 'mac-sha');
+      expect(info.supportsInAppInstall, isTrue);
+    });
+
+    test('macOS keeps in-app updates with only the GitHub digest', () async {
+      const digest =
+          'AC94C80DF00816B0DEC6B46D68FB82BC1A1C36C35088D6BB3EE5B29702D9B39A';
+      final info =
+          await _service(
+            _ReleaseAdapter({
+              '$_base/repos/owner/repo/releases/latest': _release([
+                {
+                  ..._githubAsset('$mac.sha256', 96),
+                  'digest': 'sha256:${'b' * 64}',
+                },
+                {..._githubAsset(mac, 300), 'digest': 'sha256:$digest'},
+                {..._githubAsset(setup, 100), 'digest': 'sha256:${'c' * 64}'},
+              ]),
+            }),
+          ).fetchLatestRelease(
+            owner: 'owner',
+            repo: 'repo',
+            currentVersion: '2.0.0',
+            platform: 'macos',
+          );
+
+      expect(info.primaryAsset?.fileName, mac);
+      expect(info.primaryAsset?.sha256, digest.toLowerCase());
       expect(info.supportsInAppInstall, isTrue);
     });
 
