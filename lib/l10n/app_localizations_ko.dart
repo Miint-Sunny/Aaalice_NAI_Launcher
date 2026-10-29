@@ -61,6 +61,134 @@ class AppLocalizationsKo extends AppLocalizations {
   String get legacyImport_startWithout => '복사하지 않고 시작';
 
   @override
+  String legacySync_title(Object app) {
+    return '$app에서 데이터를 동기화하는 중';
+  }
+
+  @override
+  String legacySync_body(Object app) {
+    return '이곳의 설정, 기록, 각종 라이브러리와 즐겨찾기를 $app의 현재 데이터로 바꾸는 중입니다. 이 버전의 데이터는 먼저 백업했습니다.';
+  }
+
+  @override
+  String get legacySync_runningBody =>
+      '동기화하려면 이전 버전의 설정, 기록, 각종 라이브러리와 즐겨찾기를 읽어야 합니다. 메뉴 막대 아이콘까지 이전 버전을 완전히 종료하면 동기화가 자동으로 시작됩니다.';
+
+  @override
+  String legacySync_failedTitle(Object app) {
+    return '$app에서 데이터를 동기화할 수 없습니다';
+  }
+
+  @override
+  String get legacySync_failedBody =>
+      '동기화 전의 데이터로 되돌렸고, 동기화하다 만 파일도 남지 않았습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
+
+  @override
+  String get legacySync_startWithout => '동기화하지 않고 시작';
+
+  @override
+  String get legacyUndo_title => '마지막 동기화를 되돌리는 중';
+
+  @override
+  String get legacyUndo_body =>
+      '동기화 전의 데이터로 되돌리는 중입니다. 동기화 후의 데이터는 백업으로 남겨 둡니다.';
+
+  @override
+  String get legacyUndo_failedTitle => '마지막 동기화를 되돌릴 수 없습니다';
+
+  @override
+  String get legacyUndo_failedBody =>
+      '데이터는 그대로이며 바꾸다 만 파일도 남지 않았습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
+
+  @override
+  String get legacyUndo_startWithout => '되돌리지 않고 시작';
+
+  @override
+  String get set_bkLegacy => '이전 버전 데이터';
+
+  @override
+  String set_bkLegacySub(Object app) {
+    return '이전 버전 $app의 데이터입니다. 읽기만 하고 바꾸지 않습니다. 백업은 최근 2개를 보관합니다.';
+  }
+
+  @override
+  String get set_bkLegacySync => '이전 버전에서 동기화';
+
+  @override
+  String set_bkLegacySyncCopied(Object time) {
+    return '처음 시작할 때 복사함($time). 다시 동기화하면 이곳의 설정, 기록, 각종 라이브러리를 이전 버전의 현재 데이터로 바꾸며, 바꾸기 전에 자동으로 백업합니다.';
+  }
+
+  @override
+  String set_bkLegacySyncSynced(Object time) {
+    return '마지막 동기화: $time. 다시 동기화하면 이곳의 설정, 기록, 각종 라이브러리를 이전 버전의 현재 데이터로 바꾸며, 바꾸기 전에 자동으로 백업합니다.';
+  }
+
+  @override
+  String get set_bkLegacySyncNever =>
+      '처음 시작할 때 복사하지 않았습니다. 동기화하면 이곳의 설정, 기록, 각종 라이브러리를 이전 버전의 데이터로 바꾸며, 바꾸기 전에 자동으로 백업합니다.';
+
+  @override
+  String get set_bkLegacySyncBtn => '동기화…';
+
+  @override
+  String get set_bkLegacyUndo => '마지막 동기화 되돌리기';
+
+  @override
+  String set_bkLegacyUndoSub(Object time) {
+    return '$time 동기화 전의 데이터로 돌아갑니다';
+  }
+
+  @override
+  String set_bkLegacyUndone(Object time) {
+    return '마지막 동기화는 $time에 되돌렸습니다';
+  }
+
+  @override
+  String get set_bkLegacyNoSync => '아직 동기화하지 않았습니다';
+
+  @override
+  String get set_bkLegacyUndoBtn => '복원…';
+
+  @override
+  String get set_bkLegacySyncTitle => '이전 버전 데이터로 바꿀까요?';
+
+  @override
+  String set_bkLegacySyncBody(Object app) {
+    return '$app의 현재 설정, 기록, 각종 라이브러리와 즐겨찾기를 복사해 이곳의 같은 데이터를 바꿉니다.\n\n· 현재 데이터는 먼저 모두 백업하며, “마지막 동기화 되돌리기”로 원래대로 돌릴 수 있습니다\n· 이 버전에만 있는 데이터(Agent 대화, 설정 백업 등)는 그대로 유지됩니다\n· 이미지와 Vibe 파일은 영향을 받지 않습니다\n· 앱을 다시 시작합니다. 이전 버전이 실행 중이면 먼저 종료해 주세요';
+  }
+
+  @override
+  String set_bkLegacySyncRunning(Object app) {
+    return '⚠ $app이(가) 실행 중입니다. 먼저 종료해 주세요. 종료하지 않으면 다시 시작한 뒤 종료를 기다리는 화면에서 멈춥니다.';
+  }
+
+  @override
+  String get set_bkLegacySyncConfirm => '동기화하고 다시 시작';
+
+  @override
+  String get set_bkLegacyUndoTitle => '마지막 동기화를 되돌릴까요?';
+
+  @override
+  String set_bkLegacyUndoBody(Object time) {
+    return '$time 동기화 전의 데이터로 되돌립니다. 동기화 후 이곳에서 바꾼 내용은 백업으로 남겨 둡니다. 앱을 다시 시작합니다.';
+  }
+
+  @override
+  String get set_bkLegacyUndoConfirm => '되돌리고 다시 시작';
+
+  @override
+  String get set_bkLegacyBusy => '아직 진행 중인 작업이 있습니다. 끝난 뒤 다시 시도해 주세요.';
+
+  @override
+  String get set_bkLegacySyncFailed =>
+      '동기화를 시작할 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
+
+  @override
+  String get set_bkLegacyUndoFailed =>
+      '동기화를 되돌릴 수 없습니다. 디스크 여유 공간을 확인한 뒤 다시 시도해 주세요.';
+
+  @override
   String get app_subtitle => 'NovelAI 서드파티 클라이언트';
 
   @override

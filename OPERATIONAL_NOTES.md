@@ -252,6 +252,8 @@
 
 - macOS 首次启动：新目录为空且没有 `.studio-data-location.json` 时，在 Hive／SQLite 打开前把旧版 `com.aaalice.naiLauncher` 的「应用支持」目录快照、复制到同级临时目录并逐文件 SHA-256 校验，再核对旧目录没变，才整体改名成新目录并写入标记；旧目录只读、原样保留，不建兼容链接，也不另做备份。旧版还在运行（`hive/*.lock` 被别的进程锁着）时，窗口里请用户先退出，退出后自动继续，也可以跳过；复制失败不留半套数据，可以重试或跳过。新目录已有数据时不复制、不覆盖。旧版 SharedPreferences（`~/Library/Preferences/<bundle id>.plist`）只补新版没有的 `flutter.*` 键，Danbooru 旧凭据除外。钥匙串一律不读（读别的应用的条目会弹钥匙串密码框），登录信息不迁，用户重新登录。
 
+- macOS「设置 → 备份与重置 → 旧版数据」：同步和撤销都只写请求（`.<bundle id>.sync-request.json`）然后重启，下次启动在数据打开前做（`MacLegacyDataSwitch`）。同步复用首次启动的复制和校验，再把当前数据文件夹整个改名进 `<bundle id>.backups/<时间>-before-sync`，旧版没有的顶层文件夹（Agent 数据、偏好备份等）从备份里整体挪进新数据，偏好设置只补缺，文稿和钥匙串不动；撤销换回最近那份同步前备份，当前数据存成 `-before-undo`。两种备份合计只留最近 2 份。换文件夹前写日志（`.sync-journal.json`），中途失败当场回滚，崩溃则下次启动补完或撤回。旧版运行时同步停在等待页，可取消。沙箱模式不显示这一节，也不处理请求；Windows 没有这一节。
+
 - 正常覆盖构建需目标文件未被运行实例锁定；用户要求自行核验时，不自动关闭程序，可使用独立 CMake 产物目录。Flutter 位于 `C:/flutter`，NuGet 位于 `C:/tools/nuget`，下载和 git 使用本机代理 `http://127.0.0.1:7897`。NSIS 3.12 已装于默认位置（makensis 在 PATH/Program Files (x86)），安装器打包与 `scripts/validate_windows_installer_process_handling.ps1` 依赖它。
 - 安装器（`installer/windows/nai_launcher.nsi`）进程检测自 2026-09-09 起为「软化 fail-closed」语义：进程枚举/查询失败时不再直接阻断，改为以 `CreateFileW(GENERIC_WRITE, share=0)` 探 `$INSTDIR\nai_launcher.exe` 文件锁——文件可写打开或不存在（全新安装）则放行，共享冲突/拒绝访问（文件真被占用）或其他未知错误仍阻断（静默退出码 3 不变）。每次检查失败会把失败阶段、GetLastError、疑似 PID、探锁结果追加写入 `$INSTDIR\install_diagnostics.log`（UTF-16，随卸载删除）。验证脚本已覆盖四场景：目标在跑阻断 / 他目录实例放行 / 查询失败+无锁放行+落诊断 / 全新目录放行。
 - 远程布局（2026-09-11 整理）：origin=本分叉仓库（z15087716457-stack/W.O.F_NAI_Launcher）；上游 Aaalice233 不再常驻远程——需要观察上游改动时临时 `git remote add upstream https://github.com/Aaalice233/Aaalice_NAI_Launcher.git` 并 fetch，看完 `git remote remove upstream`。自行实现有价值的改动，不直接 merge 或 cherry-pick 上游提交。

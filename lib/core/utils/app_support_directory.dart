@@ -45,8 +45,17 @@ const macLegacyBundleId = String.fromEnvironment(
   defaultValue: 'com.aaalice.naiLauncher',
 );
 
-/// Shows the first-launch copy in the window. main() sets it before the
-/// first call; without it a running previous version stops startup.
+/// Name of the previous macOS app in the copy screen and Settings, as its
+/// Dock icon shows it. A build that sets `MAC_LEGACY_BUNDLE_ID` to another
+/// app names that app with `--dart-define=MAC_LEGACY_APP_NAME=<name>`.
+const macLegacyAppName = String.fromEnvironment(
+  'MAC_LEGACY_APP_NAME',
+  defaultValue: 'Aaalice NAI Launcher',
+);
+
+/// Shows the first-launch copy (and a requested sync or undo) in the window.
+/// main() sets it before the first call; without it a running previous
+/// version stops startup.
 MacLegacyDataImportPresenter? macLegacyDataImportPresenter;
 
 enum SupportDirectoryLayout {
@@ -76,6 +85,34 @@ SupportDirectoryLayout supportDirectoryLayoutFor({
     return SupportDirectoryLayout.macLegacyImport;
   }
   return SupportDirectoryLayout.system;
+}
+
+/// Settings offer "Sync from previous version" only where the first-launch
+/// copy applies: macOS with a previous app, and never in a sandbox, which
+/// must not read or replace real data.
+@visibleForTesting
+bool macLegacySyncOffered({
+  required SupportDirectoryLayout layout,
+  required String? sandboxRoot,
+}) => sandboxRoot == null && layout == SupportDirectoryLayout.macLegacyImport;
+
+/// The previous-version data step for this install, or null where it does
+/// not apply (other platforms, tests, sandbox, no previous app configured).
+Future<MacLegacyDataImport?> locateMacLegacyData() async {
+  if (!macLegacySyncOffered(
+    layout: _layout,
+    sandboxRoot: studioSandboxRoot(),
+  )) {
+    return null;
+  }
+  final destination = await system_paths.getApplicationSupportDirectory();
+  final legacy = Directory(p.join(destination.parent.path, macLegacyBundleId));
+  if (p.equals(legacy.path, destination.path)) return null;
+  return MacLegacyDataImport(
+    legacy: legacy,
+    destination: destination,
+    preferences: LegacyPreferencesImport.macOS(macLegacyBundleId).copyMissing,
+  );
 }
 
 bool _isBundleId(String value) =>
@@ -120,19 +157,14 @@ Future<Directory> _prepareAdjacentData() async {
 }
 
 Future<Directory> _prepareMacData() async {
-  final destination = await system_paths.getApplicationSupportDirectory();
-  final legacy = Directory(p.join(destination.parent.path, macLegacyBundleId));
-  if (p.equals(legacy.path, destination.path)) return destination;
+  final import = await locateMacLegacyData();
+  if (import == null) return system_paths.getApplicationSupportDirectory();
   final state = await runMacLegacyDataImport(
-    MacLegacyDataImport(
-      legacy: legacy,
-      destination: destination,
-      preferences: LegacyPreferencesImport.macOS(macLegacyBundleId).copyMissing,
-    ),
+    import,
     presenter: macLegacyDataImportPresenter,
   );
   AppLogger.i('Previous macOS app data: ${state.name}', 'Storage');
-  return destination;
+  return import.destination;
 }
 
 /// Only historical migration code may use the original Windows directory.

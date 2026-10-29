@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:nai_launcher/core/services/mac_legacy_data_import.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
 import 'package:nai_launcher/l10n/app_localizations_en.dart';
 import 'package:nai_launcher/presentation/screens/splash/legacy_data_import_gate.dart';
@@ -40,8 +41,8 @@ void main() {
   test('the window opens once and then follows the import', () {
     final shown = <Widget>[];
     final gate = LegacyDataImportGate(appName: 'Old app', show: shown.add)
-      ..showLegacyRunning(onSkip: () {})
-      ..showCopying()
+      ..showLegacyRunning(MacLegacyDataTask.import, onSkip: () {})
+      ..showCopying(MacLegacyDataTask.import)
       ..showStarting();
     expect(shown, hasLength(1));
     final app = shown.single as LegacyDataImportApp;
@@ -122,26 +123,87 @@ void main() {
     tester,
   ) async {
     final views = [
-      const LegacyDataImportView(LegacyDataImportStep.copying),
-      LegacyDataImportView(LegacyDataImportStep.waiting, onSkip: () {}),
-      LegacyDataImportView(
-        LegacyDataImportStep.failed,
-        error: const FileSystemException('Synthetic failure'),
-        onRetry: () {},
-        onSkip: () {},
-      ),
-      const LegacyDataImportView(LegacyDataImportStep.starting),
+      for (final task in MacLegacyDataTask.values) ...[
+        LegacyDataImportView(LegacyDataImportStep.copying, task: task),
+        LegacyDataImportView(
+          LegacyDataImportStep.waiting,
+          task: task,
+          onSkip: () {},
+        ),
+        LegacyDataImportView(
+          LegacyDataImportStep.failed,
+          task: task,
+          error: const FileSystemException('Synthetic failure'),
+          onRetry: () {},
+          onSkip: () {},
+        ),
+        LegacyDataImportView(LegacyDataImportStep.starting, task: task),
+      ],
     ];
     for (final locale in AppLocalizations.supportedLocales) {
       for (final view in views) {
         await pumpView(tester, view, locale: locale);
-        expect(tester.takeException(), isNull, reason: '$locale ${view.step}');
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: '$locale ${view.task} ${view.step}',
+        );
         final card = tester.getRect(
           find.byKey(const Key('legacy_import_card')),
         );
         expect(card.bottom, lessThanOrEqualTo(600), reason: '$locale');
       }
     }
+  });
+
+  testWidgets('a sync or undo from Settings says so', (tester) async {
+    var skipped = 0;
+    await pumpView(
+      tester,
+      LegacyDataImportView(
+        LegacyDataImportStep.failed,
+        task: MacLegacyDataTask.sync,
+        error: const FileSystemException('Synthetic failure'),
+        onRetry: () {},
+        onSkip: () => skipped++,
+      ),
+    );
+    expect(
+      find.text(en.legacySync_failedTitle('Aaalice NAI Launcher')),
+      findsOneWidget,
+    );
+    expect(find.text(en.legacySync_failedBody), findsOneWidget);
+    await tester.tap(find.text(en.legacySync_startWithout));
+    expect(skipped, 1);
+
+    await pumpView(
+      tester,
+      LegacyDataImportView(
+        LegacyDataImportStep.waiting,
+        task: MacLegacyDataTask.sync,
+        onSkip: () {},
+      ),
+    );
+    expect(find.text(en.legacySync_runningBody), findsOneWidget);
+
+    await pumpView(
+      tester,
+      const LegacyDataImportView(
+        LegacyDataImportStep.copying,
+        task: MacLegacyDataTask.undo,
+      ),
+    );
+    expect(find.text(en.legacyUndo_title), findsOneWidget);
+  });
+
+  test('the window keeps the task while the app takes over', () {
+    final shown = <Widget>[];
+    LegacyDataImportGate(appName: 'Old app', show: shown.add)
+      ..showCopying(MacLegacyDataTask.sync)
+      ..showStarting();
+    final view = (shown.single as LegacyDataImportApp).view.value;
+    expect(view.step, LegacyDataImportStep.starting);
+    expect(view.task, MacLegacyDataTask.sync);
   });
 
   test('errors show the system reason first', () {

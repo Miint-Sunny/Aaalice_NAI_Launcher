@@ -5,9 +5,13 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'adjacent_app_data_migration.dart';
+import 'mac_legacy_data_sync.dart';
 import 'verified_directory_copy.dart';
 
-/// What one first-launch check found or did.
+export 'mac_legacy_data_sync.dart'
+    show MacLegacyDataBackup, MacLegacyDataRequest, MacLegacyDataTask;
+
+/// What one launch's previous-version data step found or did.
 enum MacLegacyDataState {
   /// An earlier launch already decided; nothing was checked again.
   prepared,
@@ -21,21 +25,32 @@ enum MacLegacyDataState {
   /// The previous version's data was copied.
   imported,
 
-  /// The user chose to start without the previous version's data.
+  /// A requested sync replaced this version's data; a backup was kept.
+  synced,
+
+  /// A requested undo switched back to the newest sync backup.
+  undone,
+
+  /// The user chose to start without copying, syncing or undoing.
   skipped,
 
   /// The previous version is running; nothing was changed.
   legacyRunning,
 
-  /// Copying failed and was undone; nothing was changed.
+  /// The step failed and was rolled back; nothing was changed.
   failed,
 }
 
 class MacLegacyDataImportResult {
-  const MacLegacyDataImportResult(this.state, [this.error]);
+  const MacLegacyDataImportResult(
+    this.state, {
+    this.error,
+    this.task = MacLegacyDataTask.import,
+  });
 
   final MacLegacyDataState state;
   final Object? error;
+  final MacLegacyDataTask task;
 
   /// The user has to quit the previous version, retry or skip.
   bool get needsDecision =>
@@ -43,22 +58,48 @@ class MacLegacyDataImportResult {
       state == MacLegacyDataState.failed;
 }
 
+/// What Settings shows about the previous version's data.
+class MacLegacyDataStatus {
+  const MacLegacyDataStatus({
+    this.copiedAt,
+    this.syncedAt,
+    this.backups = const [],
+    this.legacyRunning = false,
+    this.pending,
+  });
+
+  /// The data here came from the first-launch copy at this time.
+  final DateTime? copiedAt;
+
+  /// The data here came from a sync at this time.
+  final DateTime? syncedAt;
+
+  /// Newest first; at most [MacLegacyDataSwitch.keep].
+  final List<MacLegacyDataBackup> backups;
+  final bool legacyRunning;
+
+  /// A sync or undo waiting for the next launch.
+  final MacLegacyDataRequest? pending;
+}
+
 /// Copies the previous macOS version's settings, history and libraries on
-/// first launch.
+/// first launch, and later syncs them again or undoes such a sync when the
+/// user asks in Settings.
 ///
 /// The previous version (W.O.F 1.x and the upstream NAI Launcher, bundle
 /// `com.aaalice.naiLauncher`) keeps its data in its own Application Support
-/// folder, which this version would otherwise never see. When this version's folder is still empty, the previous
-/// folder is snapshotted, copied into a staging folder and verified file by
-/// file, and only then renamed into place together with the
-/// [AdjacentAppDataMigration.markerName] marker. The previous folder is only
-/// read: it stays as it was and keeps working as a backup and for the
-/// previous version itself. Unlike the Windows migration there is no
+/// folder, which this version would otherwise never see. When this version's
+/// folder is still empty, the previous folder is snapshotted, copied into a
+/// staging folder and verified file by file, and only then renamed into
+/// place together with the [AdjacentAppDataMigration.markerName] marker. The
+/// previous folder is only read: it stays as it was and keeps working for
+/// the previous version itself. Unlike the Windows migration there is no
 /// compatibility link and no second backup copy.
 ///
-/// The marker makes this a one-time step: once it exists, later launches do
-/// nothing. A failed attempt leaves neither a marker nor partial data, so
-/// it can simply be repeated.
+/// The marker makes the first-launch copy a one-time step. A failed attempt
+/// leaves neither a marker nor partial data, so it can simply be repeated.
+/// A sync makes the same verified copy and then switches it in through
+/// [MacLegacyDataSwitch], which keeps the replaced data as a backup.
 class MacLegacyDataImport {
   MacLegacyDataImport({
     required this.legacy,
@@ -66,20 +107,21 @@ class MacLegacyDataImport {
     Future<bool> Function(Directory legacy)? isLegacyRunning,
     this.preferences,
     this.beforeCommit,
-  }) : _isLegacyRunning = isLegacyRunning ?? hiveBoxesOpenElsewhere;
+    MacLegacyDataSwitch? dataSwitch,
+  }) : _isLegacyRunning = isLegacyRunning ?? hiveBoxesOpenElsewhere,
+       dataSwitch = dataSwitch ?? MacLegacyDataSwitch(destination);
 
   static const markerName = AdjacentAppDataMigration.markerName;
   static const layout = 'macos-application-support';
 
-  /// Finder writes this into any folder it shows; it is not user data.
-  static const _finderFile = '.DS_Store';
-
   final Directory legacy;
   final Directory destination;
   final Future<bool> Function(Directory legacy) _isLegacyRunning;
+  final MacLegacyDataSwitch dataSwitch;
 
   /// Copies the previous version's preferences that live outside the data
-  /// folder; returns how many were copied. Runs once, after the folder copy.
+  /// folder; returns how many were copied. Only values this version lacks are
+  /// written. Runs once after a copy or a sync.
   final Future<int> Function()? preferences;
 
   /// Test hook: runs after copying, before the previous folder is re-checked.
@@ -106,27 +148,56 @@ class MacLegacyDataImport {
   }
 
   Future<MacLegacyDataImportResult> prepare({
-    void Function()? onCopyStarted,
+    void Function(MacLegacyDataTask task)? onCopyStarted,
   }) async {
     _checkPaths();
     // Every launch after the first one: decided, nothing to lock or check.
     final marker = await readMarker();
-    if (marker != null && marker['preferences'] != 'pending') {
+    if (marker != null &&
+        marker['preferences'] != 'pending' &&
+        !await dataSwitch.pending()) {
       return const MacLegacyDataImportResult(MacLegacyDataState.prepared);
     }
     return _locked(() => _prepare(onCopyStarted));
   }
 
-  /// Starts without the previous version's data; later launches do not ask
-  /// or copy again.
+  /// Starts without the step this launch was about to take: a requested
+  /// sync or undo is dropped; a first-launch copy is recorded as skipped and
+  /// not offered again.
   Future<void> skip() {
     _checkPaths();
     return _locked(() async {
-      if (await readMarker() != null || !await _isEmpty(destination)) return;
+      if (await dataSwitch.readRequest() != null) {
+        await dataSwitch.clearRequest();
+        return;
+      }
+      if (await readMarker() != null || !await isEmptyDataFolder(destination)) {
+        return;
+      }
       await destination.create(recursive: true);
       await _writeMarker(destination, state: MacLegacyDataState.skipped);
     });
   }
+
+  /// Settings: what to show, or null when there is no previous data to sync.
+  Future<MacLegacyDataStatus?> status() async {
+    if (await isEmptyDataFolder(legacy)) return null;
+    final marker = await readMarker() ?? const {};
+    final at = DateTime.tryParse('${marker['at']}')?.toLocal();
+    return MacLegacyDataStatus(
+      copiedAt: marker['state'] == MacLegacyDataState.imported.name ? at : null,
+      syncedAt: marker['state'] == MacLegacyDataState.synced.name ? at : null,
+      backups: await dataSwitch.backups(),
+      legacyRunning: await isLegacyRunning(),
+      pending: await dataSwitch.readRequest(),
+    );
+  }
+
+  /// Settings: carried out on the next launch, before anything opens.
+  Future<void> request(MacLegacyDataRequest request) =>
+      dataSwitch.writeRequest(request);
+
+  Future<void> cancelRequest() => dataSwitch.clearRequest();
 
   void _checkPaths() {
     final oldPath = p.normalize(legacy.absolute.path);
@@ -153,27 +224,33 @@ class MacLegacyDataImport {
   }
 
   Future<MacLegacyDataImportResult> _prepare(
-    void Function()? onCopyStarted,
+    void Function(MacLegacyDataTask task)? onCopyStarted,
   ) async {
+    // A switch a crash interrupted is completed or reversed before anything
+    // else, and before its staging folder could look like a leftover.
+    if (await dataSwitch.recover()) await _finishRequest();
     await _removeStaleStaging();
     if (await FileSystemEntity.type(destination.path, followLinks: false) ==
         FileSystemEntityType.link) {
       // A folder the user moved elsewhere on purpose is left alone.
+      await dataSwitch.clearRequest();
       return const MacLegacyDataImportResult(MacLegacyDataState.existingData);
+    }
+    final request = await dataSwitch.readRequest();
+    if (request?.task == MacLegacyDataTask.sync) return _sync(onCopyStarted);
+    if (request?.task == MacLegacyDataTask.undo) {
+      return _undo(request!.backup!, onCopyStarted);
     }
     final marker = await readMarker();
     if (marker != null) {
-      if (marker['state'] == MacLegacyDataState.imported.name &&
-          marker['preferences'] == 'pending') {
-        await _copyPreferences(marker);
-      }
+      if (marker['preferences'] == 'pending') await _copyPreferences(marker);
       return const MacLegacyDataImportResult(MacLegacyDataState.prepared);
     }
-    if (!await _isEmpty(destination)) {
+    if (!await isEmptyDataFolder(destination)) {
       await _writeMarker(destination, state: MacLegacyDataState.existingData);
       return const MacLegacyDataImportResult(MacLegacyDataState.existingData);
     }
-    if (await _isEmpty(legacy)) {
+    if (await isEmptyDataFolder(legacy)) {
       await destination.create(recursive: true);
       await _writeMarker(destination, state: MacLegacyDataState.fresh);
       return const MacLegacyDataImportResult(MacLegacyDataState.fresh);
@@ -182,11 +259,124 @@ class MacLegacyDataImport {
       return const MacLegacyDataImportResult(MacLegacyDataState.legacyRunning);
     }
 
-    onCopyStarted?.call();
+    onCopyStarted?.call(MacLegacyDataTask.import);
     Directory? staging;
     try {
-      final snapshot = await snapshotDirectory(legacy, fileLinks: true);
-      staging = await destination.parent.createTemp(_stagingPrefix);
+      staging = await _copyLegacy(MacLegacyDataState.imported);
+      await publishDataFolder(staging, destination);
+      staging = null;
+    } catch (error) {
+      if (staging != null) await deleteFolderQuietly(staging);
+      return _failure(error, MacLegacyDataTask.import);
+    }
+    await _copyPendingPreferences();
+    return const MacLegacyDataImportResult(MacLegacyDataState.imported);
+  }
+
+  /// Replaces this version's data with a fresh verified copy of the previous
+  /// version's; the replaced data becomes a backup and the folders only this
+  /// version has move over (see [MacLegacyDataSwitch.switchTo]).
+  Future<MacLegacyDataImportResult> _sync(
+    void Function(MacLegacyDataTask task)? onCopyStarted,
+  ) async {
+    const task = MacLegacyDataTask.sync;
+    if (await isEmptyDataFolder(legacy)) {
+      return const MacLegacyDataImportResult(
+        MacLegacyDataState.failed,
+        error: FileSystemException('The previous version has no data'),
+        task: task,
+      );
+    }
+    if (await isLegacyRunning()) {
+      return const MacLegacyDataImportResult(
+        MacLegacyDataState.legacyRunning,
+        task: task,
+      );
+    }
+    onCopyStarted?.call(task);
+    Directory? staging;
+    try {
+      staging = await _copyLegacy(MacLegacyDataState.synced);
+      await dataSwitch.switchTo(staging, task: task, incomingIsBackup: false);
+      staging = null;
+    } catch (error) {
+      if (staging != null) await deleteFolderQuietly(staging);
+      return _failure(error, task);
+    }
+    await _finishRequest();
+    await _copyPendingPreferences();
+    return const MacLegacyDataImportResult(
+      MacLegacyDataState.synced,
+      task: task,
+    );
+  }
+
+  /// Switches back to the backup made by the last sync; the data it
+  /// replaces becomes a backup in turn.
+  Future<MacLegacyDataImportResult> _undo(
+    String backupId,
+    void Function(MacLegacyDataTask task)? onCopyStarted,
+  ) async {
+    const task = MacLegacyDataTask.undo;
+    final backups = await dataSwitch.backups();
+    final backup = backups.where((b) => b.id == backupId).firstOrNull;
+    if (backup == null) {
+      return const MacLegacyDataImportResult(
+        MacLegacyDataState.failed,
+        error: FileSystemException('The backup to switch back to is missing'),
+        task: task,
+      );
+    }
+    onCopyStarted?.call(task);
+    try {
+      await dataSwitch.switchTo(
+        backup.directory,
+        task: task,
+        incomingIsBackup: true,
+      );
+    } catch (error) {
+      return MacLegacyDataImportResult(
+        MacLegacyDataState.failed,
+        error: error,
+        task: task,
+      );
+    }
+    await _finishRequest();
+    return const MacLegacyDataImportResult(
+      MacLegacyDataState.undone,
+      task: task,
+    );
+  }
+
+  Future<void> _finishRequest() async {
+    await dataSwitch.clearRequest();
+    await dataSwitch.prune();
+  }
+
+  Future<MacLegacyDataImportResult> _failure(
+    Object error,
+    MacLegacyDataTask task,
+  ) async {
+    if (error is ApplicationDataChangedException && await isLegacyRunning()) {
+      return MacLegacyDataImportResult(
+        MacLegacyDataState.legacyRunning,
+        task: task,
+      );
+    }
+    return MacLegacyDataImportResult(
+      MacLegacyDataState.failed,
+      error: error,
+      task: task,
+    );
+  }
+
+  /// A verified copy of the previous folder in a new staging folder next to
+  /// this version's, with a marker in [state]. The previous folder must not
+  /// change while it is copied.
+  Future<Directory> _copyLegacy(MacLegacyDataState state) async {
+    final snapshot = await snapshotDirectory(legacy, fileLinks: true);
+    final staging = await destination.parent.createTemp(_stagingPrefix);
+    try {
       await copySnapshot(
         legacy,
         staging,
@@ -198,45 +388,24 @@ class MacLegacyDataImport {
       final files = snapshot.values.where((entry) => entry.isFile);
       await _writeMarker(
         staging,
-        state: MacLegacyDataState.imported,
+        state: state,
         details: {
           'files': files.length,
           'bytes': files.fold<int>(0, (sum, entry) => sum + entry.bytes),
           'preferences': preferences == null ? 'none' : 'pending',
         },
       );
-      await _publish(staging);
-      staging = null;
-    } catch (error) {
-      if (staging != null) await _deleteQuietly(staging);
-      if (error is ApplicationDataChangedException && await isLegacyRunning()) {
-        return const MacLegacyDataImportResult(
-          MacLegacyDataState.legacyRunning,
-        );
-      }
-      return MacLegacyDataImportResult(MacLegacyDataState.failed, error);
+      return staging;
+    } catch (_) {
+      await deleteFolderQuietly(staging);
+      rethrow;
     }
-    final published = await readMarker();
-    if (published != null && published['preferences'] == 'pending') {
-      await _copyPreferences(published);
-    }
-    return const MacLegacyDataImportResult(MacLegacyDataState.imported);
   }
 
-  /// Swaps the verified staging folder in for the empty destination. The
-  /// destination is removed non-recursively, so anything that appeared in it
-  /// meanwhile stops the swap instead of being deleted.
-  Future<void> _publish(Directory staging) async {
-    if (await destination.exists()) {
-      final finder = File(p.join(destination.path, _finderFile));
-      if (await finder.exists()) await finder.delete();
-      await destination.delete();
-    }
-    try {
-      await staging.rename(destination.path);
-    } catch (_) {
-      await destination.create(recursive: true);
-      rethrow;
+  Future<void> _copyPendingPreferences() async {
+    final marker = await readMarker();
+    if (marker != null && marker['preferences'] == 'pending') {
+      await _copyPreferences(marker);
     }
   }
 
@@ -288,27 +457,9 @@ class MacLegacyDataImport {
       if (!p.basename(entry.path).startsWith(_stagingPrefix)) continue;
       if (await FileSystemEntity.type(entry.path, followLinks: false) ==
           FileSystemEntityType.directory) {
-        await _deleteQuietly(Directory(entry.path));
+        await deleteFolderQuietly(Directory(entry.path));
       }
     }
-  }
-
-  /// Staging folders are this import's own; one that cannot be removed now
-  /// is removed by the next attempt.
-  static Future<void> _deleteQuietly(Directory staging) async {
-    try {
-      if (await staging.exists()) await staging.delete(recursive: true);
-    } on FileSystemException {
-      // Left for the next attempt.
-    }
-  }
-
-  static Future<bool> _isEmpty(Directory directory) async {
-    if (!await directory.exists()) return true;
-    await for (final entry in directory.list(followLinks: false)) {
-      if (p.basename(entry.path) != _finderFile) return false;
-    }
-    return true;
   }
 
   /// True while another process has a Hive box of [legacy] open. Hive holds
@@ -340,14 +491,19 @@ class MacLegacyDataImport {
   }
 }
 
-/// Shows the first-launch copy in the window before the app itself starts.
+/// Shows the copy, sync or undo in the window before the app itself starts.
 abstract interface class MacLegacyDataImportPresenter {
-  void showCopying();
+  void showCopying(MacLegacyDataTask task);
 
-  /// The previous version is open; copying continues by itself once it quits.
-  void showLegacyRunning({required void Function() onSkip});
+  /// The previous version is open; the task continues by itself once it
+  /// quits.
+  void showLegacyRunning(
+    MacLegacyDataTask task, {
+    required void Function() onSkip,
+  });
 
   void showFailed(
+    MacLegacyDataTask task,
     Object error, {
     required void Function() onRetry,
     required void Function() onSkip,
@@ -358,7 +514,7 @@ abstract interface class MacLegacyDataImportPresenter {
 }
 
 /// Runs [import] until it is decided. Without a [presenter] a running
-/// previous version or a failed copy stops startup, like the Windows
+/// previous version or a failed step stops startup, like the Windows
 /// migration, and the next launch tries again.
 Future<MacLegacyDataState> runMacLegacyDataImport(
   MacLegacyDataImport import, {
@@ -382,14 +538,21 @@ Future<MacLegacyDataState> runMacLegacyDataImport(
     MacLegacyDataImportResult result;
     try {
       result = await import.prepare(
-        onCopyStarted: () {
+        onCopyStarted: (task) {
           shown = true;
-          presenter?.showCopying();
+          presenter?.showCopying(task);
         },
       );
     } catch (error) {
       // Whatever went wrong, nothing was published: let the user decide.
-      result = MacLegacyDataImportResult(MacLegacyDataState.failed, error);
+      final request = await import.dataSwitch.readRequest().catchError(
+        (Object _) => null,
+      );
+      result = MacLegacyDataImportResult(
+        MacLegacyDataState.failed,
+        error: error,
+        task: request?.task ?? MacLegacyDataTask.import,
+      );
     }
     if (!result.needsDecision) {
       if (shown) presenter?.showStarting();
@@ -405,6 +568,7 @@ Future<MacLegacyDataState> runMacLegacyDataImport(
     if (result.state == MacLegacyDataState.legacyRunning) {
       final skipped = Completer<void>();
       presenter.showLegacyRunning(
+        result.task,
         onSkip: () {
           if (!skipped.isCompleted) skipped.complete();
         },
@@ -423,6 +587,7 @@ Future<MacLegacyDataState> runMacLegacyDataImport(
     }
     final retry = Completer<bool>();
     presenter.showFailed(
+      result.task,
       result.error!,
       onRetry: () {
         if (!retry.isCompleted) retry.complete(true);

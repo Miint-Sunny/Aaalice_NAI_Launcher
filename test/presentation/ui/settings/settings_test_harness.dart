@@ -238,6 +238,8 @@ class SettingsHostState extends State<SettingsHost> {
         onAddBlacklistTag: (t) => call('addTag:$t'),
         onRemoveBlacklistTag: (t) => call('removeTag:$t'),
         onRestart: () => call('restart'),
+        onLegacySync: () => call('legacySync'),
+        onLegacyUndo: (id) => call('legacyUndo:$id'),
         onRequestDetails: (id) => call('requestDetails:$id'),
         onUpdateDictionary: (kind) => call('updateDictionary:${kind.name}'),
         onCheckDictionaryUpdates: () => call('checkDictionaryUpdates'),

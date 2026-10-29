@@ -43,6 +43,94 @@
     }
   },
   "legacyImport_startWithout": "Start Without Copying",
+  "legacySync_title": "Syncing your data from {app}",
+  "@legacySync_title": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacySync_body": "The settings, history, libraries and favorites here are being replaced with the current ones from {app}. This version's data was backed up first.",
+  "@legacySync_body": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacySync_runningBody": "Syncing reads the previous version's settings, history, libraries and favorites. Quit it completely, including its menu bar icon, and syncing starts by itself.",
+  "legacySync_failedTitle": "Can't sync your data from {app}",
+  "@legacySync_failedTitle": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "legacySync_failedBody": "Your previous data is back in place and nothing half-synced was left. Make sure there's enough free disk space, then try again.",
+  "legacySync_startWithout": "Start Without Syncing",
+  "legacyUndo_title": "Undoing the last sync",
+  "legacyUndo_body": "Switching back to the data from before the sync. The data from after it is kept as a backup.",
+  "legacyUndo_failedTitle": "Can't undo the last sync",
+  "legacyUndo_failedBody": "Your data is unchanged and nothing half-switched was left. Make sure there's enough free disk space, then try again.",
+  "legacyUndo_startWithout": "Start Without Undoing",
+  "set_bkLegacy": "Previous version",
+  "set_bkLegacySub": "From the previous version, {app}. Its data is only read, never changed. The latest 2 backups are kept.",
+  "@set_bkLegacySub": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "set_bkLegacySync": "Sync from previous version",
+  "set_bkLegacySyncCopied": "Copied on first launch ({time}). Syncing again replaces the settings, history and libraries here with the previous version's current data, after a backup.",
+  "@set_bkLegacySyncCopied": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacySyncSynced": "Last synced {time}. Syncing again replaces the settings, history and libraries here with the previous version's current data, after a backup.",
+  "@set_bkLegacySyncSynced": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacySyncNever": "Not copied on first launch. Syncing replaces the settings, history and libraries here with the previous version's, after a backup.",
+  "set_bkLegacySyncBtn": "Sync…",
+  "set_bkLegacyUndo": "Undo last sync",
+  "set_bkLegacyUndoSub": "Go back to the data from before the {time} sync",
+  "@set_bkLegacyUndoSub": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndone": "The last sync was undone on {time}",
+  "@set_bkLegacyUndone": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyNoSync": "No sync yet",
+  "set_bkLegacyUndoBtn": "Restore…",
+  "set_bkLegacySyncTitle": "Replace this version's data with the previous version's?",
+  "set_bkLegacySyncBody": "Copies the current settings, history, libraries and favorites of {app} and replaces the same data here.\n\n· This version's data is backed up first; use Undo Last Sync to switch back\n· Data only this version has (Agent sessions, preference backups and more) stays\n· Images and Vibe files are not affected\n· Restarts the app; quit {app} first if it is open",
+  "@set_bkLegacySyncBody": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "set_bkLegacySyncRunning": "⚠ {app} is running. Quit it first, or the restart waits on a screen until you do.",
+  "@set_bkLegacySyncRunning": {
+    "placeholders": {
+      "app": {}
+    }
+  },
+  "set_bkLegacySyncConfirm": "Sync and Restart",
+  "set_bkLegacyUndoTitle": "Undo the last sync?",
+  "set_bkLegacyUndoBody": "Switches back to the data from before the {time} sync. Changes made here since then are kept as a backup. Restarts the app.",
+  "@set_bkLegacyUndoBody": {
+    "placeholders": {
+      "time": {}
+    }
+  },
+  "set_bkLegacyUndoConfirm": "Undo and Restart",
+  "set_bkLegacyBusy": "A task is still running. Try again when it finishes.",
+  "set_bkLegacySyncFailed": "Can't start the sync. Make sure there's enough free disk space, then try again.",
+  "set_bkLegacyUndoFailed": "Can't undo the sync. Make sure there's enough free disk space, then try again.",
   "app_subtitle": "NovelAI Third-party Client",
   "common_cancel": "Cancel",
   "common_confirm": "Confirm",

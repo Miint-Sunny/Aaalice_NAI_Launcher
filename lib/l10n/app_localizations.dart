@@ -181,6 +181,204 @@ abstract class AppLocalizations {
   /// **'Start Without Copying'**
   String get legacyImport_startWithout;
 
+  /// No description provided for @legacySync_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing your data from {app}'**
+  String legacySync_title(Object app);
+
+  /// No description provided for @legacySync_body.
+  ///
+  /// In en, this message translates to:
+  /// **'The settings, history, libraries and favorites here are being replaced with the current ones from {app}. This version\'s data was backed up first.'**
+  String legacySync_body(Object app);
+
+  /// No description provided for @legacySync_runningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing reads the previous version\'s settings, history, libraries and favorites. Quit it completely, including its menu bar icon, and syncing starts by itself.'**
+  String get legacySync_runningBody;
+
+  /// No description provided for @legacySync_failedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t sync your data from {app}'**
+  String legacySync_failedTitle(Object app);
+
+  /// No description provided for @legacySync_failedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your previous data is back in place and nothing half-synced was left. Make sure there\'s enough free disk space, then try again.'**
+  String get legacySync_failedBody;
+
+  /// No description provided for @legacySync_startWithout.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Without Syncing'**
+  String get legacySync_startWithout;
+
+  /// No description provided for @legacyUndo_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Undoing the last sync'**
+  String get legacyUndo_title;
+
+  /// No description provided for @legacyUndo_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching back to the data from before the sync. The data from after it is kept as a backup.'**
+  String get legacyUndo_body;
+
+  /// No description provided for @legacyUndo_failedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t undo the last sync'**
+  String get legacyUndo_failedTitle;
+
+  /// No description provided for @legacyUndo_failedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data is unchanged and nothing half-switched was left. Make sure there\'s enough free disk space, then try again.'**
+  String get legacyUndo_failedBody;
+
+  /// No description provided for @legacyUndo_startWithout.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Without Undoing'**
+  String get legacyUndo_startWithout;
+
+  /// No description provided for @set_bkLegacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous version'**
+  String get set_bkLegacy;
+
+  /// No description provided for @set_bkLegacySub.
+  ///
+  /// In en, this message translates to:
+  /// **'From the previous version, {app}. Its data is only read, never changed. The latest 2 backups are kept.'**
+  String set_bkLegacySub(Object app);
+
+  /// No description provided for @set_bkLegacySync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync from previous version'**
+  String get set_bkLegacySync;
+
+  /// No description provided for @set_bkLegacySyncCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied on first launch ({time}). Syncing again replaces the settings, history and libraries here with the previous version\'s current data, after a backup.'**
+  String set_bkLegacySyncCopied(Object time);
+
+  /// No description provided for @set_bkLegacySyncSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {time}. Syncing again replaces the settings, history and libraries here with the previous version\'s current data, after a backup.'**
+  String set_bkLegacySyncSynced(Object time);
+
+  /// No description provided for @set_bkLegacySyncNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Not copied on first launch. Syncing replaces the settings, history and libraries here with the previous version\'s, after a backup.'**
+  String get set_bkLegacySyncNever;
+
+  /// No description provided for @set_bkLegacySyncBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync…'**
+  String get set_bkLegacySyncBtn;
+
+  /// No description provided for @set_bkLegacyUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo last sync'**
+  String get set_bkLegacyUndo;
+
+  /// No description provided for @set_bkLegacyUndoSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back to the data from before the {time} sync'**
+  String set_bkLegacyUndoSub(Object time);
+
+  /// No description provided for @set_bkLegacyUndone.
+  ///
+  /// In en, this message translates to:
+  /// **'The last sync was undone on {time}'**
+  String set_bkLegacyUndone(Object time);
+
+  /// No description provided for @set_bkLegacyNoSync.
+  ///
+  /// In en, this message translates to:
+  /// **'No sync yet'**
+  String get set_bkLegacyNoSync;
+
+  /// No description provided for @set_bkLegacyUndoBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore…'**
+  String get set_bkLegacyUndoBtn;
+
+  /// No description provided for @set_bkLegacySyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace this version\'s data with the previous version\'s?'**
+  String get set_bkLegacySyncTitle;
+
+  /// No description provided for @set_bkLegacySyncBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Copies the current settings, history, libraries and favorites of {app} and replaces the same data here.\n\n· This version\'s data is backed up first; use Undo Last Sync to switch back\n· Data only this version has (Agent sessions, preference backups and more) stays\n· Images and Vibe files are not affected\n· Restarts the app; quit {app} first if it is open'**
+  String set_bkLegacySyncBody(Object app);
+
+  /// No description provided for @set_bkLegacySyncRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'⚠ {app} is running. Quit it first, or the restart waits on a screen until you do.'**
+  String set_bkLegacySyncRunning(Object app);
+
+  /// No description provided for @set_bkLegacySyncConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync and Restart'**
+  String get set_bkLegacySyncConfirm;
+
+  /// No description provided for @set_bkLegacyUndoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo the last sync?'**
+  String get set_bkLegacyUndoTitle;
+
+  /// No description provided for @set_bkLegacyUndoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switches back to the data from before the {time} sync. Changes made here since then are kept as a backup. Restarts the app.'**
+  String set_bkLegacyUndoBody(Object time);
+
+  /// No description provided for @set_bkLegacyUndoConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo and Restart'**
+  String get set_bkLegacyUndoConfirm;
+
+  /// No description provided for @set_bkLegacyBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'A task is still running. Try again when it finishes.'**
+  String get set_bkLegacyBusy;
+
+  /// No description provided for @set_bkLegacySyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t start the sync. Make sure there\'s enough free disk space, then try again.'**
+  String get set_bkLegacySyncFailed;
+
+  /// No description provided for @set_bkLegacyUndoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t undo the sync. Make sure there\'s enough free disk space, then try again.'**
+  String get set_bkLegacyUndoFailed;
+
   /// No description provided for @app_subtitle.
   ///
   /// In en, this message translates to:

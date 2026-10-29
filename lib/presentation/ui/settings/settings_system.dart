@@ -864,6 +864,7 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
         ),
       ],
       children: [
+        if (bk.legacy case final legacy?) _LegacyDataSection(legacy),
         SettingsSection(
           title: l.set_bkPrefs,
           subtitle: l.set_bkPrefsSub,
@@ -1036,6 +1037,76 @@ class _SettingsBackupPageState extends State<SettingsBackupPage> {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// 旧版（1.x）数据：只在 macOS、不是沙箱、检测到旧版数据时出现。同步和撤销都要重启，
+/// 在下次启动、数据打开前进行；备份保留最近 2 份。
+class _LegacyDataSection extends StatelessWidget {
+  const _LegacyDataSection(this.legacy);
+
+  final SettingsLegacyData legacy;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final s = SettingsScope.of(context);
+    final a = s.actions;
+    final app = legacy.appName;
+    String stamp(DateTime t) =>
+        '${SettingsFormat.monthDay(t)} ${SettingsFormat.time(t)}';
+    final undoBackup = legacy.undoBackup;
+    return SettingsSection(
+      key: const Key('legacy-data'),
+      title: l.set_bkLegacy,
+      subtitle: l.set_bkLegacySub(app),
+      children: [
+        SettingsRow(
+          title: l.set_bkLegacySync,
+          subtitle: switch ((legacy.syncedAt, legacy.copiedAt)) {
+            (final at?, _) => l.set_bkLegacySyncSynced(stamp(at)),
+            (_, final at?) => l.set_bkLegacySyncCopied(stamp(at)),
+            _ => l.set_bkLegacySyncNever,
+          },
+          control: SettingsBtn(
+            key: const Key('legacy-sync'),
+            label: l.set_bkLegacySyncBtn,
+            glyph: UiGlyphs.refresh,
+            small: true,
+            onTap: () => s.confirm(
+              title: l.set_bkLegacySyncTitle,
+              body: [
+                if (legacy.running) '${l.set_bkLegacySyncRunning(app)}\n',
+                l.set_bkLegacySyncBody(app),
+              ].join('\n'),
+              confirm: l.set_bkLegacySyncConfirm,
+              onConfirm: a.onLegacySync,
+            ),
+          ),
+        ),
+        SettingsRow(
+          title: l.set_bkLegacyUndo,
+          subtitle: switch ((legacy.undoAt, legacy.undoneAt)) {
+            (final at?, _) => l.set_bkLegacyUndoSub(stamp(at)),
+            (_, final at?) => l.set_bkLegacyUndone(stamp(at)),
+            _ => l.set_bkLegacyNoSync,
+          },
+          control: SettingsBtn(
+            key: const Key('legacy-undo'),
+            label: l.set_bkLegacyUndoBtn,
+            small: true,
+            onTap: undoBackup == null
+                ? null
+                : () => s.confirm(
+                    title: l.set_bkLegacyUndoTitle,
+                    body: l.set_bkLegacyUndoBody(stamp(legacy.undoAt!)),
+                    confirm: l.set_bkLegacyUndoConfirm,
+                    onConfirm: () => a.onLegacyUndo(undoBackup),
+                  ),
+          ),
         ),
       ],
     );

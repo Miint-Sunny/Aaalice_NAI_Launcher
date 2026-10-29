@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -6,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/core/services/mac_legacy_data_import.dart';
 import 'package:path/path.dart' as p;
+
+import 'mac_legacy_data_test_support.dart';
 
 void main() {
   late Directory fixture;
@@ -493,7 +494,7 @@ void main() {
 
   group('runMacLegacyDataImport', () {
     test('normal launches show nothing', () async {
-      final presenter = _RecordingPresenter();
+      final presenter = RecordingPresenter();
       expect(
         await runMacLegacyDataImport(import(), presenter: presenter),
         MacLegacyDataState.fresh,
@@ -507,7 +508,7 @@ void main() {
 
     test('a copy shows progress, then hands over to the app', () async {
       await writeProfile();
-      final presenter = _RecordingPresenter();
+      final presenter = RecordingPresenter();
 
       final state = await runMacLegacyDataImport(
         import(),
@@ -521,7 +522,7 @@ void main() {
     test('waits for the old app to quit, then copies by itself', () async {
       await writeProfile();
       var checks = 0;
-      final presenter = _RecordingPresenter();
+      final presenter = RecordingPresenter();
 
       final state = await runMacLegacyDataImport(
         import(running: () => ++checks < 4),
@@ -541,7 +542,7 @@ void main() {
     test('a probe error while waiting does not stop startup', () async {
       await writeProfile();
       var checks = 0;
-      final presenter = _RecordingPresenter();
+      final presenter = RecordingPresenter();
 
       final state = await runMacLegacyDataImport(
         import(
@@ -562,7 +563,7 @@ void main() {
 
     test('starting without copying while the old app is open', () async {
       await writeProfile();
-      final presenter = _RecordingPresenter(skipWhenRunning: true);
+      final presenter = RecordingPresenter(skipWhenRunning: true);
 
       final state = await runMacLegacyDataImport(
         import(running: () => true),
@@ -578,7 +579,7 @@ void main() {
     test('a failed copy can be retried', () async {
       await writeProfile();
       var attempts = 0;
-      final presenter = _RecordingPresenter(retry: true);
+      final presenter = RecordingPresenter(retry: true);
 
       final state = await runMacLegacyDataImport(
         import(
@@ -597,7 +598,7 @@ void main() {
 
     test('a failed copy can be skipped', () async {
       await writeProfile();
-      final presenter = _RecordingPresenter(retry: false);
+      final presenter = RecordingPresenter(retry: false);
 
       final state = await runMacLegacyDataImport(
         import(
@@ -630,36 +631,6 @@ void main() {
       expect(await tree(target), isEmpty);
     });
   });
-}
-
-class _RecordingPresenter implements MacLegacyDataImportPresenter {
-  _RecordingPresenter({this.skipWhenRunning = false, this.retry});
-
-  final bool skipWhenRunning;
-  final bool? retry;
-  final calls = <String>[];
-
-  @override
-  void showCopying() => calls.add('copying');
-
-  @override
-  void showLegacyRunning({required void Function() onSkip}) {
-    calls.add('running');
-    if (skipWhenRunning) scheduleMicrotask(onSkip);
-  }
-
-  @override
-  void showFailed(
-    Object error, {
-    required void Function() onRetry,
-    required void Function() onSkip,
-  }) {
-    calls.add('failed');
-    scheduleMicrotask(retry == true ? onRetry : onSkip);
-  }
-
-  @override
-  void showStarting() => calls.add('starting');
 }
 
 /// Holds an exclusive fcntl lock from another process, as Hive does in the
