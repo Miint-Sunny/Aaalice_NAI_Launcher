@@ -346,6 +346,9 @@ void main() {
 }
 
 Future<void> _bootstrapApplication() async {
+  // NAI_STUDIO_SANDBOX 设了却不能用时不启动：Windows 由原生层（studio_sandbox.h）先挡下，
+  // macOS 没有那一层，在这里同样直接退出，不碰任何数据
+  if (!Platform.isWindows && !studioSandboxEnvironmentValid()) exit(1);
   // macOS 上 Control+单击当右键，见 ControlClickBinding
   AppWidgetsBinding.ensureInitialized();
   if (Platform.isWindows) {
