@@ -577,6 +577,7 @@ class SettingsViewData {
     SettingsDictionaryData? dictionaries,
     SettingsStorageData? storage,
     SettingsBackupData? backup,
+    SettingsBridgesData? bridges,
   }) => SettingsViewData(
     page: page ?? this.page,
     values: values ?? this.values,
@@ -598,7 +599,7 @@ class SettingsViewData {
     agent: agent ?? this.agent,
     rag: rag ?? this.rag,
     upscale: upscale ?? this.upscale,
-    bridges: bridges,
+    bridges: bridges ?? this.bridges,
     network: network,
     privacy: privacy ?? this.privacy,
     backup: backup ?? this.backup,

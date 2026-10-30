@@ -59,6 +59,7 @@ class NaiAgentUiPreferences extends ChangeNotifier {
   void replace(AgentSettings value) {
     if (_disposed) return;
     _revision++;
+    if (identical(settings, value)) return;
     settings = value;
     notifyListeners();
   }

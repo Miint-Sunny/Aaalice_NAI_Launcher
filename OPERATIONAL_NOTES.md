@@ -36,6 +36,8 @@
 
 ## 桥接与参数
 
+- 设置页的外部 Agent 操作区按 `SettingKey.kritaBridge` 灰显与禁用，关闭时显示开启上方 Krita 桥接的本地化提示。依赖共享桥接服务的 enabled 状态，不能用 `kritaConnected`（插件连接）作门槛；桥接监听时即允许独立 Agent 接管。
+- 外部 Agent/Krita 成图登记时优先保留响应原始 NAI 元数据；实际尺寸不同时仅对齐参数层宽高，保留角色正负词／坐标、信封、未知字段及独立 PNG 头字段。缺少 NAI 元数据才从本次显式请求构建完整角色信息，不能用当前草稿覆盖原成图 Comment。见 [角色元数据丢失修复](docs/external-agent-character-metadata-2026-10-29.md)。
 - 本机桌面运行包与开发源码分开；实际运行目录从工作区接手说明读取，当前为旧源码根下 `build/windows-glass-preview/runner/Release/nai_launcher.exe`。标准 Windows Release 是构建产物，不是可直接覆盖的 Glass 桌面包。
 - Krita 桥接：`ws://127.0.0.1:<port>/krita`；端口和 secret 从 `%APPDATA%/nai-launcher/krita-bridge.json` 发现，每次启动会重生成。
 - Windows 包在可执行文件同级 `tools/studio-bridge.exe` 附带独立客户端，不依赖 Python 或源码树。入口 `status`、`get --out current.json`、`set k=v --base current.json`、`set-json changes.json --base current.json`、`quote --out quote.json`、`gen --quote quote.json --authorized`、`cancel REQUEST_ID`；每个命令均携带同一 `--name`。生成固定一张，报价有效期 5 分钟且只可使用一次，失败至少隔 2 秒再尝试。完整契约见 [外部 Agent 桥接](docs/agent-bridge.md)。
@@ -245,6 +247,7 @@
 
 ## 构建与更新
 
+- 桌面主窗口按 2026-10-29 用户要求移除顶部更新胶囊、专属弹窗入口及 88px 预留，不恢复；日常更新提示使用设置入口红点。导航的 `updateAvailable` 接线、设置页检查／下载／安装和更新状态保持，窗口按钮、Agent 入口与各页标题栏继续沿用原组件。
 - Windows 内部数据统一经 `app_support_directory.dart` 使用 EXE 旁 `user-data/`，临时文件使用其 `temp/`；不依赖工作目录，不静默退回 C 盘。旧 AppData 数据必须在数据库打开前完整备份、SHA-256 校验和迁移；保留旧路径联接兼容已存绝对路径，两端有不同数据时拒绝合并。旧目录识别仍取自 `CompanyName=com.example` 与 `ProductName=nai_launcher`，原生身份保持稳定。更新、打包和卸载必须保护 `user-data/` 及迁移备份。
 - 首次新建、旧目录为空或仅已有相邻数据时，同样在插件启动前建立并验证兼容联接。历史缺联接造成的分叉只允许恢复标记中 `schema=1`、`layout=executable-adjacent`、原路径匹配且 `backup=null` 的首次新建配置；旧目录只能包含根级 `flutter_secure_storage.dat`、`shared_preferences.json`、`*.secure` 普通文件。先独立备份，SHA-256 复核，独占创建缺失目标；同名内容必须相同，未知条目／链接／真实冲突拒绝处理，保留旧原件与备份。数据准备失败显示独立五语言恢复页，重试先重新准备目录，成功后才打开数据库。见 [修复与验证](docs/startup-data-recovery-2026-10-23.md)。
 
@@ -254,6 +257,7 @@
 
 - macOS「设置 → 备份与重置 → 旧版数据」：同步、撤销和换回都只写请求（`.<bundle id>.sync-request.json`）然后重启，下次启动在数据打开前做（`MacLegacyDataSwitch`）。同步复用首次启动的复制和校验，再把当前数据文件夹整个改名进 `<bundle id>.backups/<时间>-before-sync`，旧版没有的顶层文件夹（Agent 数据、偏好备份等）从备份里整体挪进新数据，偏好设置只补缺，文稿和钥匙串不动；撤销换回最近那份备份（同步前的数据），当前数据存成 `-before-undo`；之后这一行变成“换回同步后的数据”（`redo`），把 `-before-undo` 换回来，当前数据存成 `-before-redo`，再撤销又换回去，两份数据可以来回换。每次换都会用掉换回的那份、再存一份当前的；三种备份合计只留最近 2 份。换文件夹前写日志（`.sync-journal.json`），中途失败当场回滚，崩溃则下次启动补完或撤回。旧版运行时同步停在等待页，可取消。沙箱模式不显示这一节，也不处理请求；Windows 没有这一节。
 
+- 应用内更新启动：不要用 Dart `detached`／`detachedWithStdio` 直接启动 Windows PowerShell；本机复现会在读脚本前退出。使用 `WindowsUpdateScript.launch` 的短命启动器与隐藏独立进程，工作目录设为脚本临时目录，避免更新进程自身锁住旧程序目录；生成 `.ps1` 写 UTF-8 BOM。回归必须验证真实 Dart 父进程退出后脚本仍运行且旧目录可移动，另测便携切换、回退和私有数据保留；只直接运行脚本或解包发布产物不足以证明这条链。[诊断与修复](docs/in-app-update-launch-fix-2026-10-29.md)。
 - 正常覆盖构建需目标文件未被运行实例锁定；用户要求自行核验时，不自动关闭程序，可使用独立 CMake 产物目录。Flutter 位于 `C:/flutter`，NuGet 位于 `C:/tools/nuget`，下载和 git 使用本机代理 `http://127.0.0.1:7897`。NSIS 3.12 已装于默认位置（makensis 在 PATH/Program Files (x86)），安装器打包与 `scripts/validate_windows_installer_process_handling.ps1` 依赖它。
 - 安装器（`installer/windows/nai_launcher.nsi`）进程检测自 2026-09-09 起为「软化 fail-closed」语义：进程枚举/查询失败时不再直接阻断，改为以 `CreateFileW(GENERIC_WRITE, share=0)` 探 `$INSTDIR\nai_launcher.exe` 文件锁——文件可写打开或不存在（全新安装）则放行，共享冲突/拒绝访问（文件真被占用）或其他未知错误仍阻断（静默退出码 3 不变）。每次检查失败会把失败阶段、GetLastError、疑似 PID、探锁结果追加写入 `$INSTDIR\install_diagnostics.log`（UTF-16，随卸载删除）。验证脚本已覆盖四场景：目标在跑阻断 / 他目录实例放行 / 查询失败+无锁放行+落诊断 / 全新目录放行。
 - 远程布局（2026-09-11 整理）：origin=本分叉仓库（z15087716457-stack/W.O.F_NAI_Launcher）；上游 Aaalice233 不再常驻远程——需要观察上游改动时临时 `git remote add upstream https://github.com/Aaalice233/Aaalice_NAI_Launcher.git` 并 fetch，看完 `git remote remove upstream`。自行实现有价值的改动，不直接 merge 或 cherry-pick 上游提交。
@@ -288,6 +292,13 @@ Wiki 顶部类型 chip 条将鼠标纵向滚轮映射为水平移动，原生横
 标签扩展双栏中长 / 短标题的文字与计数仍从行顶对齐；只按实际文字块高度居中旁侧图标，不能用整行居中把短标题向下推。搜索行用 IntrinsicHeight 保持成对背景等高：LayoutBuilder 必须放在其外面，将扣除内边距 / 计数后的真实列宽传给 TagCandidateTitle，不能在 IntrinsicHeight 的测量子树里再放 LayoutBuilder。相关列表沿用自身真实宽度，保留换行、预留宽度和实际行高观测。
 
 - 2026-10-06 追加反馈：左下画布设置收起时按按钮实际宽度包裹，透明底色展开时保留调色板宽度；画布增强 Max 报价与倍率筛选同样使用最新生成草稿尺寸，不用已超分源图尺寸。官网变体依据当日 5285 / 2952 页面脚本及授权实扣测试核验，证据见 `docs/official-variations-feedback-2026-10-06.md`。
+
+## NAI Agent 流式显示
+
+- 每个 Pi 事件仍立即处理，仅将 thinking/text/toolcall delta 的 UI 通知合并到 100ms；其他事件与最终结果立即通知并取消待发布计时器。关闭控制器时清除计时器。
+- 旧轮次按来源消息与展示上下文生成稳定 renderKey；草稿版本、撤销、工具结果、资源和分支身份变化仍使其失效。提示词差异的纯计算缓存最多 128 组、每组两侧正文合计不超过 32768 字符；不可缓存撤销／版本锁定结果。提示词组卡的跨轮修订去重仍按原路径执行。
+- AgentScope 区分整体数据、操作状态和输入区依赖，稳定轮次复用原组件。相同设置对象不广播布局通知，但仍推进偏好加载版本，避免旧异步读取覆盖新设置。
+- 思考计数与正文共享按完整字符推进的局部显示进度；100ms 内容更新负责文本排版，动画只刷新计数行与正文裁剪绘制。重新展开、选择正文、结束和减少动画模式立即对齐已收到内容；布局、字体、选择容器与原滚动跟随规则保持。见 [调查与开工边界](docs/agent-thinking-performance-investigation-2026-10-29.md)。
 
 ## NAI Agent 图库实际文件操作
 

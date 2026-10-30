@@ -41,6 +41,7 @@ typedef AppShutdownHandler = Future<void> Function(int code);
 typedef UpdateSha256Calculator = Future<String> Function(File file);
 typedef UpdateProcessRunner =
     Future<ProcessResult> Function(String executable, List<String> arguments);
+typedef UpdateScriptLauncher = Future<void> Function(String scriptPath);
 
 /// 一次下载的实时进度快照。
 class UpdateDownloadProgress {
@@ -113,6 +114,7 @@ class UpdateInstallerService {
   final AppShutdownHandler _shutdownHandler;
   final UpdateSha256Calculator _sha256Calculator;
   final UpdateProcessRunner _runProcess;
+  final UpdateScriptLauncher _scriptLauncher;
   final Directory? _updateDirectoryOverride;
 
   static const Duration _speedSampleWindow = Duration(milliseconds: 500);
@@ -133,12 +135,14 @@ class UpdateInstallerService {
         DesktopAppShutdownService.shutdownAndExit,
     UpdateSha256Calculator? sha256Calculator,
     UpdateProcessRunner? runProcess,
+    UpdateScriptLauncher scriptLauncher = WindowsUpdateScript.launch,
     Directory? updateDirectory,
   }) : _dio = dio,
        _installationService = installationService,
        _shutdownHandler = shutdownHandler,
        _sha256Calculator = sha256Calculator ?? calculateSha256,
        _runProcess = runProcess ?? Process.run,
+       _scriptLauncher = scriptLauncher,
        _updateDirectoryOverride = updateDirectory;
 
   bool get supportsInAppInstall => _installationService.supportsInAppInstall;
@@ -507,16 +511,7 @@ class UpdateInstallerService {
     );
 
     try {
-      await Process.start('powershell.exe', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-WindowStyle',
-        'Hidden',
-        '-File',
-        scriptFile.path,
-      ], mode: ProcessStartMode.detached);
+      await _scriptLauncher(scriptFile.path);
     } catch (error) {
       throw UpdateInstallException(
         currentL10n.update_errorLaunchFailed,
@@ -682,7 +677,14 @@ class UpdateInstallerService {
             logPath: logFile.path,
           );
 
-    await scriptFile.writeAsString(script, flush: true);
+    // Windows PowerShell 5.1 otherwise decodes non-ASCII paths as the local ANSI
+    // code page, even though Dart wrote UTF-8.
+    await scriptFile.writeAsBytes([
+      0xef,
+      0xbb,
+      0xbf,
+      ...utf8.encode(script),
+    ], flush: true);
     return scriptFile;
   }
 
