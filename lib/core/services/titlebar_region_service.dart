@@ -32,7 +32,7 @@ class TitleBarRegionService {
   /// 平台通道是否可用（Windows 桌面端才有对应原生实现）。
   static bool get isSupported => !kIsWeb && Platform.isWindows;
 
-  /// 自绘标题栏这一排（Agent 开关、登录页的明暗和语言、更新提示）要不要画。
+  /// 自绘标题栏这一排（Agent 开关、登录页的明暗和语言）要不要画。
   /// macOS 用系统标题栏和红黄绿按钮，这一排照画、只是不画 Windows 的三个窗口按钮；
   /// 原生命中区（[setRegion]）仍只有 Windows 有。
   static bool get chromeSupported =>
