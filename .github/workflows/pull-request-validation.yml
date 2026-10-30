@@ -177,8 +177,9 @@ jobs:
       - name: Run macOS-only tests
         # These skip or take their Windows branch elsewhere: floating
         # resource windows, window close and quit order, the 1.x data copy,
-        # RAG host detection, CommonCrypto hashing, Finder open / reveal and
-        # path case in the storage statistics.
+        # RAG host detection, CommonCrypto hashing, Finder open / reveal,
+        # path case in the storage statistics and the Agent's built-in skills
+        # inside the app bundle.
         run: >-
           flutter test --no-pub
           test/presentation/wiring/resource_window_opener_test.dart
@@ -188,6 +189,7 @@ jobs:
           test/core/utils/file_sha256_test.dart
           test/app_test.dart
           test/presentation/wiring/settings_storage_inventory_test.dart
+          test/presentation/providers/nai_agent/nai_agent_builtin_skills_path_test.dart
 
       - name: Build macOS release
         run: scripts/build_macos.sh --release

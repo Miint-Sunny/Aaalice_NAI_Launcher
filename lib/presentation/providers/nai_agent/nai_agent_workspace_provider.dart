@@ -24,8 +24,14 @@ class NaiAgentRuntimePaths {
 
 /// Installer preserves this adjacent directory. It is outside Flutter data/.
 final naiAgentWorkspaceStoreProvider = Provider<AgentWorkspaceStore>(
-  // macOS 不往应用包里写，放「应用支持」目录（见 AppBundlePaths）
-  (ref) => AgentWorkspaceStore(Directory(AppBundlePaths.agentDataDirectory)),
+  // macOS 不往应用包里写，放「应用支持」目录（见 AppBundlePaths）；内置技能随运行时在
+  // 包里，不在数据目录旁边，所以显式指给它
+  (ref) => AgentWorkspaceStore(
+    Directory(AppBundlePaths.agentDataDirectory),
+    builtinSkillsDirectory: Directory(
+      p.join(AppBundlePaths.toolsDirectory, 'nai-agent', 'skills'),
+    ),
+  ),
 );
 
 /// Production uses the bundled runtime only; tests explicitly override paths.
