@@ -272,46 +272,6 @@ void main() {
     },
   );
 
-  test('post-billing refresh waits briefly and debounces bursts', () async {
-    final apiService = _MockNAIUserInfoApiService();
-    var requestCount = 0;
-    when(
-      () => apiService.getUserSubscription(
-        receiveTimeout: any(named: 'receiveTimeout'),
-      ),
-    ).thenAnswer((_) async {
-      requestCount += 1;
-      return _subscriptionJson(balance: 70);
-    });
-
-    final container = ProviderContainer(
-      overrides: [
-        authNotifierProvider.overrideWith(_AuthenticatedAuthNotifier.new),
-        naiUserInfoApiServiceProvider.overrideWithValue(apiService),
-        accountManagerNotifierProvider.overrideWith(
-          _FakeAccountManagerNotifier.new,
-        ),
-        subscriptionNotifierProvider.overrideWith(
-          _TestableSubscriptionNotifier.new,
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    final notifier = container.read(subscriptionNotifierProvider.notifier);
-    notifier.schedulePostBillingRefresh(
-      delay: const Duration(milliseconds: 10),
-    );
-    notifier.schedulePostBillingRefresh(
-      delay: const Duration(milliseconds: 10),
-    );
-
-    await Future<void>.delayed(const Duration(milliseconds: 30));
-
-    expect(requestCount, 1);
-    expect(container.read(subscriptionNotifierProvider).balance, 70);
-  });
-
   test(
     'writes back subscription expiresAt to account manager on successful fetch',
     () async {

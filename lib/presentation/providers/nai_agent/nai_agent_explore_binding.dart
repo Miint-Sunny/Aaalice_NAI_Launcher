@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
@@ -16,6 +17,7 @@ import '../pill_workspace_provider.dart';
 import '../prompt_block_library_provider.dart';
 import '../style_explore/explore_run_provider.dart';
 import '../style_explore/explore_run_runner.dart';
+import '../subscription_provider.dart';
 import 'nai_agent_generation_binding.dart';
 
 String naiAgentExploreVersion(ExploreRun run) => sha256
@@ -34,6 +36,7 @@ class NaiAgentExploreBinding {
       final base = bindNaiAgentGeneration(ref, workspace, owner!, busy, alive);
       generation = NaiAgentGenerationTools(
         isAlive: alive,
+        recheckBalance: base.recheckBalance,
         readInput: (params) {
           final run = _quotedRun(params);
           final mode = params['mode'] ?? 'basic';
@@ -77,6 +80,7 @@ class NaiAgentExploreBinding {
             blockedReason: input.raw.action != ImageGenerationAction.generate
                 ? 'explore_requires_generate_mode'
                 : input.blockedReason,
+            freeOnLowOpusQuota: input.freeOnLowOpusQuota,
           );
         },
         approve: base.approve,
@@ -90,7 +94,13 @@ class NaiAgentExploreBinding {
               if (c.generation.status == ExploreCandidateGenerationStatus.done)
                 c.id,
           };
-          void beforeGenerate(ImageParams params) {
+          const insufficient = NaiAgentToolError(
+            'insufficient_balance',
+            'Insufficient balance for next candidate',
+          );
+          /// Throws for anything that stops the next candidate except what
+          /// the cached account says; returns the next candidate's input.
+          NaiAgentGenerationInput checkNext() {
             if (!alive()) {
               throw const NaiAgentToolError('closed', 'Explore owner closed');
             }
@@ -126,14 +136,26 @@ class NaiAgentExploreBinding {
               );
             }
             if ((current.billing['per_request_anlas'] as num) >
-                    (input.billing['per_request_anlas'] as num) ||
-                current.balance == null ||
-                current.balance! < current.estimate) {
-              throw const NaiAgentToolError(
-                'insufficient_balance',
-                'Insufficient balance for next candidate',
-              );
+                (input.billing['per_request_anlas'] as num)) {
+              throw insufficient;
             }
+            return current;
+          }
+
+          bool short(NaiAgentGenerationInput next) =>
+              next.balance == null || next.balance! < next.estimate;
+
+          // The cached balance moves only on a click, a login or this ask:
+          // before it stops the exploration, or prices the next candidate
+          // free on an Opus quota nearly used up, ask once and check again.
+          // A quota the server has run out makes the candidate dearer than
+          // the quote: the exploration stops before it is sent.
+          FutureOr<void> beforeGenerate(ImageParams params) {
+            final next = checkNext();
+            if (!short(next) && !next.freeOnLowOpusQuota) return null;
+            return refreshBalanceBeforeBlocking(ref).then((_) {
+              if (short(checkNext())) throw insufficient;
+            });
           }
 
           final Future<bool> completion = switch (config['mode']) {

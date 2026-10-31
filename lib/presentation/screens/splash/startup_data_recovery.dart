@@ -5,15 +5,18 @@ import '../../../core/services/adjacent_app_data_migration.dart';
 import '../../../core/utils/app_language.dart';
 import '../../../core/utils/fatal_diagnostics.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../widgets/common/studio_root_scope.dart';
 
 /// Once recovery succeeds, remove its retry controls before services can open.
 class StartupDataLoadingApp extends StatelessWidget {
   const StartupDataLoadingApp({super.key});
 
   @override
-  Widget build(BuildContext context) => const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: Scaffold(body: Center(child: CircularProgressIndicator())),
+  Widget build(BuildContext context) => const StudioRootScope(
+    child: MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(body: Center(child: CircularProgressIndicator())),
+    ),
   );
 }
 
@@ -70,7 +73,7 @@ class _StartupDataRecoveryAppState extends State<StartupDataRecoveryApp> {
         AppLanguage.fromSystemLocales(
           WidgetsBinding.instance.platformDispatcher.locales,
         ).locale;
-    return MaterialApp(
+    final app = MaterialApp(
       debugShowCheckedModeBanner: false,
       title: Brand.name,
       locale: locale,
@@ -216,5 +219,6 @@ class _StartupDataRecoveryAppState extends State<StartupDataRecoveryApp> {
         },
       ),
     );
+    return StudioRootScope(child: app);
   }
 }

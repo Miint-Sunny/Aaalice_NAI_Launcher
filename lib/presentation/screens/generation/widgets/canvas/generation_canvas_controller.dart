@@ -440,6 +440,9 @@ class GenerationCanvasCameraNotifier extends Notifier<CanvasCamera> {
   Size? _viewportSize;
   void setViewport(Size size) => _viewportSize = size;
 
+  /// The canvas viewport last laid out (null before the first layout).
+  Size? get viewportSize => _viewportSize;
+
   /// 当前相机下的可见世界矩形（剔除用，委托 CanvasCamera）
   Rect visibleWorldRect(Size viewport) => state.visibleWorldRect(viewport);
 }

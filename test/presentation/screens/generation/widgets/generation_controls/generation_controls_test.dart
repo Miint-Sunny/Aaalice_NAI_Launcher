@@ -9,6 +9,7 @@ import 'package:nai_launcher/data/models/image/image_operation.dart';
 import 'package:nai_launcher/presentation/providers/generation/image_workflow_controller.dart';
 import 'package:nai_launcher/presentation/providers/generation/local_upscale_provider.dart';
 import 'package:nai_launcher/presentation/providers/image_generation_provider.dart';
+import 'package:nai_launcher/core/constants/api_constants.dart';
 import 'package:nai_launcher/core/constants/storage_keys.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
 import 'package:nai_launcher/data/models/user/user_subscription.dart';
@@ -92,6 +93,54 @@ void main() {
       expect(invoked, 2);
     },
   );
+  for (final (name, usage, asks) in [
+    ('nearly used up', const OpusUsage(percent: 3), 1),
+    ('with room', const OpusUsage(percent: 50), 0),
+  ]) {
+    testWidgets('an explore candidate free on an Opus quota $name asks '
+        '$asks time(s) for the balance before it is sent', (tester) async {
+      final controller = GenerationControlsController(),
+          generation = _CaptureGeneration(),
+          quota = _NearlyUsedQuota(usage, generation);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            localStorageServiceProvider.overrideWithValue(
+              _MemoryLocalStorageService({}),
+            ),
+            generationParamsNotifierProvider.overrideWith(_V5DraftParams.new),
+            imageGenerationNotifierProvider.overrideWith(() => generation),
+            kritaBridgeNotifierProvider.overrideWith(
+              (ref) => _TestKritaBridgeNotifier(),
+            ),
+            subscriptionNotifierProvider.overrideWith(() => quota),
+            exploreRunRunnerProvider.overrideWith(_TestExploreRunner.new),
+          ],
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            home: Scaffold(
+              body: GenerationControls(
+                controller: controller,
+                compact: true,
+                exploreMode: true,
+                showBalanceChips: false,
+                showAutoSaveChip: false,
+                onBatchEvent: (_) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await controller.generate();
+      await tester.pump();
+      // Before: sent at once, priced free.
+      expect(quota.asksBeforeSending, asks);
+      expect(generation.submitted!.prompt, 'city lights');
+    });
+  }
   for (final automatic in [false, true]) {
     testWidgets(
       'stop upscale routes cancellation correctly; automatic=$automatic',
@@ -468,6 +517,47 @@ class _TestKritaBridgeNotifier extends KritaBridgeNotifier {
 class _TestSubscriptionNotifier extends SubscriptionNotifier {
   @override
   SubscriptionState build() => const SubscriptionState.initial();
+}
+
+/// An Opus account with [usage] cached; a balance request brings the quota
+/// run out, as the server has meanwhile decided.
+class _NearlyUsedQuota extends SubscriptionNotifier {
+  _NearlyUsedQuota(this.usage, this.generation);
+  final OpusUsage usage;
+  final _CaptureGeneration generation;
+  int asksBeforeSending = 0;
+
+  static SubscriptionState _opus(OpusUsage usage) => SubscriptionState.loaded(
+    UserSubscription(
+      tier: 3,
+      active: true,
+      trainingStepsLeft: const TrainingStepsInfo(fixedTrainingStepsLeft: 1000),
+      usage: usage,
+    ),
+  );
+
+  @override
+  SubscriptionState build() {
+    // As the real notifier: kept for the session.
+    ref.keepAlive();
+    return _opus(usage);
+  }
+
+  @override
+  Future<bool> recheckBalance() async {
+    if (generation.submitted == null) asksBeforeSending++;
+    state = _opus(const OpusUsage(isNegative: true));
+    return true;
+  }
+}
+
+/// 832 x 1216, 28 steps on V5: one image is free on the Opus quota.
+class _V5DraftParams extends GenerationParamsNotifier {
+  @override
+  ImageParams build() => const ImageParams(
+    prompt: 'city lights',
+    model: ImageModels.animeDiffusionV5Full,
+  );
 }
 
 /// Runner 替身：build 不触发 _recoverInterruptedRuns（真 Hive 未初始化）。

@@ -10475,7 +10475,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get stats_anlasNote =>
-      '残高が減ったときに記録（アップスケールや Vibe エンコードを含む）。直近 90 日のみ保持';
+      'リクエストごとにアプリの表示価格で記録（アップスケールや Vibe エンコードを含む）。直近 90 日のみ保持';
 
   @override
   String get stats_aspectTitle => '画面サイズ';
@@ -16625,7 +16625,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get channel_motion => 'アイドル時の動き';
 
   @override
-  String get channel_motionSub => 'ごく軽い動き。生成中は自動で止まります';
+  String get channel_motionSub =>
+      '「焼き付き防止」は OLED 向けで、アイドル中に 1 秒ごとに少しだけずらすだけなので電力はほぼ使いません。「元の動き」は以前のきらめきや漂う動きで、CPU と GPU を使い続けます';
+
+  @override
+  String get channel_motionOff => 'オフ';
+
+  @override
+  String get channel_motionAntiBurnIn => '焼き付き防止';
+
+  @override
+  String get channel_motionOriginal => '元の動き';
 
   @override
   String get channel_toastTitle => '今回のチャンネル';
@@ -17743,7 +17753,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get set_cvMotion => 'アイドル時の動き';
 
   @override
-  String get set_cvMotionSub => '生成中と「動きを減らす」オンのときは停止';
+  String get set_cvMotionSub =>
+      '「焼き付き防止」（OLED 向け）は 1 秒ごとに少しずらすだけで電力をほぼ使いません。「元の動き」は CPU と GPU を使い続けます。生成中と「動きを減らす」オンのときは停止';
 
   @override
   String get set_cvOps => 'キャンバス操作';

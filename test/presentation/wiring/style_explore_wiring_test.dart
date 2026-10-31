@@ -13,6 +13,7 @@ import 'package:nai_launcher/presentation/ui/blocks/blocks_contract.dart';
 import 'package:nai_launcher/presentation/ui/blocks/blocks_dock.dart';
 import 'package:nai_launcher/presentation/ui/blocks/blocks_instance.dart';
 import 'package:nai_launcher/presentation/wiring/blocks_preferences.dart';
+import 'package:nai_launcher/core/constants/api_constants.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
 import 'package:nai_launcher/core/storage/pill_workspace_storage.dart';
 import 'package:nai_launcher/core/storage/style_explore_run_storage.dart';
@@ -153,8 +154,36 @@ class _Characters extends CharacterPromptNotifier {
 }
 
 class _Subscription extends SubscriptionNotifier {
+  /// What the balance notifier holds when it starts.
+  static SubscriptionState cached = const SubscriptionState.initial();
+
+  /// Told of every balance request, which brings an Opus quota run out.
+  static void Function()? onAsk;
+
+  static SubscriptionState opus(OpusUsage usage) => SubscriptionState.loaded(
+    UserSubscription(
+      tier: 3,
+      active: true,
+      trainingStepsLeft: const TrainingStepsInfo(fixedTrainingStepsLeft: 1000),
+      usage: usage,
+    ),
+  );
+
   @override
-  SubscriptionState build() => const SubscriptionState.initial();
+  SubscriptionState build() {
+    // As the real notifier: kept for the session.
+    ref.keepAlive();
+    return cached;
+  }
+
+  void cache(OpusUsage usage) => state = opus(usage);
+
+  @override
+  Future<bool> recheckBalance() async {
+    onAsk?.call();
+    cache(const OpusUsage(isNegative: true));
+    return true;
+  }
 }
 
 class _Runner extends ExploreRunRunner {
@@ -1050,6 +1079,61 @@ void main() {
       expect(storage.runs['first']!.families, isEmpty);
     },
   );
+
+  group('an Opus-free candidate price on a quota nearly used up', () {
+    // Each candidate is a one-image request, free on the Opus quota; the
+    // cached quota is at 3 %, which the server has meanwhile run out.
+    setUp(() {
+      _Subscription.cached = _Subscription.opus(const OpusUsage(percent: 3));
+    });
+    tearDown(() {
+      _Subscription.cached = const SubscriptionState.initial();
+      _Subscription.onAsk = null;
+    });
+
+    Future<_Subscription> mountOnV5(WidgetTester tester) async {
+      final container = await mount(tester);
+      container
+          .read(generationParamsNotifierProvider.notifier)
+          .updateModel(ImageModels.animeDiffusionV5Full, persist: false);
+      _Subscription.onAsk = () => runner.calls.add('balance');
+      return container.read(subscriptionNotifierProvider.notifier)
+          as _Subscription;
+    }
+
+    testWidgets('retrying failed candidates asks once before it starts', (
+      tester,
+    ) async {
+      await mountOnV5(tester);
+      actions(tester).onRetryFailed();
+      await tester.pumpAndSettle();
+      // Before: retried at once, priced free.
+      expect(runner.calls, ['balance', 'retry:first']);
+    });
+
+    testWidgets('new children ask once before they start', (tester) async {
+      final quota = await mountOnV5(tester);
+      quota.cache(const OpusUsage(percent: 50));
+      actions(tester).onStartEvolution(
+        const ExploreEvolutionPlan(
+          candidateKeys: [],
+          newLineName: 'Line',
+          customParents: ['artist:x', 'artist:y'],
+          generate: 2,
+        ),
+      );
+      await tester.pumpAndSettle();
+      // Quota left: nothing asked.
+      expect(runner.calls, hasLength(1));
+      expect(runner.calls.single, startsWith('children:'));
+      final family = storage.runs['first']!.families.single;
+      quota.cache(const OpusUsage(percent: 3));
+      actions(tester).onGenerateChildren(family.id, 4);
+      await tester.pumpAndSettle();
+      expect(runner.calls.skip(1), ['balance', startsWith('children:')]);
+      expect(runner.calls.last, endsWith(':4'));
+    });
+  });
 
   testWidgets('stale pause actions do not pause a different generation run', (
     tester,

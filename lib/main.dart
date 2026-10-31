@@ -27,7 +27,9 @@ import 'core/shortcuts/shortcut_storage.dart';
 import 'core/database/database_manager.dart';
 import 'core/services/data_migration_service.dart';
 import 'core/services/app_data_startup.dart';
+import 'core/services/app_visibility.dart';
 import 'core/services/desktop_app_shutdown_service.dart';
+import 'core/services/hidden_window_memory_trim.dart';
 import 'core/services/resource_window_bootstrap.dart';
 import 'core/services/resource_window_protocol.dart';
 import 'core/services/resource_window_service.dart';
@@ -172,6 +174,7 @@ class AppTrayListener extends TrayListener {
     // 左键点击托盘图标 - 恢复窗口
     try {
       await windowManager.show();
+      AppVisibilitySources.instance.markShown();
       await windowManager.focus();
       await refreshWindowFrame();
       AppLogger.d('Window restored from tray (left click)', 'TrayListener');
@@ -194,6 +197,7 @@ class AppTrayListener extends TrayListener {
       if (menuItem.key == 'show') {
         // 显示窗口
         await windowManager.show();
+        AppVisibilitySources.instance.markShown();
         await windowManager.focus();
         await refreshWindowFrame();
         AppLogger.d('Window shown via tray menu', 'TrayListener');
@@ -226,6 +230,8 @@ class AppWindowListener extends WindowListener {
       if (_nativeResourceWindows) {
         await ResourceWindowService.instance.closeAll();
       }
+      // 先停动画再藏窗口（见 AppVisibility）
+      AppVisibilitySources.instance.markHidden();
       await windowManager.hide();
       AppLogger.d('Window hidden to tray', 'WindowListener');
     } catch (e) {
@@ -309,6 +315,7 @@ void setupWindowsWakeUpChannel() {
       try {
         // 确保窗口显示并置于前台
         await windowManager.show();
+        AppVisibilitySources.instance.markShown();
         await windowManager.focus();
         await windowManager.restore();
         await refreshWindowFrame();
@@ -458,6 +465,8 @@ Future<void> _bootstrapPreparedApplication() async {
   // 增加图片缓存限制，防止本地画廊滚动时图片被回收变白
   PaintingBinding.instance.imageCache.maximumSize = 500; // 最大缓存 500 张图片
   PaintingBinding.instance.imageCache.maximumSizeBytes = 200 << 20; // 200MB
+  // 窗口藏起来满 1 分钟：放掉没在用的已解码图片，回来按需重新解码
+  HiddenWindowMemoryTrim.instance.start();
 
   try {
     // 初始化桌面端视频播放支持 (media_kit)

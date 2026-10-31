@@ -15,4 +15,9 @@ flutter test --no-pub --concurrency=3 \
   test/presentation/providers/nai_agent/agent_management_test.dart \
   test/app_test.dart \
   test/presentation/wiring/settings_storage_inventory_test.dart \
-  test/presentation/providers/nai_agent/nai_agent_builtin_skills_path_test.dart
+  test/presentation/providers/nai_agent/nai_agent_builtin_skills_path_test.dart \
+  test/core/network/system_proxy_reader_test.dart \
+  test/presentation/providers/detected_system_proxy_test.dart \
+  test/presentation/providers/nai_agent/inventory_cache_test.dart \
+  test/presentation/providers/nai_agent/package_inventory_refresh_test.dart \
+  test/core/database/asset_database_manager_test.dart

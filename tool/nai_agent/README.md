@@ -26,6 +26,6 @@ MCP 设置统一管理内置组和用户服务器。支持 stdio／Streamable HT
 
 CodeMode 使用官方 QuickJS，没有另造执行器。MCP 调用继续走原 Studio 的备份、版本校验、确认及取消；原生图片结果元数据通过 Pi 的 tool_result 扩展保存在官方会话 details，CodeMode 聚合图片路径，恢复聊天仍显示结果。内置 MCP 等待期限为 24 小时，避免把用户确认／长时间超分按外部服务器默认 60 秒超时处理；CodeMode 的显式 timeout_ms 仍是整个脚本的截止时间。
 
-Pi 1.1.0 适配读取官方会话中已声明的 MCP 工具名，在重连注册时恢复仍可用的工具；隐藏／禁用与后续卸载保持有效。agent_settled 的 aborted 和工具 durationMs 经原 JSONL 直接传递，无新增历史或执行层。1.3.0 升级沿用同一适配：内部 MCP 辅助路径、会话恢复与旧 1.1.0 记录兼容已核对，不改宿主协议。
+Pi 1.1.0 适配读取官方会话中已声明的 MCP 工具名，在重连注册时恢复仍可用的工具；隐藏／禁用与后续卸载保持有效。agent_settled 的 aborted 和工具 durationMs 经原 JSONL 直接传递，无新增历史或执行层。1.3.0 升级沿用同一适配：内部 MCP 辅助路径、会话恢复与旧 1.1.0 记录兼容已核对，不改宿主协议。以后升级 Pi 还要核对技能、命令清单的戳（`nai_agent_inventory_cache.dart` 照 Pi 1.3.0 的扫描规则手写）：在本目录 `npm ci`，再到仓库根目录运行 `flutter test test/presentation/providers/nai_agent/inventory_stamp_real_scripts_test.dart`，真脚本列出的变了而戳没变时，按新规则改戳。
 
-Skill（2026-10-18）：宿主启用 Pi 原生 Skill，来源由 Studio 决定——内置 `skills/`（只读，随版本更新）、全局 `agent-data/skills/`、当前工作区 `skills/`，同名时工作区 > 全局 > 内置；不读取工作区内 `.agents/skills` 或 `.pi`。`lib/skills.mjs` 用 Pi 的加载器解析并应用开关／“仅手动”，Pi 负责目录格式与 `/skill:` 展开；`list-skills.mjs` 供设置页列出同一结果。系统提示词只留入口地图，业务工具用法在 `nai-studio`。
+Skill（2026-10-18）：宿主启用 Pi 原生 Skill，来源由 Studio 决定——内置 `skills/`（只读，随版本更新）、全局 `agent-data/skills/`、当前工作区 `skills/`，同名时工作区 > 全局 > 内置；不读取工作区内 `.agents/skills` 或 `.pi`。`lib/skills.mjs` 用 Pi 的加载器解析并应用开关／“仅手动”，Pi 负责目录格式与 `/skill:` 展开；`list-skills.mjs` 供设置页和 Agent 面板列出同一结果，`list-commands.mjs` 同样列出命令模板；Studio 在这次运行里留着它们列出的结果，它们读的文件（`nai_agent_inventory_cache.dart` 打戳）、开关和刷新序号都没变就不再起 Node，所以脚本改读别的文件时，那里的戳要一起改。系统提示词只留入口地图，业务工具用法在 `nai-studio`。

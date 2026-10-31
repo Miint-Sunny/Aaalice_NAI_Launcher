@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import '../database/database_manager.dart';
 import '../utils/app_logger.dart';
+import 'app_visibility.dart';
 
 /// 桌面应用统一退出入口。
 ///
@@ -46,6 +47,7 @@ class DesktopAppShutdownService {
     // macOS：先藏窗口、撤菜单栏图标，再等后台任务、关数据库，退出过程中不留一个卡住的窗口
     // （⌘Q、程序坞「退出」时系统等着应用退出）。Windows 照原来的顺序，最后才撤托盘、关窗口
     if (Platform.isMacOS) {
+      AppVisibilitySources.instance.markHidden();
       try {
         await windowManager.hide();
       } catch (error) {

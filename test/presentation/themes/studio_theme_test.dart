@@ -13,7 +13,6 @@ import 'package:nai_launcher/presentation/providers/background_refresh_provider.
 import 'package:nai_launcher/presentation/providers/krita/krita_bridge_notifier.dart';
 import 'package:nai_launcher/presentation/providers/notification_settings_provider.dart';
 import 'package:nai_launcher/presentation/providers/prompt_block_library_provider.dart';
-import 'package:nai_launcher/presentation/providers/subscription_provider.dart';
 import 'package:nai_launcher/presentation/providers/theme_provider.dart';
 import 'package:nai_launcher/presentation/router/app_router.dart';
 import 'package:nai_launcher/presentation/widgets/branding/brand_entry_scene.dart';
@@ -26,11 +25,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:nai_launcher/core/constants/app_version.dart';
 
 import '../../helpers/light_theme_contrast.dart';
-
-class _Balance extends AnlasBalanceWatcher {
-  @override
-  void build() {}
-}
 
 class _Completion extends GenerationCompletionWatcher {
   @override
@@ -201,7 +195,6 @@ void main() {
         overrides: [
           localStorageServiceProvider.overrideWithValue(storage),
           appRouterProvider.overrideWithValue(router),
-          anlasBalanceWatcherProvider.overrideWith(_Balance.new),
           generationCompletionWatcherProvider.overrideWith(_Completion.new),
           backgroundRefreshNotifierProvider.overrideWith(_Refresh.new),
           kritaBridgeNotifierProvider.overrideWith(

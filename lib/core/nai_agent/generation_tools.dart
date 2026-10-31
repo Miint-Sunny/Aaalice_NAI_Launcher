@@ -24,6 +24,7 @@ class NaiAgentGenerationInput {
     this.blockedReason,
     this.sourceOperation,
     this.sourceImageId,
+    this.freeOnLowOpusQuota = false,
   });
   final ImageParams raw, effective;
   final String draftVersion, accountName, endpoint, promptContextVersion;
@@ -33,6 +34,11 @@ class NaiAgentGenerationInput {
   final Map<String, dynamic> billing;
   final Object? workflowGuard;
   final Map<String, dynamic>? localEnhance;
+
+  /// The price counts Opus-free images on a cached quota nearly used up
+  /// (opusFreePriceMayBeStale): the server may already bill them, so the
+  /// balance is asked once before such a price is quoted. Not in the quote.
+  final bool freeOnLowOpusQuota;
   int get estimate => billing['estimated_anlas'] as int;
   int? get balance => billing['balance_anlas'] as int?;
   ({int width, int height}) get outputSize =>
@@ -131,6 +137,7 @@ class NaiAgentGenerationTools {
     required this.backup,
     required this.start,
     required this.isAlive,
+    this.recheckBalance,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
   final NaiAgentGenerationInput Function(Map<String, dynamic>) readInput;
@@ -143,11 +150,22 @@ class NaiAgentGenerationTools {
   final Future<String> Function(NaiAgentGenerationInput) backup;
   final NaiAgentGenerationRun? Function(NaiAgentGenerationInput) start;
   final bool Function() isAlive;
+
+  /// Asks the server for the balance once. The cached balance is refreshed
+  /// only at start-up, on login and on a click, so before a quote, a run or
+  /// the prompt-set card stops on it ([balanceBlocks]), and before a quote
+  /// counts Opus-free images on a quota nearly used up
+  /// ([NaiAgentGenerationInput.freeOnLowOpusQuota]), this runs first and the
+  /// input is read again. Null: quote and stop on the cached balance as it is.
+  final Future<void> Function()? recheckBalance;
   final DateTime Function() clock;
   final _quotes = <String, NaiAgentGenerationQuote>{};
   NaiAgentGenerationRun? _active;
   String? _lastRunId;
   String? get activeId => _active?.id;
+
+  /// Reasons that come from the cached balance, not from the request.
+  static const balanceBlocks = {'insufficient_balance', 'balance_unavailable'};
 
   NaiAgentGenerationQuote _prepareQuote(
     Map<String, dynamic> params,
@@ -174,11 +192,29 @@ class NaiAgentGenerationTools {
     );
   }
 
-  Future<Map<String, dynamic>> prepare(
+  /// A quote on the cached balance; when that balance would stop it, or its
+  /// price counts Opus-free images on a quota nearly used up, on the answer
+  /// of one [recheckBalance] instead.
+  Future<NaiAgentGenerationQuote> _quoteOnFreshBalance(
     Map<String, dynamic> params,
     NaiAgentCancellation token,
   ) async {
     final quote = _prepareQuote(params, token);
+    final recheck = recheckBalance;
+    if (recheck == null ||
+        !balanceBlocks.contains(quote.input.blockedReason) &&
+            !quote.input.freeOnLowOpusQuota) {
+      return quote;
+    }
+    await recheck();
+    return _prepareQuote(params, token);
+  }
+
+  Future<Map<String, dynamic>> prepare(
+    Map<String, dynamic> params,
+    NaiAgentCancellation token,
+  ) async {
+    final quote = await _quoteOnFreshBalance(params, token);
     _quotes.removeWhere(
       (_, quote) => !quote.expiresAt.isAfter(clock()) && !quote.reserved,
     );
@@ -201,6 +237,16 @@ class NaiAgentGenerationTools {
     NaiAgentCancellation token,
   ) async {
     token.check();
+    final recheck = recheckBalance;
+    final waiting = _quotes[params['quote_id']];
+    if (recheck != null &&
+        waiting != null &&
+        !waiting.reserved &&
+        _blockedOnBalance(waiting.params)) {
+      await recheck();
+      token.check();
+    }
+    // Looked up after any wait: a quote another run took meanwhile is gone.
     final quote = _quotes[params['quote_id']];
     if (quote == null) {
       throw const NaiAgentToolError(
@@ -209,6 +255,16 @@ class NaiAgentGenerationTools {
       );
     }
     return _run(quote, token);
+  }
+
+  /// Whether the cached balance stops [params] now. A read that fails is
+  /// left to the run's own check, which reports it.
+  bool _blockedOnBalance(Map<String, dynamic> params) {
+    try {
+      return balanceBlocks.contains(readInput(params).blockedReason);
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>> _run(
@@ -306,7 +362,7 @@ class NaiAgentGenerationTools {
   Future<Map<String, dynamic>> requestUserGeneration(
     NaiAgentCancellation token,
   ) async => _run(
-    _prepareQuote({'requests': 1, 'images_per_request': 1}, token),
+    await _quoteOnFreshBalance({'requests': 1, 'images_per_request': 1}, token),
     token,
     userButton: true,
   );

@@ -8,9 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nai_launcher/core/constants/storage_keys.dart';
+import 'package:nai_launcher/core/constants/api_constants.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
 import 'package:nai_launcher/data/models/image/image_params.dart';
 import 'package:nai_launcher/data/models/image/image_operation.dart';
+import 'package:nai_launcher/data/models/user/user_subscription.dart';
 import 'package:nai_launcher/data/repositories/character_prompt_repository.dart';
 import 'package:nai_launcher/presentation/providers/auth_provider.dart';
 import 'package:nai_launcher/presentation/providers/subscription_provider.dart';
@@ -82,6 +84,41 @@ class RecordingGeneration extends IdleGeneration {
 
   void setGenerating() =>
       state = const ImageGenerationState(status: GenerationStatus.generating);
+}
+
+/// An Opus account whose cached quota is nearly used up (3 %, nothing in
+/// reserve): the price counts the V5 image free. The server has run the quota
+/// out meanwhile, as the next balance request tells.
+class _NearlyUsedQuota extends SubscriptionNotifier {
+  int rechecks = 0;
+  Completer<void>? hold;
+
+  static SubscriptionState opus(OpusUsage usage) => SubscriptionState.loaded(
+    UserSubscription(
+      tier: 3,
+      active: true,
+      trainingStepsLeft: const TrainingStepsInfo(fixedTrainingStepsLeft: 1000),
+      usage: usage,
+    ),
+  );
+
+  @override
+  SubscriptionState build() {
+    // As the real notifier: kept for the session.
+    ref.keepAlive();
+    return opus(const OpusUsage(percent: 3));
+  }
+
+  /// What the last balance request brought.
+  void cache(OpusUsage usage) => state = opus(usage);
+
+  @override
+  Future<bool> recheckBalance() async {
+    rechecks++;
+    await hold?.future;
+    cache(const OpusUsage(isNegative: true));
+    return true;
+  }
 }
 
 class SwitchingAuth extends OfflineAuth {
@@ -456,6 +493,19 @@ void main() {
     await backend.retry(confirm: (_) async => fail('must not confirm'));
     expect(generation.retried, isEmpty);
   });
+  // Isolated hosts and tests never start the balance notifier: starting it
+  // would ask NovelAI for the balance. The price check reads it only where
+  // the screens already keep it.
+  test('generate leaves a balance notifier that never started alone', () async {
+    await backend.generate(confirm: (_) async => true);
+    expect(
+      (container.read(imageGenerationNotifierProvider.notifier)
+              as RecordingGeneration)
+          .requests,
+      hasLength(1),
+    );
+    expect(container.exists(subscriptionNotifierProvider), isFalse);
+  });
   test('真实确认后先备份，再把原请求交给生成 provider', () async {
     await backend.generate(confirm: (_) async => true);
     expect(platform.backups.length, 1);
@@ -503,5 +553,118 @@ void main() {
           .requests,
       isEmpty,
     );
+  });
+  group('an Opus-free price on a quota nearly used up', () {
+    late _NearlyUsedQuota quota;
+    setUp(() async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          localStorageServiceProvider.overrideWithValue(MemoryDraftSettings()),
+          characterPromptRepositoryProvider.overrideWithValue(
+            MemoryCharacters(),
+          ),
+          promptBlockLibraryNotifierProvider.overrideWith(EmptyBlocks.new),
+          imageGenerationNotifierProvider.overrideWith(RecordingGeneration.new),
+          authNotifierProvider.overrideWith(SwitchingAuth.new),
+          subscriptionNotifierProvider.overrideWith(
+            () => quota = _NearlyUsedQuota(),
+          ),
+          generationPlatformProvider.overrideWithValue(platform),
+        ],
+      );
+      await container.read(promptBlockLibraryNotifierProvider.future);
+      backend = container.read(generationBackendProvider);
+      final params = container.read(generationParamsNotifierProvider.notifier);
+      params.updatePromptImmediately('original');
+      // 832 x 1216, 28 steps, one image: free on the Opus quota.
+      params.updateModel(ImageModels.animeDiffusionV5Full, persist: false);
+      container.read(subscriptionNotifierProvider);
+    });
+    RecordingGeneration generation() =>
+        container.read(imageGenerationNotifierProvider.notifier)
+            as RecordingGeneration;
+
+    test('generate asks once, then confirms the price it is billed', () async {
+      expect(container.read(estimatedCostProvider), 0);
+      final costs = <int>[];
+      await backend.generate(
+        confirm: (cost) async {
+          costs.add(cost);
+          return true;
+        },
+      );
+      // Before: confirmed as free (0), no request.
+      expect(quota.rechecks, 1);
+      expect(costs.single, greaterThan(0));
+      expect(generation().requests.single.prompt, 'original');
+    });
+
+    test('retry asks once, then confirms the price it is billed', () async {
+      generation().fail(container.read(generationParamsNotifierProvider));
+      final costs = <int>[];
+      await backend.retry(
+        confirm: (cost) async {
+          costs.add(cost);
+          return true;
+        },
+      );
+      expect(quota.rechecks, 1);
+      expect(costs.single, greaterThan(0));
+      expect(generation().retried, hasLength(1));
+    });
+
+    for (final (name, usage) in [
+      ('quota left', const OpusUsage(percent: 5)),
+      ('quota already run out', const OpusUsage(isNegative: true)),
+    ]) {
+      test('$name: generate asks nothing', () async {
+        quota.cache(usage);
+        final costs = <int>[];
+        await backend.generate(
+          confirm: (cost) async {
+            costs.add(cost);
+            return true;
+          },
+        );
+        expect(quota.rechecks, 0);
+        expect(costs, hasLength(1));
+        expect(generation().requests, hasLength(1));
+      });
+    }
+
+    test('a price the quota does not change asks nothing', () async {
+      container.read(generationParamsNotifierProvider.notifier).updateSteps(40);
+      await backend.generate(confirm: (_) async => true);
+      expect(quota.rechecks, 0);
+      expect(generation().requests, hasLength(1));
+    });
+
+    test('closed while it asks: nothing is confirmed or sent', () async {
+      quota.hold = Completer<void>();
+      var alive = true, confirmations = 0;
+      final pending = backend.generate(
+        confirm: (_) async {
+          confirmations++;
+          return true;
+        },
+        alive: () => alive,
+      );
+      await Future<void>.delayed(Duration.zero);
+      // A second click while it asks is dropped, as during a confirm.
+      await backend.generate(
+        confirm: (_) async {
+          confirmations++;
+          return true;
+        },
+      );
+      alive = false;
+      quota.hold!.complete();
+      await pending;
+      expect(quota.rechecks, 1);
+      expect(confirmations, 0);
+      expect(generation().requests, isEmpty);
+      expect(platform.backups, isEmpty);
+    });
   });
 }

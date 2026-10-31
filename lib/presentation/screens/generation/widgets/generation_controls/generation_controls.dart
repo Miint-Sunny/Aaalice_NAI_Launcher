@@ -8,6 +8,7 @@ import 'package:nai_launcher/presentation/providers/cost_estimate_provider.dart'
 import 'package:nai_launcher/presentation/providers/image_generation_provider.dart';
 import 'package:nai_launcher/presentation/providers/krita/krita_bridge_notifier.dart';
 import 'package:nai_launcher/presentation/providers/style_explore/explore_run_runner.dart';
+import 'package:nai_launcher/presentation/providers/subscription_provider.dart';
 import 'package:nai_launcher/presentation/utils/asset_protection_guard.dart';
 import 'package:nai_launcher/presentation/widgets/common/app_toast.dart';
 import 'package:nai_launcher/presentation/widgets/generation/auto_save_toggle_chip.dart';
@@ -288,6 +289,32 @@ class _GenerationControlsState extends ConsumerState<GenerationControls> {
     if (params.prompt.isEmpty) {
       AppToast.warning(context, context.l10n.generation_pleaseInputPrompt);
       return;
+    }
+
+    // A price that counts Opus-free images on a quota nearly used up: ask
+    // for the balance once before it is confirmed. A balance notifier that
+    // never started (isolated hosts, tests) is left alone.
+    final recheck = !ref.exists(subscriptionNotifierProvider)
+        ? null
+        : ref
+              .read(subscriptionNotifierProvider.notifier)
+              .recheckBeforeOpusFreePrice(
+                (subscription) => widget.exploreMode
+                    ? styleExploreCandidateCost(
+                        ref.read(generationParamsNotifierProvider),
+                        ref.read(draftImageWorkflowProvider),
+                        subscription,
+                      )
+                    : generationRequestCost(
+                        ref.read(generationRequestParamsProvider),
+                        ref.read(imageWorkflowControllerProvider),
+                        subscription,
+                        ref.read(imagesPerRequestProvider),
+                      ),
+              );
+    if (recheck != null) {
+      await recheck;
+      if (!context.mounted) return;
     }
 
     final confirmed = await AssetProtectionGuard.confirmHighAnlasCost(

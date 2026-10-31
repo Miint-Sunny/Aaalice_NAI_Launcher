@@ -413,6 +413,48 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       runtime.waitingForSlot ||
       runtime.pendingSends > 0;
 
+  /// Nothing in this chat would notice its host going away.
+  bool _releasable(AgentChatRuntime runtime) =>
+      !_busy(runtime) &&
+      runtime.importingImages == 0 &&
+      runtime.queue.isEmpty &&
+      !runtime._resending &&
+      runtime._suggestionCancels == 0 &&
+      runtime.compactionReason == null &&
+      !_deletingChats.contains(runtime.chat.id) &&
+      !_deletingWorkspaces.contains(runtime.workspace.id);
+
+  /// Some chat holds a live host and every chat is idle.
+  bool get hostsIdle =>
+      !_disposed &&
+      _closeFuture == null &&
+      _runtimes.values.any((runtime) => runtime.client != null) &&
+      _runtimes.values.every(_releasable);
+
+  /// Close every idle chat's Node host. Messages stay on screen and the
+  /// conversation stays in each chat's session file, so the next host
+  /// (loadHistory, or the next send) resumes it; the same happens to the
+  /// other chats when switching chats.
+  Future<bool> releaseIdleHosts() async {
+    var released = false;
+    for (final runtime in _runtimes.values.toList()) {
+      final client = runtime.client;
+      if (_disposed || _closeFuture != null) break;
+      if (client == null || !_releasable(runtime)) continue;
+      await _persist(runtime);
+      runtime.suggestion = null;
+      runtime.suggestionAllowed = false;
+      runtime._suggestionRevision++;
+      await runtime.subscription?.cancel();
+      runtime.subscription = null;
+      await client.close();
+      if (identical(runtime.client, client)) runtime.client = null;
+      released = true;
+    }
+    if (released) _notify();
+    return released;
+  }
+
   Future<String> deleteChat(String chatId) async {
     final runtime = _runtimes[chatId];
     final workspaceId = runtime?.workspace.id ?? selectedWorkspace!.id;

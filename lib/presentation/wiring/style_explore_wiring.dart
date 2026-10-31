@@ -141,6 +141,24 @@ class _StyleExploreWiringState extends ConsumerState<StyleExploreWiring> {
     activeRunId: _manualRunId,
   );
 
+  /// Candidates are one-image requests, each free on the Opus quota while it
+  /// lasts. When the cached quota is nearly used up, ask for the balance once
+  /// before their price is confirmed, so it is the price the server bills.
+  Future<void> _recheckCandidatePrice() async {
+    // Never started (isolated hosts, tests): starting it would ask.
+    if (!ref.exists(subscriptionNotifierProvider)) return;
+    final recheck = ref
+        .read(subscriptionNotifierProvider.notifier)
+        .recheckBeforeOpusFreePrice(
+          (subscription) => styleExploreCandidateCost(
+            ref.read(generationParamsNotifierProvider),
+            ref.read(draftImageWorkflowProvider),
+            subscription,
+          ),
+        );
+    if (recheck != null) await recheck;
+  }
+
   Future<void> _children(
     String id,
     String lineId,
@@ -160,6 +178,8 @@ class _StyleExploreWiringState extends ConsumerState<StyleExploreWiring> {
       final parentSet = family == null
           ? null
           : original.parentSetById(family.activeParentSetId);
+      await _recheckCandidatePrice();
+      if (!mounted) return;
       final cost = ref.read(styleExploreCostForCountProvider(count));
       final confirmed = await AssetProtectionGuard.confirmHighAnlasCost(
         context: context,
@@ -204,6 +224,8 @@ class _StyleExploreWiringState extends ConsumerState<StyleExploreWiring> {
           (resume && original.status != ExploreRunStatus.paused)) {
         return;
       }
+      await _recheckCandidatePrice();
+      if (!mounted) return;
       final cost = ref.read(styleExploreCostForCountProvider(targets.length));
       final confirmed = await AssetProtectionGuard.confirmHighAnlasCost(
         context: context,

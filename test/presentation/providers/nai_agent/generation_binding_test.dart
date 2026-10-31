@@ -4,20 +4,26 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
 import 'package:image/image.dart' as img;
+import 'package:nai_launcher/core/constants/api_constants.dart';
 import 'package:nai_launcher/core/constants/storage_keys.dart';
 import 'package:nai_launcher/core/nai_agent/agent_tool.dart';
 import 'package:nai_launcher/core/nai_agent/generation_tools.dart';
 import 'package:nai_launcher/core/nai_agent/studio_tools.dart';
+import 'package:nai_launcher/core/network/nai_api_endpoint_service.dart';
 import 'package:nai_launcher/core/services/anlas_calculator.dart';
 import 'package:nai_launcher/core/storage/local_storage_service.dart';
 import 'package:nai_launcher/core/storage/prompt_block_storage.dart';
 import 'package:nai_launcher/data/models/image/image_params.dart';
 import 'package:nai_launcher/data/models/image/image_operation.dart';
+import 'package:nai_launcher/data/datasources/remote/nai_user_info_api_service.dart';
+import 'package:nai_launcher/data/models/user/user_subscription.dart';
 import 'package:nai_launcher/data/repositories/character_prompt_repository.dart';
 import 'package:nai_launcher/data/repositories/prompt_block_repository.dart';
 import 'package:nai_launcher/data/services/vibe_library_storage_service.dart';
+import 'package:nai_launcher/presentation/providers/account_manager_provider.dart';
 import 'package:nai_launcher/presentation/providers/auth_provider.dart';
 import 'package:nai_launcher/presentation/providers/image_generation_provider.dart';
 import 'package:nai_launcher/presentation/providers/prompt_block_library_provider.dart';
@@ -39,6 +45,52 @@ class GenerationTestAuth extends AuthNotifier {
   void setAuth(AuthState value) {
     state = value;
   }
+}
+
+/// A NovelAI that answers balance requests with [balance] and counts them.
+class GenerationTestBalances extends NAIUserInfoApiService {
+  GenerationTestBalances() : super(Dio(), NaiApiEndpointService());
+  int balance = 0;
+  int requests = 0;
+
+  /// What the server answers instead of the plain [balance], when set.
+  Map<String, dynamic>? answer;
+  @override
+  Future<Map<String, dynamic>> getUserSubscription({
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
+  }) async {
+    requests++;
+    return answer ?? generationTestSubscription(balance);
+  }
+}
+
+/// A non-Opus account, so even one image costs Anlas.
+Map<String, dynamic> generationTestSubscription(int balance) => {
+  'tier': 1,
+  'active': true,
+  'trainingStepsLeft': {
+    'fixedTrainingStepsLeft': balance,
+    'purchasedTrainingSteps': 0,
+  },
+};
+
+/// An Opus account: one V5 image per request is free on its quota [usage].
+Map<String, dynamic> generationTestOpus(
+  OpusUsage usage, {
+  int balance = 100000,
+}) => {
+  ...generationTestSubscription(balance),
+  'tier': 3,
+  'usage': usage.toJson(),
+};
+
+class GenerationTestAccounts extends AccountManagerNotifier {
+  @override
+  AccountManagerState build() => const AccountManagerState(isLoading: false);
+  @override
+  Future<void> updateSubscriptionExpiry(String accountId, int? expiresAt) =>
+      Future.value();
 }
 
 class GenerationTestLibrary extends PromptBlockLibraryNotifier {
@@ -143,6 +195,7 @@ void main() {
   late Directory root;
   late ProviderContainer container;
   late PromptBlockRepository repository;
+  late GenerationTestBalances balances;
   setUp(() async {
     root = await Directory.systemTemp.createTemp(
       'nai-agent-generation-binding-',
@@ -152,8 +205,11 @@ void main() {
     final storage = PromptBlockStorage(hivePath: root.path);
     await storage.init();
     repository = PromptBlockRepository(storage);
+    balances = GenerationTestBalances();
     container = ProviderContainer(
       overrides: [
+        naiUserInfoApiServiceProvider.overrideWithValue(balances),
+        accountManagerNotifierProvider.overrideWith(GenerationTestAccounts.new),
         localStorageServiceProvider.overrideWithValue(MemoryDraftSettings()),
         characterPromptRepositoryProvider.overrideWithValue(MemoryCharacters()),
         promptBlockRepositoryProvider.overrideWithValue(repository),
@@ -341,6 +397,96 @@ void main() {
       expect(free['can_generate'], true);
     },
   );
+
+  group('a cached balance too low for the quote', () {
+    // The balance moves only on a click, a login or an account switch; the
+    // screens keep the balance notifier, which the quote reads.
+    void cached(int balance) {
+      (container.read(authNotifierProvider.notifier) as GenerationTestAuth)
+          .setAuth(
+            AuthState(
+              status: AuthStatus.authenticated,
+              accountId: 'synthetic-account',
+              displayName: 'Synthetic account',
+              subscriptionInfo: generationTestSubscription(balance),
+            ),
+          );
+      expect(container.read(subscriptionNotifierProvider).balance, balance);
+    }
+
+    test('is asked once; the fresh balance quotes', () async {
+      cached(1);
+      balances.balance = 5000;
+      final q = await quote(tools(), {'requests': 2});
+      expect(balances.requests, 1);
+      expect(q['balance_anlas'], 5000);
+      expect(q['can_generate'], true);
+      // Enough now: the next quote asks nothing.
+      await quote(tools(), {'requests': 2});
+      expect(balances.requests, 1);
+    });
+
+    test('still too low after asking: blocked, asked once', () async {
+      cached(1);
+      balances.balance = 1;
+      final q = await quote(tools(), {'requests': 2});
+      expect(balances.requests, 1);
+      expect(q['blocked_reason'], 'insufficient_balance');
+      expect(native().requests, isEmpty);
+    });
+
+    test('enough cached: nothing is asked', () async {
+      cached(5000);
+      final q = await quote(tools(), {'requests': 2});
+      expect(q['can_generate'], true);
+      expect(balances.requests, 0);
+    });
+  });
+
+  group('an Opus-free price on a quota nearly used up', () {
+    // 832 x 1216, 28 steps, one image on V5: free on the Opus quota. The
+    // cached quota is at 3 %; it moves only on a click, a login or a switch.
+    setUp(() {
+      container
+          .read(generationParamsNotifierProvider.notifier)
+          .updateModel(ImageModels.animeDiffusionV5Full, persist: false);
+    });
+    void cached(OpusUsage usage) {
+      (container.read(authNotifierProvider.notifier) as GenerationTestAuth)
+          .setAuth(
+            AuthState(
+              status: AuthStatus.authenticated,
+              accountId: 'synthetic-account',
+              displayName: 'Synthetic account',
+              subscriptionInfo: generationTestOpus(usage),
+            ),
+          );
+      expect(container.read(subscriptionNotifierProvider).balance, 100000);
+    }
+
+    const single = {'requests': 1, 'images_per_request': 1};
+
+    test('is asked once; the quote has the billed price', () async {
+      cached(const OpusUsage(percent: 3));
+      // The server has run the quota out meanwhile.
+      balances.answer = generationTestOpus(const OpusUsage(isNegative: true));
+      final q = await quote(tools(), single);
+      // Before: quoted as free (0), nothing asked.
+      expect(balances.requests, 1);
+      expect(q['estimated_anlas'], greaterThan(0));
+      expect(q['can_generate'], true);
+      // Run out now: the price is the paid one, the next quote asks nothing.
+      await quote(tools(), single);
+      expect(balances.requests, 1);
+    });
+
+    test('quota left: nothing is asked, free', () async {
+      cached(const OpusUsage(percent: 40));
+      final q = await quote(tools(), single);
+      expect(q['estimated_anlas'], 0);
+      expect(balances.requests, 0);
+    });
+  });
 
   test(
     'cancel protects a new manual run even while an old Agent run is settling',

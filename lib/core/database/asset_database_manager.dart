@@ -9,6 +9,7 @@ import 'package:nai_launcher/core/utils/app_support_directory.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../utils/app_logger.dart';
+import 'datasources/danbooru_tag_data_source.dart';
 import 'dictionary_data_store.dart';
 
 class AssetDatabaseManager {
@@ -32,6 +33,11 @@ class AssetDatabaseManager {
   DictionaryDataStore? _dictionaryStore;
   static Future<void>? _initialization;
   static bool _initialized = false;
+
+  /// Full SHA-256 checks of an already installed copy (fresh installs are
+  /// always hashed and not counted). Tests only.
+  @visibleForTesting
+  static int debugInstalledHashChecks = 0;
 
   String get tagCatalogDbPath =>
       _dictionaryStore?.activePath(DictionaryKind.tags) ??
@@ -58,6 +64,7 @@ class AssetDatabaseManager {
   static void resetForTesting() {
     _initialized = false;
     _initialization = null;
+    debugInstalledHashChecks = 0;
     _instance._tagCatalogDbPath = null;
     _instance._cooccurrenceDbPath = null;
     _instance._tagWikiDbPath = null;
@@ -198,19 +205,44 @@ class AssetDatabaseManager {
     var existingUsable = false;
     if (await target.exists()) {
       try {
-        await _validateDatabase(target.path, requiredTables: requiredTables);
-        existingUsable = true;
-        if (await _stateMatches(state, expectedHash) &&
-            await target.length() == metadata['size'] &&
-            (await sha256.bind(target.openRead()).first).toString() ==
-                expectedHash) {
+        final recorded = await _readState(state);
+        if (recorded?['sha256'] == expectedHash &&
+            await _unchangedSinceVerified(
+              target,
+              recorded!,
+              metadata['size'],
+            )) {
+          // The same bytes whose SHA-256 matched the bundled manifest: every
+          // write to the file, or a reset of its times, would show in its
+          // identity. Skip re-hashing it and the full-file quick_check; the
+          // cheap schema checks still run.
           await _validateDatabase(
             target.path,
             requiredTables: requiredTables,
             expectedSchemaVersion: metadata['schemaVersion'] as int?,
             expectedDataVersion: metadata['dataVersion'] as String?,
+            quickCheck: false,
           );
           return;
+        }
+        await _validateDatabase(target.path, requiredTables: requiredTables);
+        existingUsable = true;
+        if (recorded?['sha256'] == expectedHash &&
+            await target.length() == metadata['size']) {
+          debugInstalledHashChecks++;
+          if ((await sha256.bind(target.openRead()).first).toString() ==
+              expectedHash) {
+            await _validateDatabase(
+              target.path,
+              requiredTables: requiredTables,
+              expectedSchemaVersion: metadata['schemaVersion'] as int?,
+              expectedDataVersion: metadata['dataVersion'] as String?,
+              // Just ran above.
+              quickCheck: false,
+            );
+            await _writeState(state, expectedHash, metadata, target);
+            return;
+          }
         }
       } catch (error) {
         AppLogger.w(
@@ -245,15 +277,7 @@ class AssetDatabaseManager {
       if (await target.exists()) await target.rename(backup.path);
       try {
         await temp.rename(target.path);
-        await state.writeAsString(
-          jsonEncode({
-            'sha256': expectedHash,
-            'schemaVersion': metadata['schemaVersion'],
-            'dataVersion': metadata['dataVersion'],
-          }),
-          encoding: utf8,
-          flush: true,
-        );
+        await _writeState(state, expectedHash, metadata, target);
         await backup.deleteIfExists();
       } catch (_) {
         await target.deleteIfExists();
@@ -278,6 +302,7 @@ class AssetDatabaseManager {
     required Map<String, Set<String>> requiredTables,
     int? expectedSchemaVersion,
     String? expectedDataVersion,
+    bool quickCheck = true,
   }) async {
     final file = File(path);
     final header = await file
@@ -304,9 +329,13 @@ class AssetDatabaseManager {
           throw StateError('Invalid columns for ${entry.key}: $names');
         }
       }
-      final quickCheck = await db.rawQuery('PRAGMA quick_check');
-      if (quickCheck.first.values.first != 'ok') {
-        throw StateError('SQLite quick_check failed: $quickCheck');
+      if (quickCheck) {
+        // Reads every page: a few hundred milliseconds for the 320 MB
+        // co-occurrence database.
+        final result = await db.rawQuery('PRAGMA quick_check');
+        if (result.first.values.first != 'ok') {
+          throw StateError('SQLite quick_check failed: $result');
+        }
       }
       if (expectedSchemaVersion != null &&
           requiredTables.containsKey('metadata')) {
@@ -328,15 +357,59 @@ class AssetDatabaseManager {
     }
   }
 
-  static Future<bool> _stateMatches(File state, String hash) async {
+  static Future<Map<String, dynamic>?> _readState(File state) async {
     try {
-      if (!await state.exists()) return false;
-      final data =
-          jsonDecode(await state.readAsString()) as Map<String, dynamic>;
-      return data['sha256'] == hash;
+      if (!await state.exists()) return null;
+      return jsonDecode(await state.readAsString()) as Map<String, dynamic>;
     } catch (_) {
+      return null;
+    }
+  }
+
+  /// Size and times of an installed copy. Writing the file changes its
+  /// modification time; on macOS and Linux `changed` is the inode change
+  /// time, which the system moves on any write and also when someone resets
+  /// the modification time, and which programs cannot set back (on Windows
+  /// Dart reports the creation time there).
+  static Map<String, int> _fileIdentity(FileStat stat) => {
+    'size': stat.size,
+    'modified': stat.modified.microsecondsSinceEpoch,
+    'changed': stat.changed.microsecondsSinceEpoch,
+  };
+
+  static Future<bool> _unchangedSinceVerified(
+    File target,
+    Map<String, dynamic> recorded,
+    Object? expectedSize,
+  ) async {
+    final file = recorded['file'];
+    if (file is! Map) return false;
+    final stat = await target.stat();
+    if (stat.type != FileSystemEntityType.file || stat.size != expectedSize) {
       return false;
     }
+    return _fileIdentity(stat).entries.every((e) => file[e.key] == e.value);
+  }
+
+  /// Records the identity of [target] as it is now, right after its bytes
+  /// were checked against [hash].
+  static Future<void> _writeState(
+    File state,
+    String hash,
+    Map<String, dynamic> metadata,
+    File target,
+  ) async {
+    final stat = await target.stat();
+    await state.writeAsString(
+      jsonEncode({
+        'sha256': hash,
+        'schemaVersion': metadata['schemaVersion'],
+        'dataVersion': metadata['dataVersion'],
+        'file': _fileIdentity(stat),
+      }),
+      encoding: utf8,
+      flush: true,
+    );
   }
 
   static Future<void> _removeLegacyTranslationDatabase(Directory dir) async {
@@ -363,6 +436,7 @@ class AssetDatabaseManager {
         // danbooru.db also stores the local gallery. Only the obsolete tag
         // cache is disposable during the autocomplete migration.
         await db.execute('DROP TABLE IF EXISTS danbooru_tags');
+        DanbooruTagDataSource.markTableChanged();
       } finally {
         await db.close();
       }

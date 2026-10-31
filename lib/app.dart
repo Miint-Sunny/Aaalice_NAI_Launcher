@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'core/services/app_visibility.dart';
 import 'core/services/desktop_app_shutdown_service.dart';
 import 'core/utils/studio_sandbox.dart';
 import 'presentation/widgets/navigation/integrated_title_bar.dart';
@@ -27,8 +28,6 @@ import 'presentation/providers/background_refresh_provider.dart';
 import 'presentation/providers/krita/krita_bridge_notifier.dart';
 import 'presentation/providers/notification_settings_provider.dart';
 import 'presentation/providers/prompt_block_library_provider.dart';
-import 'presentation/providers/subscription_provider.dart'
-    hide anlasBalanceProvider;
 import 'presentation/widgets/shortcuts/shortcut_aware_widget.dart';
 import 'presentation/widgets/shortcuts/shortcut_help_dialog.dart';
 import 'presentation/wiring/nai_agent_generation_host.dart';
@@ -53,7 +52,6 @@ double windowCaptionHeightForRoute(String path) => switch (path) {
 /// 只负责启动需要常驻的 provider 监听，不让它们把根部 MaterialApp 一起拖着重建。
 class AppBootstrapEffects extends ConsumerStatefulWidget {
   final Widget child;
-  final ProviderListenable<dynamic>? anlasWatcher;
   final ProviderListenable<dynamic>? backgroundRefresh;
   final ProviderListenable<dynamic>? kritaBridge;
   final ProviderListenable<dynamic>? generationCompletionWatcher;
@@ -62,7 +60,6 @@ class AppBootstrapEffects extends ConsumerStatefulWidget {
   const AppBootstrapEffects({
     super.key,
     required this.child,
-    this.anlasWatcher,
     this.backgroundRefresh,
     this.kritaBridge,
     this.generationCompletionWatcher,
@@ -76,7 +73,6 @@ class AppBootstrapEffects extends ConsumerStatefulWidget {
 
 class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   final _clipboardHistoryPaste = ClipboardHistoryPaste();
-  ProviderSubscription<dynamic>? _anlasWatcherSubscription;
   ProviderSubscription<dynamic>? _backgroundRefreshSubscription;
   ProviderSubscription<dynamic>? _kritaBridgeSubscription;
   ProviderSubscription<dynamic>? _generationCompletionSubscription;
@@ -86,10 +82,6 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   void initState() {
     super.initState();
     _clipboardHistoryPaste.register();
-    _anlasWatcherSubscription = ref.listenManual(
-      widget.anlasWatcher ?? anlasBalanceWatcherProvider,
-      (_, __) {},
-    );
     _backgroundRefreshSubscription = ref.listenManual(
       widget.backgroundRefresh ?? backgroundRefreshNotifierProvider,
       (_, __) {},
@@ -113,7 +105,6 @@ class _AppBootstrapEffectsState extends ConsumerState<AppBootstrapEffects> {
   @override
   void dispose() {
     _clipboardHistoryPaste.dispose();
-    _anlasWatcherSubscription?.close();
     _backgroundRefreshSubscription?.close();
     _kritaBridgeSubscription?.close();
     _generationCompletionSubscription?.close();
@@ -184,6 +175,7 @@ class NAILauncherApp extends ConsumerWidget {
         if (dialogContext != null) ShortcutHelpDialog.show(dialogContext);
       },
       ShortcutIds.minimizeToTray: () {
+        AppVisibilitySources.instance.markHidden();
         windowManager.hide();
       },
       ShortcutIds.quitApp: () {

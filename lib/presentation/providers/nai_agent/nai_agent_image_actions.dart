@@ -128,6 +128,14 @@ class NaiAgentImageActions {
           );
   }
 
+  /// Whether the cached balance alone would stop [q]: missing, or below its
+  /// price.
+  bool _balanceBlocks(_ImageQuote q) {
+    final subscription = _subscription;
+    return subscription?.trainingStepsLeft == null ||
+        subscription!.anlasBalance < q.cost;
+  }
+
   void _validQuote(_ImageQuote q, NaiAgentCancellation token) {
     _admit(token);
     final auth = ref.read(authNotifierProvider), subscription = _subscription;
@@ -243,6 +251,17 @@ class NaiAgentImageActions {
       return naiAgentTextResult({'job_id': activeId, 'cancel_requested': true});
     }
     if (action == 'run') {
+      final waiting = _quotes[params['quote_id']];
+      if (waiting != null &&
+          !waiting.reserved &&
+          owner != null &&
+          _balanceBlocks(waiting)) {
+        // The cached balance moves only on a click, a login or this ask:
+        // before it stops the tool, ask once.
+        await refreshBalanceBeforeBlocking(ref);
+        _check(token);
+      }
+      // Looked up after any wait: a quote another run took meanwhile is gone.
       final q = _quotes[params['quote_id']];
       if (q == null || q.reserved || owner == null) {
         throw const NaiAgentToolError(
