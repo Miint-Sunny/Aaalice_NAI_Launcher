@@ -12,6 +12,7 @@ flutter test --no-pub --concurrency=3 \
   test/core/utils/file_sha256_test.dart \
   test/core/utils/studio_sandbox_test.dart \
   test/core/nai_agent/node_runtime_environment_test.dart \
+  test/presentation/providers/nai_agent/agent_management_test.dart \
   test/app_test.dart \
   test/presentation/wiring/settings_storage_inventory_test.dart \
   test/presentation/providers/nai_agent/nai_agent_builtin_skills_path_test.dart

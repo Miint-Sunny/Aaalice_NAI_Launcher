@@ -12,6 +12,7 @@
 - 数据放在“应用支持”目录；首次启动复制兼容的 1.x Mac 版数据，保留旧目录，账号需重新登录。设置中可“从旧版同步”并撤销上次同步。
 - 支持 Mac 的 ⌘ 快捷键、编辑菜单、程序坞与菜单栏退出行为；资源小窗使用主窗口内的浮动面板。
 - 随包提供 Node、npm/npx、Pi、桥接工具及 Real-ESRGAN；从访达启动也能找到 Agent 自管理和本地 MCP 命令所需的 Node 工具。Git 来源的扩展仍需要系统可用的 Git。
+- 取消 MCP 连接测试或登录时，先关闭本次检查创建的连接与本地子进程，避免检查结束后后台仍留着进程。
 - 本地放大支持 Real-ESRGAN；RAG 支持 Apple 芯片，自动模式在内存 18 GB 及以上使用 MPS、16 GB 及以下使用 CPU。Intel Mac 不支持 RAG；SeedVR2 和 RTX Video 组件仍仅支持 Windows。
 - GitHub Actions 为 PR 和发布共用 macOS 构建流程，执行 Mac 回归、通用二进制与签名检查，并上传 ZIP 和 SHA-256；不需要签名密钥或 Apple 账号。
 
