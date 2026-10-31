@@ -3181,11 +3181,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'ゴミ箱内のファイルはディスクに残っており、次回起動時に完全に削除されます。復元するとすぐにギャラリーへ戻ります。';
 
   @override
-  String localGallery_trashCount(Object count) {
-    return '$count 件';
-  }
-
-  @override
   String get localGallery_trashRestore => '復元';
 
   @override
@@ -3203,17 +3198,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get localGallery_trashDeleteAll => '完全に削除';
 
   @override
-  String localGallery_trashDeleteAllConfirm(Object count) {
-    return 'ゴミ箱内の $count 個のファイルを今すぐ完全に削除します。元に戻せません。';
-  }
-
-  @override
   String localGallery_trashDeletedForever(Object count) {
     return '$count 個のファイルを完全に削除しました';
   }
-
-  @override
-  String get localGallery_trashFileMissing => 'ファイルはディスク上にありません';
 
   @override
   String localGallery_movedImages(Object count) {
@@ -6949,9 +6936,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settings_geistDescription => 'スタジオ全体で共通の外観。白黒の背景にブルーのアクセント。';
-
-  @override
-  String get updateCapsuleLabel => '更新';
 
   @override
   String get updateWaitForTask => 'タスク完了後に再起動して更新できます';
@@ -16477,10 +16461,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get naiAgent_mcpConfig => 'サーバー設定（JSON）';
 
   @override
-  String get naiAgent_mcpConfigHint =>
-      'stdio と Streamable HTTP に対応。サーバー設定オブジェクトを貼り付けてください。command は実行ファイル、args は配列です。env、cwd、url、headers、oauth、toolExposure も使用できます。設定は暗号化して保存されます。';
-
-  @override
   String get naiAgent_mcpStatus => '接続状態を確認';
 
   @override
@@ -19753,7 +19733,7 @@ class AppLocalizationsJa extends AppLocalizations {
       '保存できませんでした。ワークスペースが変わったか、書き込みに失敗しました。変更は残っています。';
 
   @override
-  String get set_agMcpUnchecked => '未確認';
+  String get set_agMcpUnchecked => '未接続';
 
   @override
   String get set_agInstructionsSaving => '指示を保存中…';
@@ -21134,9 +21114,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ag_toggle => 'NAI Agent';
 
   @override
-  String get ag_yesterday => '昨日';
-
-  @override
   String get ag_attachmentTag => '添付';
 
   @override
@@ -21651,9 +21628,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ag_historyEmpty => '一致する項目はありません';
 
   @override
-  String get ag_historyBeforeCompaction => 'この部分は圧縮前です。クリックして要約を確認。';
-
-  @override
   String get ag_historyAuto => '自動圧縮';
 
   @override
@@ -21976,9 +21950,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get set_agCacheIdleCost => '待機中のウォームアップ（最大 30 分）は追加のモデル料金がかかります。';
 
   @override
-  String get ag_suggestionAccept => 'Tab でこの提案を入力';
-
-  @override
   String get ag_cacheWarmTitle => 'キャッシュのウォームアップ';
 
   @override
@@ -22160,4 +22131,83 @@ class AppLocalizationsJa extends AppLocalizations {
   String blocks_tempCreatedByYou(String time) {
     return '$timeこのブロックを作成しました。';
   }
+
+  @override
+  String get ag_chatJustNow => 'たった今';
+
+  @override
+  String get localGallery_recentViews => '最近見た画像';
+
+  @override
+  String get localGallery_recentViewsEmpty => '閲覧履歴はありません';
+
+  @override
+  String get localGallery_deleteForever => '完全に削除';
+
+  @override
+  String localGallery_deleteForeverConfirm(int count) {
+    return '選択した $count 個のファイルを完全に削除します。元に戻せません。';
+  }
+
+  @override
+  String ag_chatAgeMinutes(int count) {
+    return '${count}m';
+  }
+
+  @override
+  String ag_chatAgeHours(int count) {
+    return '${count}h';
+  }
+
+  @override
+  String ag_chatAgeDays(int count) {
+    return '${count}d';
+  }
+
+  @override
+  String ag_chatAgeWeeks(int count) {
+    return '${count}w';
+  }
+
+  @override
+  String get set_agMcpStdio => 'ローカルコマンド';
+
+  @override
+  String get set_agMcpAddress => 'サーバー URL';
+
+  @override
+  String get set_agMcpCommand => '実行コマンド';
+
+  @override
+  String get set_agMcpArgs => '引数（1 行に 1 つ）';
+
+  @override
+  String get set_agMcpEnv => '環境変数';
+
+  @override
+  String get set_agMcpHeaders => 'リクエストヘッダー';
+
+  @override
+  String get set_agMcpCwd => '作業ディレクトリ';
+
+  @override
+  String get set_agMcpAdvanced => '詳細設定';
+
+  @override
+  String get set_agMcpJson => 'JSON インポート／編集';
+
+  @override
+  String get set_agMcpForm => 'フォーム';
+
+  @override
+  String get set_agMcpTest => '接続テスト';
+
+  @override
+  String get set_agMcpJsonOne => 'MCP サーバーを 1 つずつインポートしてください。';
+
+  @override
+  String get set_agMcpPending => '次のターンで適用';
+
+  @override
+  String get ag_tool_agent_manage => 'Agent を管理';
 }

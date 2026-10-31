@@ -40,10 +40,14 @@ Get the latest version from [Releases](https://github.com/z15087716457-stack/W.O
 
 Both Windows versions support in-app updates. Your settings, gallery database and Agent data live in `user-data/` and `agent-data/` beside the program. Updates and uninstallation leave them intact.
 
+> **Upgrading an older Portable to 2.2.4:** Exit the app completely, then extract this release over the existing program folder, keeping `user-data/` and `agent-data/`. Subsequent in-app updates use the corrected script. Setup updates are unaffected.
+
 > The installer is not code-signed yet. On first launch, Windows may say “Windows protected your PC.” Click “More info → Run anyway.” Each release includes SHA-256 checksums.
 
 ### macOS
 
+- **Build and signing**: GitHub Actions builds an Apple silicon / Intel universal app on `macos-15` with ad-hoc signing. No Apple Developer certificate or signing secret is required. PR artifacts are available for validation; tagged builds are attached to the Release. Intel still needs testing on real hardware.
+- **Agent tools**: Node and npm/npx are bundled for Agent package management and local-command MCP servers, including when launched from Finder. Git-sourced extensions require a working system Git; installations retain the existing permission checks.
 - **First launch**: The Mac app is not notarized by Apple, so macOS blocks it the first time. In Finder, Control-click (or right-click) the app, choose “Open”, then click “Open” again. On macOS 15 and later, open the app once, then go to “System Settings → Privacy & Security” and click “Open Anyway” near the bottom. If macOS says the app “is damaged and can't be opened”, run this line in Terminal and open it as usual:
 
   ```bash
@@ -68,9 +72,9 @@ Both Windows versions support in-app updates. Your settings, gallery database an
 
 **2.2.1 additions**: Let the Agent split prompts into temporary blocks, with whole-module or multiple translations inside. This update also fixes single-click history details, caret visibility over weighted text and update-manifest parsing, and adds individual-image browsing to the infinite canvas.
 
-**2.2.2 update**: Smoother Agent thinking, word counts and expanded reasoning text with the existing UI preserved. This release also preserves character metadata from external bridge generations, fixes restart-to-install updates, disables external Agent controls while the bridge is off, balances the saved-settings toast and removes the top update pill.
+**2.2.4 update**: Improved multi-image drops, image previews, native Tab suggestions, scroll-to-bottom on send and continuous chat deletion. MCP configuration is easier, and Pi can manage its own Skills, extensions, packages and settings through one on-demand tool. App data lives directly beside the program, and Portable updates no longer restore old managed files over the new version.
 
-See the [complete 2.2.2 changelog](CHANGELOG.md#222---2026-10-29) and [release downloads](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/tag/v2.2.2). Agent suggestions, cache warming and translation adjustments use your own model service; their settings are configurable.
+See the [complete 2.2.4 changelog](CHANGELOG.md#224---2026-10-31) and [release downloads](https://github.com/z15087716457-stack/W.O.F_NAI_Launcher/releases/tag/v2.2.4). Agent suggestions, cache warming and translation adjustments use your own model service; their settings are configurable.
 
 ## Get started in three steps
 

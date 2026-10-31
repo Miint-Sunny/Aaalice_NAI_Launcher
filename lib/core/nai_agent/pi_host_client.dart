@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
+import 'node_runtime_environment.dart';
 import 'agent_tool.dart';
 import 'model_request_gate.dart';
 import 'vision_access.dart';
@@ -80,6 +82,7 @@ class PiHostClient {
     Map<String, dynamic> mcp = const {},
     Map<String, dynamic> skills = const {},
     Map<String, dynamic> prompts = const {},
+    Map<String, dynamic> packages = const {},
   }) async {
     final providerId = privateModelConfig['providerId'];
     if (providerId is! String || providerId.trim().isEmpty) {
@@ -89,6 +92,7 @@ class PiHostClient {
       nodeExecutable,
       [hostScript],
       workingDirectory: File(hostScript).parent.path,
+      environment: nodeRuntimeEnvironment(nodeExecutable),
       runInShell: false,
     );
     final client = PiHostClient._(
@@ -119,6 +123,7 @@ class PiHostClient {
             'mcp': mcp,
             'skills': skills,
             'prompts': prompts,
+            'packages': packages,
           })
           .timeout(const Duration(seconds: 30));
       client._sessionId = ready['sessionId'] as String?;

@@ -221,6 +221,8 @@ bundle_tools() {
   cp -R tool/nai_agent/node_modules "$agent/node_modules"
   lipo -create "$arm/bin/node" "$x64/bin/node" -output "$agent/node"
   chmod 755 "$agent/node"
+  # Agent self-management (2.2.4) and local-command MCP servers need npm/npx.
+  bash scripts/bundle_macos_node_tools.sh "$arm" "$agent"
   cp -p "$arm/LICENSE" "$agent/NODE-LICENSE"
   if [ -f tool/nai_agent/node_modules/@earendil-works/pi-coding-agent/LICENSE ]; then
     cp -p tool/nai_agent/node_modules/@earendil-works/pi-coding-agent/LICENSE "$agent/PI-LICENSE"

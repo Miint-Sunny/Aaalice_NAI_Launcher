@@ -47,6 +47,28 @@ async function fixture(code, options = {}) {
   };
 }
 
+test('self management is discoverable with business MCP disabled and keeps seven default tools', async () => {
+  const f = await fixture("text(await tools.agent_manage({resource:'settings'}));", {session:{mcp:{builtinEnabled:false}}});
+  try {
+    await f.session.prompt('Read Agent settings');
+    assert.equal(f.calls[0].name,'agent_manage');
+    assert.equal(f.calls[0].params.resource,'settings');
+    assert.deepEqual(f.requests[0].tools.map(t => t.function.name).sort(),
+      ['read','write','edit','bash','studio_context','ask_user','codemode'].sort());
+    assert.ok(!f.result().isError);
+  } finally { await f.close(); }
+});
+
+test('readonly blocks self-management changes through the same Pi permission hook', async () => {
+  const f = await fixture("text(await tools.agent_manage({resource:'mcp',action:'add',name:'new',changes:{url:'https://never.invalid'}}));");
+  try {
+    f.setPermissionMode('readonly');
+    await f.session.prompt('Read only test');
+    assert.equal(f.calls.filter(c => c.name === 'agent_manage').length,0);
+    assert.match(JSON.stringify(f.result()),/read.only|blocked|not allowed/i);
+  } finally { await f.close(); }
+});
+
 test('only seven entry tools declared; official discovery and dependent MCP calls work in one sandbox', async () => {
   const f = await fixture(`
     text(await searchTools('patch draft', {namespace:'mcp__nai_studio'}));
@@ -90,6 +112,22 @@ test('model-only questions cannot be nested and MCP errors remain structured', a
     assert.match(JSON.stringify(f.result()), /version conflict/);
     assert.match(JSON.stringify(f.result()), /isError/);
   } finally { await f.close(); }
+});
+
+test('native history is discoverable on demand without changing the seven entry tools', async () => {
+  const f=await fixture(`
+    text(await searchTools('session_history'));
+    text(await tools.session_history({action:'search',query:'Exact earlier wording'}));
+  `);
+  try {
+    f.manager.appendMessage({role:'user',timestamp:1,content:'Exact earlier wording model-secret'});
+    await f.session.prompt('perform history test');
+    assert.deepEqual(f.requests[0].tools.map(tool=>tool.function.name).sort(),
+      ['read','write','edit','bash','studio_context','ask_user','codemode'].sort());
+    assert.match(JSON.stringify(f.result()),/Exact earlier wording/);
+    assert.doesNotMatch(JSON.stringify(f.result()),/model-secret/);
+    assert.equal(f.calls.length,0);
+  } finally {await f.close();}
 });
 
 test('CodeMode retains native image artifacts in official Pi history without dumping nested results to the model', async () => {

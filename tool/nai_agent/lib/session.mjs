@@ -1,6 +1,6 @@
 import { mkdir, realpath } from 'node:fs/promises';
 import { resolve, join, relative, isAbsolute } from 'node:path';
-import { createAgentSession, DefaultResourceLoader, SessionManager, SettingsManager,
+import { createAgentSession, createReadTool, DefaultResourceLoader, SessionManager, SettingsManager,
   createCodemodeExtension, createToolSearchExtension }
   from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
@@ -8,12 +8,16 @@ import { getCurrentSystemMessage } from '@earendil-works/pi-ai';
 import { createStudioModelRuntime } from './model.mjs';
 import { domainTools } from './domain-tools.mjs';
 import { createNaiInteractionExtension } from './extensions/interaction.mjs';
+import { createSessionHistoryExtension } from './extensions/session-history.mjs';
 import { StudioCacheWarming } from './extensions/cache-warming.mjs';
 import { createNaiPermissions } from './extensions/permissions.mjs';
 import { createStudioExtensionUi } from './extensions/ui.mjs';
 import { createStudioMcp, mcpRedactor, validateStudioMcp } from './mcp.mjs';
 import { builtinSkillsDirectory, resolveStudioSkills } from './skills.mjs';
 import { resolveStudioPromptTemplates } from './prompt-templates.mjs';
+import { resolveWorkspaceReadPath } from './workspace-paths.mjs';
+import { resolveStudioPackages } from './packages.mjs';
+import { createAgentManagementExtension } from './extensions/agent-management.mjs';
 
 // Pi caches loader overrides on reload; Studio prompt edits apply on the next turn.
 class StudioResourceLoader extends DefaultResourceLoader {
@@ -32,7 +36,7 @@ export function studioTools(execute, extraToolNames = []) {
   return [
     tool('studio_context', 'Read current Studio state on demand. scope=draft returns RAW editable fields, pill documents and field_versions. Never write effective preset text back.',
       Type.Object({ scope: Type.Optional(Type.Unsafe({ type: 'string', enum: ['summary', 'draft'] })) })),
-    tool('image_read', 'Read one actual canvas/history or library image by image_id (selected means current canvas selection; gallery:<ID> comes from gallery_query), or any image file using its workspace-relative path (including attachments/ and outputs/). metadata_only=true reads original dimensions and metadata locally without returning pixels or requiring vision. Default returns a separate visual copy and original metadata, without altering the original file or draft.',
+    tool('image_read', 'Read one actual canvas/history or library image by image_id (selected means current canvas selection; gallery:<ID> comes from gallery_query), or any image file using its workspace-relative path (including .W.O.F/attachments/ and .W.O.F/outputs/). metadata_only=true reads original dimensions and metadata locally without returning pixels or requiring vision. Default returns a separate visual copy and original metadata, without altering the original file or draft.',
       Type.Object({ image_id: Type.Optional(Type.String()), path: Type.Optional(Type.String()), metadata_only: Type.Optional(Type.Boolean()) })),
     tool('prompt_update', 'Patch draft fields read by studio_context(scope=draft); expected maps each changed field to its field_version (aliases: clear_characters->characters, seed_lock->seed, quality_toggle->quality_preset). Backs up, rechecks and returns readback. Lanes containing blocks only accept unchanged text (else pill_conflict): edit those with block_manage instance_*.',
       Type.Object({ changes: Type.Record(Type.String(), Type.Unknown()),
@@ -51,7 +55,7 @@ export function studioTools(execute, extraToolNames = []) {
 
 export async function createStudioSession({ config, cwd, agentDir, systemPrompt, executeTool,
   sessionDirectory, sessionFile, sessionName, acquireRequest, extraToolNames = [],
-  extensionPaths = [], mcp = {}, skills = {}, prompts = {}, onSession, onExtensionUi, onExtensionError, onCacheWarmingChange, deferBinding = false }) {
+  extensionPaths = [], mcp = {}, skills = {}, prompts = {}, packages = {}, onSession, onExtensionUi, onExtensionError, onCacheWarmingChange, deferBinding = false }) {
   if (!systemPrompt?.trim()) throw new Error('NAI system prompt is required');
   const data = resolve(agentDir), sessions = resolve(sessionDirectory ?? join(data, 'sessions'));
   await Promise.all([resolve(cwd), data, sessions].map(path => mkdir(path, { recursive: true })));
@@ -84,9 +88,10 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
     '- Workspace files: read, write, edit, bash.',
     ...(extraToolNames.includes('ask_user') ? ['- Missing input/preferences: ask_user (direct tool, not from codemode).'] : []),
   ].join('\n');
+  const packageSet = await resolveStudioPackages({ ...packages, cwd: root, agentDir: data });
   const skillSet = resolveStudioSkills({ builtinDirectory: skills.builtinDirectory ?? builtinSkillsDirectory,
     globalDirectory: skills.globalDirectory, workspaceDirectory: skills.workspaceDirectory,
-    disabled: skills.disabled, modes: skills.modes });
+    disabled: skills.disabled, modes: skills.modes, packageSkills: packageSet.packageSkills });
   if (!Array.isArray(extensionPaths) || extensionPaths.length > 64
     || extensionPaths.some(path => typeof path !== 'string' || !isAbsolute(path)))
     throw new Error('Extensions must be explicitly selected local absolute paths');
@@ -96,7 +101,7 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
     cacheWarming: config.cacheWarming ?? 'streaming',
   });
   const cacheWarming = new StudioCacheWarming({ model, settingsManager, onChange: onCacheWarmingChange });
-  const reserved = new Set([...definitions.map(tool => tool.name), '_nai_extension_ui', 'codemode', 'tool_search',
+  const reserved = new Set([...definitions.map(tool => tool.name), '_nai_extension_ui', 'codemode', 'tool_search', 'session_history', 'agent_manage',
     'read', 'write', 'edit', 'bash', 'powershell', 'grep', 'find', 'ls']);
   function validateExtensions(extensions) {
     if (extensions.errors.length) throw new Error(extensions.errors.map(error => error.path + ': ' + error.error).join('\n'));
@@ -107,15 +112,16 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
     }
     return extensions;
   }
-  const templateSet = await resolveStudioPromptTemplates({ cwd: root, agentDir: data, ...prompts });
+  const templateSet = await resolveStudioPromptTemplates({ cwd: root, agentDir: data, ...prompts,
+    packagePrompts: packageSet.prompts });
   const resourceLoader = new StudioResourceLoader({
     cwd: root, agentDir: data, settingsManager,
     noExtensions: true, noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
-    additionalExtensionPaths: [...new Set(extensionPaths)],
+    additionalExtensionPaths: [...new Set([...extensionPaths, ...packageSet.extensions.map(p => p.path)])],
     promptsOverride: () => ({ prompts: templateSet.prompts, diagnostics: templateSet.diagnostics }),
     // Studio resolves sources, overrides and switches; Pi formats the catalog and expands /skill:.
     skillsOverride: () => ({ skills: skillSet.active, diagnostics: [] }),
-    extensionFactories: [cacheWarming.extension, createNaiInteractionExtension(interactionTools),
+    extensionFactories: [cacheWarming.extension, createNaiInteractionExtension(interactionTools), createSessionHistoryExtension(redact), createAgentManagementExtension(executeTool, skills.builtinDirectory),
       { name: 'nai-codemode', factory: createCodemodeExtension({ mode: 'on', models: false }) },
       { name: 'nai-tool-search', factory: createToolSearchExtension() },
       { name: 'nai-mcp', factory: createStudioMcp({ mcp, definitions: businessTools,
@@ -135,11 +141,14 @@ export async function createStudioSession({ config, cwd, agentDir, systemPrompt,
       .filter(tool => tool.definition.defaultActive !== false &&
         ['direct', 'model-only'].includes(tool.definition.exposure ?? 'direct'))
       .map(tool => tool.definition.name))])] });
+  const read = createReadTool(root);
   const { session } = await createAgentSession({
     cwd: root, agentDir: data, model, modelRuntime: runtime, thinkingLevel: config.thinkingLevel ?? 'off',
     // Use official Pi tools and session persistence, not a second agent loop.
     sessionManager: manager,
     resourceLoader, settingsManager,
+    customTools: [{...read, execute: async (id,args,...rest) =>
+      read.execute(id,{...args,path:await resolveWorkspaceReadPath(root,args.path)},...rest)}],
   });
   cacheWarming.attach(session);
   const ui = createStudioExtensionUi(executeTool, onExtensionUi);

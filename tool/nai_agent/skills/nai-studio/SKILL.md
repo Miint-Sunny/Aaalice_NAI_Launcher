@@ -18,10 +18,9 @@ Call `await tools.mcp__nai_studio__<name>({...})`. Serialize dependent writes; b
 
 - Check `isError`; results carry `content` and `structuredContent`. Display pixels with `image(result.content[i])`.
 - `image_read` accepts an `image_id` (including `selected`) or workspace-relative image path; `metadata_only=true` reads original dimensions/metadata without vision.
-- Writes take the version the last read returned (`field_versions`, `expected_version`, `library_version` or `draft_version`); a stale version is rejected, so re-read and retry. Trust the returned readback.
-- Paid actions require a user request: prepare -> report price and balance -> `run(quote_id)`, which waits for confirmation in Studio.
+- Writes use versions from the last read (`field_versions`, `expected_version`, `library_version` or `draft_version`); use the returned readback and next version. On conflict, read the affected state before retrying.
+- Quoted generation/cloud actions: prepare -> report price and balance -> `run(quote_id)`, with user confirmation in Studio.
 - `ask_user` is a direct tool, outside codemode. Report actual outputs, partial results and unresolved status.
-- Gallery reorganizations: batch `move_file` once per target folder, then `folder_delete_empty(folder_ids=[...])` once for emptied folders (1..50 each). Each call needs at most one Studio confirmation; never loop single-image transfers.
 
 ## Tool index
 
@@ -36,8 +35,9 @@ Call `await tools.mcp__nai_studio__<name>({...})`. Serialize dependent writes; b
 | Pictures, collections, folders and files | `gallery_query`, `gallery_manage` | [gallery.md](references/gallery.md) |
 | Source, mask, Vibe and precise references | `reference_manage`, `reference_library` | [references.md](references/references.md) |
 | Prompt blocks and library | `block_query`, `block_manage` | [blocks.md](references/blocks.md) |
-| Tags, Wiki text and examples | `tag_query`, `wiki_query` | [lookup.md](references/lookup.md) |
+| Tags, related tags, Wiki text and examples | `tag_query`, `tag_related`, `wiki_query` | [lookup.md](references/lookup.md) |
 | Snapshots and preferences | `snapshot`, `settings_read`, `settings_update` | [settings.md](references/settings.md) |
+| Configure Pi itself: Skill, packages, extensions, MCP and Agent settings | Native `agent_manage` (deferred) | [self-management.md](references/self-management.md) |
 | Workspace, notes and external MCP servers | - | [workspace.md](references/workspace.md) |
 
 Read the reference for the current task; use `nai-prompt` for prompt writing.

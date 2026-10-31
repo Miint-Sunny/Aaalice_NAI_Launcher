@@ -523,6 +523,18 @@ void main() {
         subscription = client.events.listen(events.add);
         await client.prompt('执行合成测试。').timeout(const Duration(seconds: 30));
         expect(requests.length, 8);
+        final contextReply = (requests[1]['messages'] as List).lastWhere(
+          (message) => message['role'] == 'tool',
+        )['content'];
+        final modelContext = jsonDecode(
+          contextReply is String ? contextReply : contextReply[0]['text'],
+        );
+        expect(modelContext['search'], {
+          'gallery': 'unknown',
+          'tags': 'unknown',
+          'wiki': 'unknown',
+          'blocks': 'unknown',
+        });
         expect(
           container.read(generationParamsNotifierProvider).prompt,
           'synthetic agent update',
@@ -728,7 +740,7 @@ void main() {
           ImageWorkflowMode.inpaint,
         );
         expect(
-          await File('${root.path}/snapshots/$savedId.json').exists(),
+          await File('${root.path}/.W.O.F/snapshots/$savedId.json').exists(),
           isTrue,
         );
         final message = (requests.last['messages'] as List).lastWhere(
@@ -873,7 +885,7 @@ void main() {
           ]),
         );
         final backups = Directory(
-          '${root.path}/.agent/snapshot-backups',
+          '${root.path}/.W.O.F/snapshot-backups',
         ).listSync().whereType<File>();
         expect(backups.length, 3);
         expect(jsonEncode(requests.last), contains('Synthetic SDK block'));

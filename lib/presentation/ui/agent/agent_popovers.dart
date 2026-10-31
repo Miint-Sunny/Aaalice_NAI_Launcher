@@ -189,6 +189,16 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
   final _query = TextEditingController();
   final _focus = FocusNode();
   Timer? _debounce;
+  Timer? _clock;
+  DateTime? _now;
+
+  @override
+  void initState() {
+    super.initState();
+    _clock = Timer.periodic(const Duration(minutes: 1), (_) {
+      setState(() => _now = DateTime.now());
+    });
+  }
 
   /// 正文命中：(查的词, 结果)；结果为 null = 正在查。
   (String, List<AgentChatHit>?)? _hits;
@@ -205,6 +215,7 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _clock?.cancel();
     _query.dispose();
     _focus.dispose();
     super.dispose();
@@ -243,6 +254,9 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
     final q = _query.text.trim().toLowerCase();
     final chats = d.chats
         .where((x) => q.isEmpty || x.title.toLowerCase().contains(q))
+        .toList();
+    final contentHits = _hits?.$2
+        ?.where((hit) => d.chats.any((chat) => chat.id == hit.chatId))
         .toList();
     final others = d.workspaces
         .where(
@@ -325,10 +339,9 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
                             id: chat.id,
                             title: chat.title,
                             onCancel: () => _confirmDelete(null),
-                            // 确认后关列表：列表的遮罩会挡住底部的撤销提示。
                             onDelete: () {
-                              widget.onClose();
-                              agentDeleteChat(context, chat);
+                              _confirmDelete(null);
+                              unawaited(agentDeleteChat(context, chat));
                             },
                           )
                         else
@@ -345,80 +358,86 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
                                 s.run(() => a.onSelectChat(chat.id));
                               }
                             },
-                            builder: (context, hover) => Row(
-                              spacing: 9,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: switch (chat.state) {
-                                      AgentChatState.waitingUser => c.warn,
-                                      AgentChatState.running => c.accent,
-                                      AgentChatState.idle =>
-                                        chat.id == d.chat.id
-                                            ? c.ink
-                                            : Colors.transparent,
-                                    },
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    chat.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: UiText.sans(
-                                      12.5,
-                                      weight: chat.id == d.chat.id
-                                          ? FontWeight.w500
-                                          : FontWeight.w400,
-                                      color: c.ink,
+                            builder: (context, hover) => Tooltip(
+                              message: agentChatTimeTooltip(
+                                context,
+                                chat.activityAt,
+                              ),
+                              child: Row(
+                                spacing: 9,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: switch (chat.state) {
+                                        AgentChatState.waitingUser => c.warn,
+                                        AgentChatState.running => c.accent,
+                                        AgentChatState.idle =>
+                                          chat.id == d.chat.id
+                                              ? c.ink
+                                              : Colors.transparent,
+                                      },
                                     ),
                                   ),
-                                ),
-                                if (hover &&
-                                    chat.state == AgentChatState.idle &&
-                                    !(chat.id == d.chat.id &&
-                                        d.status != AgentRunStatus.idle))
-                                  AgentIconButton(
-                                    key: Key('agent-chat-delete-${chat.id}'),
-                                    small: true,
-                                    glyph: AgentGlyphs.trash,
-                                    tooltip: l.ag_menuDeleteChat,
-                                    onPressed: () => _confirmDelete(chat.id),
-                                  )
-                                else
-                                  Text(
-                                    switch (chat.state) {
-                                      AgentChatState.waitingUser =>
-                                        l.ag_chatWaiting,
-                                      AgentChatState.running =>
-                                        l.ag_chatRunning,
-                                      AgentChatState.idle => agentDay(
-                                        chat.createdAt,
-                                        d.now,
-                                        l.ag_yesterday,
+                                  Expanded(
+                                    child: Text(
+                                      chat.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: UiText.sans(
+                                        12.5,
+                                        weight: chat.id == d.chat.id
+                                            ? FontWeight.w500
+                                            : FontWeight.w400,
+                                        color: c.ink,
                                       ),
-                                    },
-                                    style: UiText.mono(
-                                      11,
-                                      color:
-                                          chat.state ==
-                                              AgentChatState.waitingUser
-                                          ? c.warn
-                                          : c.faint,
                                     ),
                                   ),
-                              ],
+                                  if (hover &&
+                                      chat.state == AgentChatState.idle &&
+                                      !(chat.id == d.chat.id &&
+                                          d.status != AgentRunStatus.idle))
+                                    AgentIconButton(
+                                      key: Key('agent-chat-delete-${chat.id}'),
+                                      small: true,
+                                      glyph: AgentGlyphs.trash,
+                                      tooltip: l.ag_menuDeleteChat,
+                                      onPressed: () => _confirmDelete(chat.id),
+                                    )
+                                  else
+                                    Text(
+                                      switch (chat.state) {
+                                        AgentChatState.waitingUser =>
+                                          l.ag_chatWaiting,
+                                        AgentChatState.running =>
+                                          l.ag_chatRunning,
+                                        AgentChatState.idle => agentChatAge(
+                                          context,
+                                          chat.activityAt,
+                                          _now ?? d.now,
+                                        ),
+                                      },
+                                      style: UiText.mono(
+                                        11,
+                                        color:
+                                            chat.state ==
+                                                AgentChatState.waitingUser
+                                            ? c.warn
+                                            : c.faint,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                       if (_hits case (
                         final hq,
-                        final found,
+                        _,
                       ) when hq == _query.text.trim()) ...[
                         _GroupLabel(l.ag_chatsContent),
-                        if (found == null)
+                        if (contentHits == null)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
                             child: Text(
@@ -426,7 +445,7 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
                               style: UiText.sans(12, color: c.faint),
                             ),
                           )
-                        else if (found.isEmpty)
+                        else if (contentHits.isEmpty)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
                             child: Text(
@@ -435,7 +454,7 @@ class _AgentChatsPopoverState extends State<AgentChatsPopover> {
                             ),
                           )
                         else
-                          for (final hit in found)
+                          for (final hit in contentHits)
                             AgentPopRow(
                               key: Key('agent-chat-hit-${hit.chatId}'),
                               height: 48,

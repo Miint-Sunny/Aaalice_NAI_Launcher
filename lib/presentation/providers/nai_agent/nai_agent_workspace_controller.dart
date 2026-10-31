@@ -46,6 +46,22 @@ class AgentChatRuntime {
   StreamSubscription<Map<String, dynamic>>? subscription;
   List<Map<String, dynamic>> messages = [], queue = [];
   List<Map<String, dynamic>> historyMessages = [];
+
+  /// Full current-branch display, with live updates replacing persisted copies.
+  /// This never changes the compacted messages sent to Pi/model providers.
+  List<Map<String, dynamic>> get displayMessages {
+    if (historyMessages.isEmpty) return messages;
+    Object key(Map<String, dynamic> message) =>
+        (message['role'], message['timestamp']);
+    final live = {for (final message in messages) key(message): message};
+    final saved = {for (final message in historyMessages) key(message)};
+    return [
+      for (final message in historyMessages) live[key(message)] ?? message,
+      for (final message in messages)
+        if (!saved.contains(key(message))) message,
+    ];
+  }
+
   Map<String, dynamic> stats = {}, context = {}, cacheWarming = {};
   List<Map<String, dynamic>> entries = [], userEntries = [], commands = [];
   final Map<String, Map<String, dynamic>> tools = {};
@@ -109,7 +125,7 @@ class AgentChatRuntime {
     if (entry == null) return null;
     final value = _entryMessage(entry);
     if (value['role'] != 'user' || value['timestamp'] == null) return null;
-    return messages
+    return displayMessages
         .where(
           (m) => m['role'] == 'user' && m['timestamp'] == value['timestamp'],
         )
@@ -347,6 +363,19 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     chats = [...drafts, ...listed];
   }
 
+  Future<void> _recordActivity(AgentChatRuntime runtime) async {
+    runtime.chat = await store.updateChat(
+      runtime.workspace.id,
+      runtime.chat.id,
+      lastActivityAt: DateTime.now(),
+    );
+    if (selectedWorkspace?.id != runtime.workspace.id) return;
+    chats = [
+      for (final chat in chats)
+        if (chat.id == runtime.chat.id) runtime.chat else chat,
+    ]..sort((a, b) => b.activityAt.compareTo(a.activityAt));
+  }
+
   Future<void> createChat() async {
     final workspace = selectedWorkspace!;
     // Publish the draft before the first await, so rapid '+' clicks coalesce.
@@ -545,11 +574,16 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
   Future<void> updateSettings(
     Map<String, dynamic> changes, {
     Map<String, dynamic>? expected,
+    bool deferRuntime = false,
   }) async {
     final before = settings;
     settings = expected == null
         ? await store.patchSettings(changes)
         : await store.patchSettingsChecked(changes, expected: expected);
+    if (deferRuntime) {
+      skillFilesChanged();
+      return;
+    }
     if (before.providerId != settings.providerId ||
         before.modelId != settings.modelId) {
       for (final runtime in _runtimes.values) {
@@ -636,11 +670,13 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
 
   Future<void> setWorkspacePrompt(
     String? text, {
+    String? workspaceId,
     String? expectedWorkspaceId,
     bool checkPrompt = false,
     String? expectedPrompt,
+    bool deferRuntime = false,
   }) async {
-    final id = selectedWorkspace!.id;
+    final id = workspaceId ?? selectedWorkspace!.id;
     if (expectedWorkspaceId != null && expectedWorkspaceId != id) {
       throw StateError('Selected workspace changed while editing');
     }
@@ -658,6 +694,10 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       for (final workspace in workspaces)
         if (workspace.id == id) updated else workspace,
     ];
+    if (deferRuntime) {
+      skillFilesChanged();
+      return;
+    }
     for (final runtime in _runtimes.values.where((r) => r.workspace.id == id)) {
       if (runtime.client != null && !runtime.client!.isClosed) {
         await runtime.client!.setSystemPrompt(
@@ -861,7 +901,9 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       final chat = runtime.chat;
       final file = chat.sessionFile == null
           ? null
-          : File(p.join(runtime.workspace.directory.path, chat.sessionFile!));
+          : File(
+              p.join(runtime.workspace.agentDirectory.path, chat.sessionFile!),
+            );
       final selection = settings;
       final revision = readModelRevision();
       client = await startClient(
@@ -927,7 +969,8 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
               await sessionFile.parent.resolveSymbolicLinks(),
               p.basename(path),
             );
-      final root = await runtime.workspace.directory.resolveSymbolicLinks();
+      final root = await runtime.workspace.agentDirectory
+          .resolveSymbolicLinks();
       runtime.chat = await store.updateChat(
         runtime.workspace.id,
         runtime.chat.id,
@@ -1283,6 +1326,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
       runtime.running = true;
       if (visionNotice != null) runtime.visionNotice = visionNotice;
       await _persist(runtime);
+      await _recordActivity(runtime);
       _notify();
       final responding = client.prompt(
         prompt.text,
@@ -1322,6 +1366,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
         runtime.running = false;
       }
       await _persist(runtime);
+      await _recordActivity(runtime);
       return true;
     } catch (error) {
       runtime.error = _error(error, runtime);
@@ -1481,7 +1526,7 @@ class NaiAgentWorkspaceController extends ChangeNotifier {
     }
     final relative = runtime.chat.sessionFile;
     if (relative == null) throw const FormatException('No saved session');
-    final file = File(p.join(runtime.workspace.directory.path, relative));
+    final file = File(p.join(runtime.workspace.agentDirectory.path, relative));
     final canonical = await file.resolveSymbolicLinks();
     final root = await runtime.workspace.sessions.resolveSymbolicLinks();
     if (!p.isWithin(root, canonical)) {

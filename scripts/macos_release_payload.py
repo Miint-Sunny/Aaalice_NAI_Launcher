@@ -148,6 +148,19 @@ def verify_agent(root, app):
     version = subprocess.check_output([str(agent / 'node'), '--version'], text=True).strip()
     if version != NODE_VERSION:
         raise RuntimeError(f'Expected Node {NODE_VERSION}, got {version}')
+    for name in ('npm', 'npx', 'npm-runtime/bin/npm-cli.js', 'npm-runtime/bin/npx-cli.js',
+                 'npm-runtime/package.json', 'npm-runtime/LICENSE'):
+        if not (agent / name).is_file():
+            raise RuntimeError(f'The app bundle must contain tools/nai-agent/{name}')
+    for command in ('npm', 'npx'):
+        if not os.access(agent / command, os.X_OK):
+            raise RuntimeError(f'Bundled {command} must be executable')
+    npm_version = json.loads((agent / 'npm-runtime/package.json').read_text(encoding='utf-8'))['version']
+    for command in ('npm', 'npx'):
+        actual = subprocess.check_output([str(agent / command), '--version'], text=True,
+                                         env={**os.environ, 'PATH': '/usr/bin:/bin:/usr/sbin:/sbin'}).strip()
+        if actual != npm_version:
+            raise RuntimeError(f'Bundled {command} version differs from its package.json')
     return version
 
 

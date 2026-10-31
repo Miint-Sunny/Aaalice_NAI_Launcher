@@ -3181,11 +3181,6 @@ class AppLocalizationsKo extends AppLocalizations {
       '휴지통의 파일은 아직 디스크에 있으며 다음 실행 때 완전히 삭제됩니다. 복원한 파일은 즉시 갤러리로 돌아갑니다.';
 
   @override
-  String localGallery_trashCount(Object count) {
-    return '$count개 항목';
-  }
-
-  @override
   String get localGallery_trashRestore => '복원';
 
   @override
@@ -3203,17 +3198,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get localGallery_trashDeleteAll => '영구 삭제';
 
   @override
-  String localGallery_trashDeleteAllConfirm(Object count) {
-    return '휴지통의 파일 $count개를 모두 즉시 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.';
-  }
-
-  @override
   String localGallery_trashDeletedForever(Object count) {
     return '파일 $count개를 영구 삭제했습니다';
   }
-
-  @override
-  String get localGallery_trashFileMissing => '파일이 더 이상 디스크에 없습니다';
 
   @override
   String localGallery_movedImages(Object count) {
@@ -6960,9 +6947,6 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get settings_geistDescription =>
       '스튜디오 전체에 하나의 외관. 검정 또는 흰색 바탕에 파란색 강조.';
-
-  @override
-  String get updateCapsuleLabel => '업데이트';
 
   @override
   String get updateWaitForTask => '현재 작업이 끝난 뒤 다시 시작하세요';
@@ -16519,10 +16503,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get naiAgent_mcpConfig => '서버 설정 (JSON)';
 
   @override
-  String get naiAgent_mcpConfigHint =>
-      'stdio 및 Streamable HTTP를 지원합니다. 서버 설정 객체 하나를 붙여 넣으세요. command는 실행 파일이고 args는 배열입니다. env, cwd, url, headers, oauth, toolExposure도 지원합니다. 설정은 암호화하여 저장됩니다.';
-
-  @override
   String get naiAgent_mcpStatus => '연결 상태 확인';
 
   @override
@@ -19822,7 +19802,7 @@ class AppLocalizationsKo extends AppLocalizations {
       '저장하지 못했습니다. 작업 공간이 바뀌었거나 쓰기에 실패했습니다. 변경 내용은 남아 있습니다.';
 
   @override
-  String get set_agMcpUnchecked => '확인 전';
+  String get set_agMcpUnchecked => '연결 안 됨';
 
   @override
   String get set_agInstructionsSaving => '지침 저장 중…';
@@ -21208,9 +21188,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ag_toggle => 'NAI Agent';
 
   @override
-  String get ag_yesterday => '어제';
-
-  @override
   String get ag_attachmentTag => '첨부';
 
   @override
@@ -21726,9 +21703,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ag_historyEmpty => '일치하는 항목 없음';
 
   @override
-  String get ag_historyBeforeCompaction => '압축 이전의 내용입니다. 눌러 요약을 확인하세요.';
-
-  @override
   String get ag_historyAuto => '자동 압축';
 
   @override
@@ -22051,9 +22025,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get set_agCacheIdleCost => '대기 중 예열(최대 30분)은 추가 모델 비용이 발생합니다.';
 
   @override
-  String get ag_suggestionAccept => 'Tab으로 이 제안 입력';
-
-  @override
   String get ag_cacheWarmTitle => '캐시 예열';
 
   @override
@@ -22235,4 +22206,83 @@ class AppLocalizationsKo extends AppLocalizations {
   String blocks_tempCreatedByYou(String time) {
     return '$time 이 블록을 만들었습니다.';
   }
+
+  @override
+  String get ag_chatJustNow => '방금';
+
+  @override
+  String get localGallery_recentViews => '최근 본 이미지';
+
+  @override
+  String get localGallery_recentViewsEmpty => '최근 본 이미지가 없습니다';
+
+  @override
+  String get localGallery_deleteForever => '영구 삭제';
+
+  @override
+  String localGallery_deleteForeverConfirm(int count) {
+    return '선택한 파일 $count개를 영구 삭제합니다. 되돌릴 수 없습니다.';
+  }
+
+  @override
+  String ag_chatAgeMinutes(int count) {
+    return '${count}m';
+  }
+
+  @override
+  String ag_chatAgeHours(int count) {
+    return '${count}h';
+  }
+
+  @override
+  String ag_chatAgeDays(int count) {
+    return '${count}d';
+  }
+
+  @override
+  String ag_chatAgeWeeks(int count) {
+    return '${count}w';
+  }
+
+  @override
+  String get set_agMcpStdio => '로컬 명령';
+
+  @override
+  String get set_agMcpAddress => '서버 주소';
+
+  @override
+  String get set_agMcpCommand => '실행 명령';
+
+  @override
+  String get set_agMcpArgs => '인수 (한 줄에 하나)';
+
+  @override
+  String get set_agMcpEnv => '환경 변수';
+
+  @override
+  String get set_agMcpHeaders => '요청 헤더';
+
+  @override
+  String get set_agMcpCwd => '작업 폴더';
+
+  @override
+  String get set_agMcpAdvanced => '고급 설정';
+
+  @override
+  String get set_agMcpJson => 'JSON 가져오기 / 편집';
+
+  @override
+  String get set_agMcpForm => '양식';
+
+  @override
+  String get set_agMcpTest => '연결 테스트';
+
+  @override
+  String get set_agMcpJsonOne => 'MCP 서버를 한 번에 하나씩 가져오세요.';
+
+  @override
+  String get set_agMcpPending => '다음 턴에 적용';
+
+  @override
+  String get ag_tool_agent_manage => 'Agent 관리';
 }

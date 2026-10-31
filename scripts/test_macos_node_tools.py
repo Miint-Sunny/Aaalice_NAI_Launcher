@@ -1,0 +1,72 @@
+"""Offline checks for the Node tools shipped in a macOS app; no npm installs."""
+import importlib.util
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+SCRIPTS = Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location('payload', SCRIPTS / 'macos_release_payload.py')
+payload = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(payload)
+
+
+class MacNodeToolsTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='mac node tools ')
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.app = self.root / 'Studio 测试.app'
+        self.agent = payload.agent_dir(self.app)
+        self.agent.mkdir(parents=True)
+
+    def test_packaging_rejects_node_without_npm(self):
+        source = self.root / 'tool/nai_agent'
+        packages = {}
+        for family in ('pi-agent-core', 'pi-ai', 'pi-codemode', 'pi-coding-agent',
+                       'pi-mcp', 'pi-telemetry', 'pi-tui'):
+            key = f'node_modules/@earendil-works/{family}'
+            packages[key] = {'version': '1.3.0'}
+            path = source / key / 'package.json'
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(packages[key]))
+        (source / 'package-lock.json').write_text(json.dumps({'packages': {'': {}, **packages}}))
+        (source / 'node_modules/.package-lock.json').write_text(json.dumps({'packages': packages}))
+        shutil.copytree(source / 'node_modules', self.agent / 'node_modules')
+        for name in ('NODE-LICENSE', 'PI-LICENSE'):
+            (self.agent / name).write_text('fixture license')
+        node = self.agent / 'node'
+        node.write_text('#!/bin/sh\nprintf "v24.18.0\\n"\n')
+        node.chmod(0o755)
+        with self.assertRaisesRegex(RuntimeError, 'npm'):
+            payload.verify_agent(self.root, self.app)
+
+    def test_wrappers_use_adjacent_node_when_path_has_no_node(self):
+        runtime = self.root / 'official node'
+        npm = runtime / 'lib/node_modules/npm'
+        (npm / 'bin').mkdir(parents=True)
+        for name in ('npm-cli.js', 'npx-cli.js'):
+            (npm / 'bin' / name).write_text('// synthetic CLI\n')
+        (npm / 'package.json').write_text('{"version":"11.0.0"}')
+        (npm / 'LICENSE').write_text('fixture npm license')
+        result = subprocess.run(['/bin/bash', str(SCRIPTS / 'bundle_macos_node_tools.sh'),
+                                 str(runtime), str(self.agent)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        node = self.agent / 'node'
+        node.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+        node.chmod(0o755)
+        for command, script in (('npm', 'npm-cli.js'), ('npx', 'npx-cli.js')):
+            result = subprocess.run([str(self.agent / command), '--version'],
+                                    env={'PATH': '/usr/bin:/bin'}, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.splitlines(),
+                             [str(self.agent / 'npm-runtime/bin' / script), '--version'])
+            self.assertTrue(os.access(self.agent / command, os.X_OK))
+        self.assertTrue((self.agent / 'npm-runtime/LICENSE').is_file())
+
+
+if __name__ == '__main__':
+    unittest.main()

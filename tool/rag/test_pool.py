@@ -4,10 +4,11 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 from engine import Engine,Sources
 from documents import TextEngine,WikiSources
-from pool import VectorPool
+from pool import VectorPool,CollectionAnn
 from test_rag import fixture
 from test_documents import TextModels
 
@@ -100,5 +101,58 @@ class PoolTests(unittest.TestCase):
             try:self.assertEqual(restored.status()['indexed'],0)
             finally:restored.close();another.close()
         finally:engine.close()
+
+class FilteredRecallTests(unittest.TestCase):
+    def test_partial_budget_is_opt_in_and_preserves_strict_recall(self):
+        import numpy as np
+        db=sqlite3.connect(':memory:')
+        db.execute('CREATE TABLE pool_documents(id INTEGER,collection TEXT,category INTEGER)')
+        db.executemany('INSERT INTO pool_documents VALUES(?,?,?)',
+            [(i,'tags',0 if i<=10000 else 1) for i in range(1,30001)])
+        order=list(range(1,2601))+list(range(10001,10401))+list(range(2601,10001))+list(range(10401,30001))
+        class Ann:
+            def __init__(self):self.calls=[]
+            def __len__(self):return 30000
+            def search(self,vector,count):
+                self.calls.append(count)
+                return SimpleNamespace(keys=order[:count],distances=np.zeros(count))
+        ann=Ann();view=CollectionAnn(SimpleNamespace(db=db,ann=ann),'tags');view.refresh()
+        try:
+            partial=view.search(np.zeros(768),1000,categories=(1,),min_count=400)
+            self.assertEqual(len(partial.keys),400)
+            self.assertEqual(len(ann.calls),1)
+            ann.calls.clear()
+            strict=view.search(np.zeros(768),1000,categories=(1,))
+            self.assertEqual(len(strict.keys),1000)
+            self.assertEqual(len(ann.calls),2)
+            self.assertTrue(all(key>10000 for key in strict.keys))
+            ann.calls.clear()
+            sparse=view.search(np.zeros(768),1000,categories=(1,),min_count=600)
+            self.assertEqual(len(sparse.keys),1000)
+            self.assertEqual(len(ann.calls),2)
+        finally:db.close()
+
+    def test_correlated_categories_expand_ann_recall_without_reading_vectors(self):
+        import numpy as np
+        db=sqlite3.connect(':memory:')
+        # No vector column: falling back to a full scope scan must fail this test.
+        db.execute('CREATE TABLE pool_documents(id INTEGER,collection TEXT,category INTEGER)')
+        db.executemany('INSERT INTO pool_documents VALUES(?,?,?)',
+            [(i,'tags',0 if i<=500 else 1) for i in range(1,17501)])
+        class Ann:
+            def __init__(self):self.calls=[]
+            def __len__(self):return 17500
+            def search(self,vector,count):
+                self.calls.append(count)
+                return SimpleNamespace(keys=np.arange(1,count+1),distances=np.zeros(count))
+        ann=Ann();view=CollectionAnn(SimpleNamespace(db=db,ann=ann),'tags');view.refresh()
+        try:
+            hits=view.search(np.zeros(768),20,categories=(1,))
+            self.assertEqual(list(hits.keys),list(range(501,521)))
+            self.assertEqual(len(ann.calls),3)
+            statements=[];db.set_trace_callback(statements.append)
+            view.search(np.zeros(768),20,categories=(1,))
+            self.assertFalse(any('category IN' in sql for sql in statements))
+        finally:db.close()
 
 if __name__=='__main__':unittest.main()

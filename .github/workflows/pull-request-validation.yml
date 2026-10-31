@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/pull-request-validation.yml"
       - ".github/workflows/release.yml"
+      - ".github/workflows/macos-build.yml"
       - "analysis_options.yaml"
       - "assets/**"
       - "fonts/**"
@@ -136,70 +137,7 @@ jobs:
           }
 
   macos-validation:
-    name: Build and package macOS
-    runs-on: macos-15
-    # Release build of the universal app bundle plus the packaging checks,
-    # and the few tests that only reach their macOS branch on a Mac; all
-    # other tests run in the Windows job. Nothing is uploaded.
-    timeout-minutes: 45
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Cache Node and Dart runtimes
-        uses: actions/cache@v4
-        with:
-          path: build/macos-runtime-cache
-          key: macos-runtime-${{ hashFiles('scripts/build_macos.sh', 'tool/flutter-sdk.json') }}
-
-      - name: Install Rosetta
-        run: sudo softwareupdate --install-rosetta --agree-to-license
-
-      - name: Resolve dependencies
-        run: flutter pub get
-
-      - name: Generate localizations
-        run: flutter gen-l10n
-
-      - name: Generate code
-        run: dart run tool/generate.dart
-
-      - name: Run macOS-only tests
-        # These skip or take their Windows branch elsewhere: floating
-        # resource windows, window close and quit order, the 1.x data copy,
-        # RAG host detection, CommonCrypto hashing, Finder open / reveal,
-        # path case in the storage statistics and the Agent's built-in skills
-        # inside the app bundle.
-        run: >-
-          flutter test --no-pub
-          test/presentation/wiring/resource_window_opener_test.dart
-          test/app_exit_shortcuts_test.dart
-          test/core/services/mac_legacy_data_import_test.dart
-          test/core/rag/rag_platform_test.dart
-          test/core/utils/file_sha256_test.dart
-          test/app_test.dart
-          test/presentation/wiring/settings_storage_inventory_test.dart
-          test/presentation/providers/nai_agent/nai_agent_builtin_skills_path_test.dart
-
-      - name: Build macOS release
-        run: scripts/build_macos.sh --release
-
-      - name: Package macOS artifact
-        run: scripts/package_macos_release.sh
-
-      - name: Verify packaged artifact
-        run: |
-          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | tr -d '[:space:]')"
-          zip="dist/WOF_NAI_Studio_macOS_${version%%+*}_Portable.zip"
-          test -f "$zip"
-          test -f "$zip.sha256"
+    name: Test and package macOS
+    uses: ./.github/workflows/macos-build.yml
+    with:
+      artifact-name: macos-validation

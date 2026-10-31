@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/cache/thumbnail_cache_service.dart';
 import '../../../../core/utils/keyboard_modifier_utils.dart';
+import '../../../../core/utils/localization_extension.dart';
 import '../../../../data/models/gallery/local_image_record.dart';
 import '../../../../data/services/gallery/gallery_group_mode.dart';
 import '../../../../data/services/gallery/gallery_sort.dart';
@@ -223,11 +224,7 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
 
     if (selection.isActive || isCtrl) {
       if (!selection.isActive) {
-        final focused = ref.read(localGalleryFocusNotifierProvider);
         selectionNotifier.enter();
-        if (focused != null && focused != path) {
-          selectionNotifier.select(focused);
-        }
       }
       selectionNotifier.toggle(path);
       focusNotifier.focus(path);
@@ -235,6 +232,9 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
     }
 
     focusNotifier.focus(path);
+    unawaited(
+      ref.read(localGalleryNotifierProvider.notifier).recordViewed(path),
+    );
   }
 
   void _toggleSelection(int index) {
@@ -331,6 +331,13 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
     ref
         .read(localGalleryFocusNotifierProvider.notifier)
         .focus(entries[next].path);
+    if (!ref.read(localGallerySelectionNotifierProvider).isActive) {
+      unawaited(
+        ref
+            .read(localGalleryNotifierProvider.notifier)
+            .recordViewed(entries[next].path),
+      );
+    }
     _reveal(next);
     return KeyEventResult.handled;
   }
@@ -412,6 +419,7 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
           isInitialized: s.isInitialized,
           isLoading: s.isLoading,
           hasFilters: s.hasFilters,
+          browseScope: s.browseScope,
         ),
       ),
     );
@@ -422,6 +430,15 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
       return const GalleryLoadingView();
     }
     if (state.timeline.isEmpty) {
+      if (state.browseScope != GalleryBrowseScope.library) {
+        return Center(
+          child: Text(
+            state.browseScope == GalleryBrowseScope.trash
+                ? context.l10n.localGallery_trashEmpty
+                : context.l10n.localGallery_recentViewsEmpty,
+          ),
+        );
+      }
       return state.hasFilters
           ? GalleryNoResultsView(onClearFilters: widget.onClearFilters)
           : const GalleryEmptyView();
@@ -442,9 +459,8 @@ class _GalleryTimelineViewState extends ConsumerState<GalleryTimelineView> {
             children: [
               Positioned.fill(
                 child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(
-                    context,
-                  ).copyWith(scrollbars: false),
+                  behavior: ScrollConfiguration.of(context)
+                      .copyWith(scrollbars: false),
                   child: SingleChildScrollView(
                     key: const Key('gallery-timeline-scroll'),
                     controller: _scroll,
@@ -649,6 +665,11 @@ class _TimelineTilesState extends ConsumerState<_TimelineTiles> {
     final notifier = ref.read(localGalleryNotifierProvider.notifier);
     final selection = ref.watch(localGallerySelectionNotifierProvider);
     final focused = ref.watch(localGalleryFocusNotifierProvider);
+    final trash = ref.watch(
+      localGalleryNotifierProvider.select(
+        (s) => s.browseScope == GalleryBrowseScope.trash,
+      ),
+    );
     final entries = timeline.entries;
     final layout = widget.layout;
     final offset = widget.scrollController.hasClients
@@ -713,15 +734,18 @@ class _TimelineTilesState extends ConsumerState<_TimelineTiles> {
               onSelectionToggle: () => widget.onToggleSelection(index),
               onSecondaryTapDown: (details) =>
                   widget.onContextMenu(record, details.globalPosition),
-              onFavoriteToggle: (anchor) =>
-                  widget.onFavoriteMenu(record, anchor),
-              onUseImage: () => widget.onUseImage(record),
-              dragWrapper: DraggableImageCard.createDragWrapper(
-                record: record,
-                selectedPaths: selection.isActive && isSelected
-                    ? selection.selectedIds.toList()
-                    : null,
-              ),
+              onFavoriteToggle: trash
+                  ? null
+                  : (anchor) => widget.onFavoriteMenu(record, anchor),
+              onUseImage: trash ? null : () => widget.onUseImage(record),
+              dragWrapper: trash
+                  ? null
+                  : DraggableImageCard.createDragWrapper(
+                      record: record,
+                      selectedPaths: selection.isActive && isSelected
+                          ? selection.selectedIds.toList()
+                          : null,
+                    ),
             ),
           ),
         ),

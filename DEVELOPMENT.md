@@ -1,6 +1,8 @@
 # 开发与发布参考
 
-按任务读取对应章节。命令在当前有效启动器源码目录执行，不从桌面包所在的旧源码分支施工；本机路径与当前交付见工作区接手说明。通用约束见 [AGENTS.md](AGENTS.md)，功能不变量见 [OPERATIONAL_NOTES.md](OPERATIONAL_NOTES.md)。
+本机版本、实际载荷、有效源码与恢复边界统一见[工作区接手说明](../../../04_工具/启动器接手说明.md)。公开功能及产物验证见 [2.2.3 发布报告](docs/release-2.2.3-2026-10-31.md)。用户完成应用内更新后的运行状态另行核对，历史直装收据不自动代表当前安装。
+
+命令在当前有效源码执行。通用约束见 [AGENTS.md](AGENTS.md)，功能不变量见 [OPERATIONAL_NOTES.md](OPERATIONAL_NOTES.md)，当前待修与暂缓项见[活跃待办](../../../04_工具/开发计划/待办清单.md)。
 
 ## 构建、测试与开发命令
 
@@ -37,6 +39,8 @@ Pi 本地回归在 `tool/nai_agent/` 执行 `npm test`，使用本地合成服�
 
 ## macOS 构建、测试与发布
 
+GitHub Actions 的 runner、签名和产物交付见 [macOS Actions](docs/macos-actions.md)。PR 与 Release 共用 `macos-build.yml`，固定 ad-hoc 签名，不需要 Apple 证书或 secret；Mac 专属回归清单统一在 `scripts/test_macos.sh`。Node 归档中的 npm/npx 也随包复制，Agent 子进程将包内工具目录放到 PATH 前面，兼容访达启动；Git 来源的扩展仍需要系统 Git。
+
 工具：完整 Xcode（`scripts/build_macos.sh` 默认用 `/Applications/Xcode.app`，不改 `xcode-select`，别的位置用 `DEVELOPER_DIR`）、CocoaPods、rustup（`super_native_extensions` 用 cargokit 编 Rust；Homebrew 的 rustup 不进 PATH，脚本会补上）、Flutter 3.47.7（`FLUTTER_ROOT` 指向登记的 SDK，或放在 PATH 上）。最低系统 macOS 12，bundle id `com.wof.naiStudio`；设置、数据库和 Agent 数据在「应用支持」目录（`~/Library/Application Support/com.wof.naiStudio/`），Agent 运行时和 `studio-bridge` 放在 `Contents/Resources/tools`，不往应用包里写（见 `lib/core/utils/app_bundle_paths.dart`）。
 
 ```bash
@@ -65,7 +69,9 @@ scripts/package_macos_release.sh [--version <版本>] [--dist-dir <目录>]
 
 本机桌面实际使用 `E:/A.I/NovelAI/nai-launcher-src/build/windows-glass-preview/runner/Release/`，不是标准 Release 或 Debug 目录。完整交付状态以该源码根 `.dart_tool/glass-rollout-delivery.json` 与安装文件为准；当前有效源码位置从工作区接手说明读取。
 
-本机累计更新的交付材料按批次放在有效源码 `.dart_tool/cumulative-r<N>-<日期>/`（最近一批见工作区接手说明登记），复用上一批的 `snapshot` → `run_build` → `prepare` → `verify_package` → `install` → `finalize` 链；r26 起安装器支持带备份的退役文件删除，`tools/nai-agent` 按源码整树同步。历史 Glass 组包曾使用 `.dart_tool/assemble_glass.py` / `build/glass-bundle/`；这些不是当前批次固定入口，后续使用当次登记的构建输入与组包脚本。先完成按范围测试、analyze、资源与原生数据身份核验，再使用本次交付的安装脚本；本机脚本是交付材料，不假设所有 clone 都带有 `.dart_tool/`。
+本机累计更新的交付材料按批次放在有效源码 `.dart_tool/cumulative-r<N>-<日期>/`（最近一批见工作区接手说明登记），复用上一批的 `snapshot` → `run_build` → `prepare` → `verify_package` → `install` → `finalize` 链；r26 起安装器支持带备份的退役文件删除，涉及 Agent 运行资源变化时，`tools/nai-agent` 按源码整树同步。历史 Glass 组包曾使用 `.dart_tool/assemble_glass.py` / `build/glass-bundle/`；这些不是当前批次固定入口，后续使用当次登记的构建输入与组包脚本。先完成按范围测试、analyze、资源与原生数据身份核验，再使用本次交付的安装脚本；本机脚本是交付材料，不假设所有 clone 都带有 `.dart_tool/`。
+
+本机小更新（仅 Dart UI／文案、原生依赖／Agent／RAG／资源未变）直接沿用上一份完整收据构造差量载荷，不创建或复制完整 `program/`。先核对本次实际源码变化与功能验证，再重编 Release，核对未变资源、原生库及已安装模块的文件哈希；源码与产物均未变的模块复用其已通过的整包验证，不重复执行无关的 Node／RAG 冒烟。现有安装引擎、安装前后完整程序核验与回退备份保持。当前脚本模板见接手说明登记的 `.dart_tool/native-suggestion-install-20261031/`：`prepare.py` 已包含差量包核验，无需再复制整包跑旧 `verify_package.py`。仅复用脚本，已清理的载荷不重跑；原生、资源或运行依赖变化仍按实际影响完整组包并验证。
 
 覆盖前现场检查 `nai_launcher` 进程路径，等用户从托盘完全退出，备份当前程序 `data/` 与记录；安装后逐项复验并保存单步回退，不自动启动。不要用标准 `build/windows/x64/runner/Release/` 整目录覆盖既有 Glass 包，尤其不能移除其原生插件。Release 发布流程另按下方规范执行。
 
@@ -120,6 +126,8 @@ README 中英文同批同步，保留相互切换和上游归属链接。截图�
 
 本地高级放大宿主构建入口为 `tool/local_upscale/build_worker.ps1`；源码、组件固定版本与用户暂缓大模型下载的边界见 `docs/advanced-upscale-2026-10-05.md`。
 
-## NAI Agent 当前交付
+## NAI Agent 当前能力
 
-本机 2.2.1+63（编译 `4bb17a1a2`）已累计安装完整 Agent 域工具、MCP／CodeMode、Node 24.18.0／Pi 1.3.0、Skill 管理、框内块／翻译快捷操作及流式性能优化；角色元数据、桥接依赖提示与保存提示条对齐同批交付。[本机交付](docs/local-2.2.1-build63-2026-10-29.md)。公开 [2.2.2+64](docs/release-2.2.2-2026-10-29.md) 已包含本机 +62／+63 全部六项更新，本次不重装桌面。当前安装与恢复入口见 [工作区接手说明](../../../04_工具/启动器接手说明.md)，实机验收见 [Agent 进度](../../../04_工具/NAI_Agent_开发/06_实施进度.md)。E5D 文件管理与扫描互斥已累计包含，[历史报告](docs/nai-agent-stage-e5d-2026-10-07.md) 不作为未完成项。
+Agent、MCP／CodeMode、Skill 管理、提示词框内块操作、完整历史与检索等已交付能力及验证统一见[Agent 进度](../../../04_工具/NAI_Agent_开发/06_实施进度.md)。运行时说明读取 `tool/nai_agent/skills/`，详细流程按需读取 `references/`。
+
+工作区收纳与迁移见[布局说明](docs/agent-workspace-layout-2026-10-31.md)，Skill／声明精简见[实现记录](docs/agent-skill-declaration-polish-2026-10-31.md)。现行待修与实机反馈按工作区入口维护；带日期的交付报告保留当时的安装、测试与恢复边界。

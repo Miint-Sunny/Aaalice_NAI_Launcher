@@ -18,13 +18,18 @@ AgentActivityKind agentActivityKind(String tool) => switch (tool) {
   'snapshot' ||
   'wiki_query' ||
   'tag_query' ||
+  'tag_related' ||
+  'session_history' ||
   'block_query' ||
   'settings_read' ||
   'gallery_query' ||
   'reference_library' ||
   'studio_search' ||
   'read' => AgentActivityKind.read,
-  'bash' || 'codemode' || 'code_mode' => AgentActivityKind.run,
+  'bash' ||
+  'codemode' ||
+  'code_mode' ||
+  'agent_manage' => AgentActivityKind.run,
   'image_read' || 'image_tool' => AgentActivityKind.image,
   'prompt_set' ||
   'prompt_update' ||

@@ -11,11 +11,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/data/models/gallery/local_image_record.dart';
 import 'package:nai_launcher/data/models/gallery/nai_image_metadata.dart';
 import 'package:nai_launcher/data/services/gallery/gallery_filter_service.dart';
+import 'package:nai_launcher/data/services/gallery/gallery_view_mode.dart';
 import 'package:nai_launcher/data/services/gallery/unified_gallery_service.dart';
 import 'package:nai_launcher/data/services/thumbnail_service.dart';
 import 'package:nai_launcher/l10n/app_localizations.dart';
 import 'package:nai_launcher/presentation/providers/krita/krita_bridge_notifier.dart';
 import 'package:nai_launcher/presentation/providers/local_gallery_focus_provider.dart';
+import 'package:nai_launcher/presentation/providers/gallery_recent_views_provider.dart';
 import 'package:nai_launcher/presentation/providers/local_gallery_provider.dart';
 import 'package:nai_launcher/presentation/providers/selection_mode_provider.dart';
 import 'package:nai_launcher/presentation/widgets/gallery/local_image_card.dart';
@@ -68,6 +70,7 @@ void main() {
   late ProviderContainer container;
   final opened = <int>[];
   final contextMenus = <String>[];
+  final deleteRequests = <List<String>>[];
 
   Future<void> pumpView(
     WidgetTester tester, {
@@ -80,6 +83,7 @@ void main() {
     service = FakeLocalGalleryService(records);
     opened.clear();
     contextMenus.clear();
+    deleteRequests.clear();
     container = ProviderContainer(
       overrides: [
         galleryServiceProvider.overrideWith(
@@ -102,12 +106,19 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: GalleryTimelineView(
+              onDeleteRequested:
+                  onDeleteRequested ??
+                  () => deleteRequests.add(
+                    container
+                        .read(localGallerySelectionNotifierProvider)
+                        .selectedIds
+                        .toList(),
+                  ),
               onOpenViewer: opened.add,
               onContextMenu: (record, _) => contextMenus.add(record.path),
               onUseImage: (_) async {},
               onFavoriteMenu: (_, __) {},
               onClearFilters: () {},
-              onDeleteRequested: onDeleteRequested,
             ),
           ),
         ),
@@ -131,6 +142,14 @@ void main() {
   String? focused() => container.read(localGalleryFocusNotifierProvider);
   SelectionModeState selection() =>
       container.read(localGallerySelectionNotifierProvider);
+
+  Future<void> ctrlTap(WidgetTester tester, int index) async {
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(card(index));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pump();
+  }
 
   testWidgets('builds only cards near the viewport with day headers', (
     tester,
@@ -201,30 +220,109 @@ void main() {
     }),
   );
 
-  testWidgets('Ctrl+tap starts multi-select with the focused image', (
+  for (final mode in GalleryViewMode.values) {
+    testWidgets(
+      'Ctrl+tap starts multi-select with only the clicked image (${mode.name})',
+      (tester) async {
+        await pumpView(tester);
+        container.read(localGalleryNotifierProvider.notifier).setViewMode(mode);
+        await tester.pump();
+
+        await tester.tap(card(0));
+        await tester.pump();
+        expect(focused(), records[0].path);
+        expect(selection().isActive, isFalse);
+        expect(selection().selectedIds, isEmpty);
+
+        await ctrlTap(tester, 3);
+        expect(selection().isActive, isTrue);
+        expect(selection().selectedIds, {records[3].path});
+        expect(focused(), records[3].path);
+        final recentlyViewed = await container
+            .read(galleryRecentViewsStoreProvider)
+            .load();
+        expect(recentlyViewed.map((e) => e.path), [records[0].path]);
+        expect(tester.widget<LocalImageCard>(card(0)).isSelected, isFalse);
+        expect(tester.widget<LocalImageCard>(card(0)).isFocused, isFalse);
+        expect(tester.widget<LocalImageCard>(card(3)).isSelected, isTrue);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+        expect(deleteRequests.single, [records[3].path]);
+        final candidates = await service.getRecordsByPaths(
+          deleteRequests.single,
+        );
+        expect(candidates.map((record) => record.path), [records[3].path]);
+
+        // 已有多选中的 Ctrl 和普通点击继续累加／取消。
+        await ctrlTap(tester, 0);
+        expect(selection().selectedIds, {records[0].path, records[3].path});
+        await ctrlTap(tester, 0);
+        expect(selection().selectedIds, {records[3].path});
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.tap(card(0));
+        await tester.pump();
+        expect(selection().selectedIds, {records[0].path, records[3].path});
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.tap(card(0));
+        await tester.pump();
+        expect(selection().selectedIds, {records[3].path});
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+        expect(selection().isActive, isFalse);
+        expect(selection().selectedIds, isEmpty);
+        expect(focused(), records[0].path);
+        await ctrlTap(tester, 2);
+        expect(selection().selectedIds, {records[2].path});
+        await dispose(tester);
+      },
+    );
+  }
+
+  testWidgets('Ctrl+tap without a preview selects only the clicked image', (
     tester,
   ) async {
     await pumpView(tester);
+    await ctrlTap(tester, 3);
+    expect(selection().selectedIds, {records[3].path});
+    await dispose(tester);
+  });
 
+  testWidgets('Ctrl+tap on the preview selects that image once', (
+    tester,
+  ) async {
+    await pumpView(tester);
     await tester.tap(card(0));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.tap(card(3));
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await ctrlTap(tester, 0);
+    expect(selection().selectedIds, {records[0].path});
+    await dispose(tester);
+  });
+
+  testWidgets('selection circle does not import the preview into selection', (
+    tester,
+  ) async {
+    await pumpView(tester);
+    await tester.tap(card(0));
     await tester.pump();
-
-    expect(selection().isActive, isTrue);
-    expect(selection().selectedIds, {records[0].path, records[3].path});
-
-    // 多选中普通单击切换选择
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(card(0));
+    tester.widget<LocalImageCard>(card(3)).onSelectionToggle!();
     await tester.pump();
     expect(selection().selectedIds, {records[3].path});
+    await dispose(tester);
+  });
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+  testWidgets('Shift range after Ctrl starts from the clicked image', (
+    tester,
+  ) async {
+    await pumpView(tester);
+    await tester.tap(card(0));
+    await ctrlTap(tester, 2);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.tap(card(4));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     await tester.pump();
-    expect(selection().isActive, isFalse);
+    expect(selection().selectedIds, {
+      for (var i = 2; i <= 4; i++) records[i].path,
+    });
     await dispose(tester);
   });
 

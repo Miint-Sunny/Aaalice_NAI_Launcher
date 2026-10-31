@@ -205,7 +205,7 @@ class _AgentThreadState extends State<AgentThread> {
   }
 
   Future<void> _jumpToLatest() async {
-    if (!_scroll.hasClients) return;
+    if (_follow || !_scroll.hasClients) return;
     setState(() => _follow = true);
     _auto = true;
     try {
@@ -227,6 +227,7 @@ class _AgentThreadState extends State<AgentThread> {
     final d = AgentScope.of(context).data;
     _navigation = AgentNavigationScope.of(context);
     _navigation?.jump = _jumpHistory;
+    _navigation?.latest = _jumpToLatest;
     _reportVisible();
     final r = d.revision;
     if (_chat != null && d.chat.id != _chat) {
@@ -253,6 +254,7 @@ class _AgentThreadState extends State<AgentThread> {
   void dispose() {
     _navigationEpoch++;
     _navigation?.jump = null;
+    _navigation?.latest = null;
     _scroll.dispose();
     super.dispose();
   }
@@ -566,11 +568,14 @@ class _Turn extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 10,
         children: [
-          AgentAppear(
-            id: '${turn.id}/user',
-            enabled: last,
-            child: _userAnchor(context, turn),
-          ),
+          if (turn.user.entryId != null ||
+              turn.user.text.isNotEmpty ||
+              turn.user.images.isNotEmpty)
+            AgentAppear(
+              id: '${turn.id}/user',
+              enabled: last,
+              child: _userAnchor(context, turn),
+            ),
           if (reply != null && (reply.blocks.isNotEmpty || reply.live))
             AgentAppear(
               id: '${turn.id}/card',
@@ -880,6 +885,7 @@ class _TaskCard extends StatelessWidget {
     required this.reply,
     required this.last,
     this.since,
+    this.copyBlocks,
   });
   final String turnId;
   final AgentReply reply;
@@ -887,23 +893,36 @@ class _TaskCard extends StatelessWidget {
 
   /// 这一轮开始的时间（用户这句的时间），工作中提示行的用时从这里算。
   final DateTime? since;
+  // 分开显示的回复仍由末尾按钮复制整轮正文，仅在点击时组装文本。
+  final List<AgentBlock>? copyBlocks;
 
   @override
   Widget build(BuildContext context) {
     final s = AgentScope.controlsOf(context);
     final l = context.l10n;
     final c = context.ui;
-    // Prompt sets are standalone cards (not a card nested in the task shell).
-    // Leave all existing block-only replies on their original rendering path.
-    if (reply.blocks.any(
-      (block) =>
-          block is AgentPromptSetBlock || block is AgentAnsweredQuestionsBlock,
-    )) {
+    // Standalone blocks keep their place without inheriting the task shell.
+    final hasCompaction = reply.blocks.any((b) => b is AgentCompactionBlock);
+    if (hasCompaction ||
+        reply.blocks.any(
+          (block) =>
+              block is AgentPromptSetBlock ||
+              block is AgentAnsweredQuestionsBlock,
+        )) {
       final groups = <Widget>[];
       var ordinary = <AgentBlock>[];
+      final compactionTail =
+          !reply.live && reply.blocks.lastOrNull is AgentCompactionBlock
+          ? reply.blocks.lastIndexWhere((b) => b is! AgentCompactionBlock) + 1
+          : null;
+      final liveAfterCompaction =
+          reply.live && reply.blocks.lastOrNull is AgentCompactionBlock;
       void flush({bool tail = false}) {
         if (ordinary.isEmpty && !tail) return;
-        if (ordinary.isEmpty && reply.summary == null && !reply.canRegenerate) {
+        if (ordinary.isEmpty &&
+            reply.summary == null &&
+            !reply.canRegenerate &&
+            !(tail && liveAfterCompaction)) {
           return;
         }
         groups.add(
@@ -911,6 +930,7 @@ class _TaskCard extends StatelessWidget {
             turnId: '$turnId/part-${groups.length}',
             last: last && tail,
             since: since,
+            copyBlocks: copyBlocks ?? (hasCompaction ? reply.blocks : null),
             reply: AgentReply(
               blocks: List.of(ordinary),
               live: reply.live && tail,
@@ -922,7 +942,7 @@ class _TaskCard extends StatelessWidget {
         ordinary = [];
       }
 
-      for (final block in reply.blocks) {
+      for (final (i, block) in reply.blocks.indexed) {
         if (block is AgentPromptSetBlock) {
           flush();
           groups.add(
@@ -937,11 +957,20 @@ class _TaskCard extends StatelessWidget {
               AgentAnsweredQuestionsView(block: block),
             ),
           );
+        } else if (block is AgentCompactionBlock) {
+          flush(tail: i == compactionTail);
+          groups.add(
+            agentBlockAnchor(
+              context,
+              block,
+              AgentCompactionView(key: ValueKey('compaction-$i'), block: block),
+            ),
+          );
         } else {
           ordinary.add(block);
         }
       }
-      flush(tail: true);
+      if (compactionTail == null) flush(tail: true);
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 12,
@@ -1002,10 +1031,6 @@ class _TaskCard extends StatelessWidget {
                 AgentParamBlock() => AgentParamView(block: item),
                 AgentSettingsBlock() => AgentSettingsView(block: item),
                 AgentGalleryBlock() => AgentGalleryView(block: item),
-                AgentCompactionBlock() => AgentCompactionView(
-                  key: ValueKey('compaction-$i'),
-                  block: item,
-                ),
                 AgentChangeSummaryBlock() => AgentChangeSummaryView(
                   block: item,
                 ),
@@ -1015,8 +1040,6 @@ class _TaskCard extends StatelessWidget {
             ),
             item is _ReadGroup
                 ? proc
-                : item is AgentCompactionBlock
-                ? const EdgeInsets.fromLTRB(14, 8, 14, 8)
                 : isLast && finalText
                 // 结论多留一点呼吸。
                 ? const EdgeInsets.fromLTRB(14, 15, 14, 14)
@@ -1095,7 +1118,7 @@ class _TaskCard extends StatelessWidget {
                           glyph: AgentGlyphs.copy,
                           tooltip: l.ag_copy,
                           onPressed: () async {
-                            final text = reply.blocks
+                            final text = (copyBlocks ?? reply.blocks)
                                 .whereType<AgentTextBlock>()
                                 .map((b) => b.markdown)
                                 .join('\n\n');
@@ -2349,6 +2372,7 @@ class _StepDetail extends StatelessWidget {
 
 /// 工具名 → 动作名；未知工具（外部 MCP）返回原名。
 String agentToolLabel(AppLocalizations l, String tool) => switch (tool) {
+  'agent_manage' => l.ag_tool_agent_manage,
   'studio_context' => l.ag_tool_studio_context,
   'image_read' => l.ag_tool_image_read,
   'prompt_set' => l.ag_tool_prompt_set,
@@ -2947,14 +2971,17 @@ class _AgentCompactionViewState extends State<AgentCompactionView> {
               child: SizedBox(
                 height: 22,
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   spacing: 8,
                   children: [
                     line,
                     AgentIcon(AgentGlyphs.layers, size: 12, color: c.faint),
                     Flexible(
                       flex: 6,
-                      child: AgentOverflowText(
+                      child: Text(
                         b.auto ? l.ag_compactedAuto : l.ag_compacted,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: UiText.sans(
                           11.5,
                           color: _hover ? c.muted : c.faint,

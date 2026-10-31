@@ -5832,12 +5832,6 @@ abstract class AppLocalizations {
   /// **'Files in the trash are still on disk and will be removed permanently on the next launch. Restored files return to the gallery immediately.'**
   String get localGallery_trashHint;
 
-  /// No description provided for @localGallery_trashCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} items'**
-  String localGallery_trashCount(Object count);
-
   /// No description provided for @localGallery_trashRestore.
   ///
   /// In en, this message translates to:
@@ -5868,23 +5862,11 @@ abstract class AppLocalizations {
   /// **'Delete permanently'**
   String get localGallery_trashDeleteAll;
 
-  /// No description provided for @localGallery_trashDeleteAllConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'This will permanently delete all {count} files in the trash immediately. This cannot be undone.'**
-  String localGallery_trashDeleteAllConfirm(Object count);
-
   /// No description provided for @localGallery_trashDeletedForever.
   ///
   /// In en, this message translates to:
   /// **'Permanently deleted {count} files'**
   String localGallery_trashDeletedForever(Object count);
-
-  /// No description provided for @localGallery_trashFileMissing.
-  ///
-  /// In en, this message translates to:
-  /// **'File no longer on disk'**
-  String get localGallery_trashFileMissing;
 
   /// No description provided for @localGallery_movedImages.
   ///
@@ -12303,12 +12285,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'One appearance across your studio. Black or white surfaces, with blue accents.'**
   String get settings_geistDescription;
-
-  /// No description provided for @updateCapsuleLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Update'**
-  String get updateCapsuleLabel;
 
   /// No description provided for @updateWaitForTask.
   ///
@@ -29555,12 +29531,6 @@ abstract class AppLocalizations {
   /// **'Server configuration (JSON)'**
   String get naiAgent_mcpConfig;
 
-  /// No description provided for @naiAgent_mcpConfigHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Supports stdio and Streamable HTTP. Paste one server configuration object; command is an executable and args is an array. Supports env, cwd, url, headers, oauth and toolExposure. Configuration is saved in encrypted storage.'**
-  String get naiAgent_mcpConfigHint;
-
   /// No description provided for @naiAgent_mcpStatus.
   ///
   /// In en, this message translates to:
@@ -35491,7 +35461,7 @@ abstract class AppLocalizations {
   /// No description provided for @set_agMcpUnchecked.
   ///
   /// In en, this message translates to:
-  /// **'Not checked'**
+  /// **'Not connected'**
   String get set_agMcpUnchecked;
 
   /// No description provided for @set_agInstructionsSaving.
@@ -37936,12 +37906,6 @@ abstract class AppLocalizations {
   /// **'NAI Agent'**
   String get ag_toggle;
 
-  /// No description provided for @ag_yesterday.
-  ///
-  /// In en, this message translates to:
-  /// **'Yesterday'**
-  String get ag_yesterday;
-
   /// No description provided for @ag_attachmentTag.
   ///
   /// In en, this message translates to:
@@ -38884,12 +38848,6 @@ abstract class AppLocalizations {
   /// **'No matching entries'**
   String get ag_historyEmpty;
 
-  /// No description provided for @ag_historyBeforeCompaction.
-  ///
-  /// In en, this message translates to:
-  /// **'This was before compaction. Click to read the summary.'**
-  String get ag_historyBeforeCompaction;
-
   /// No description provided for @ag_historyAuto.
   ///
   /// In en, this message translates to:
@@ -39460,12 +39418,6 @@ abstract class AppLocalizations {
   /// **'Warming while idle (up to 30 minutes) costs extra model usage.'**
   String get set_agCacheIdleCost;
 
-  /// No description provided for @ag_suggestionAccept.
-  ///
-  /// In en, this message translates to:
-  /// **'Tab to fill in this suggestion'**
-  String get ag_suggestionAccept;
-
   /// No description provided for @ag_cacheWarmTitle.
   ///
   /// In en, this message translates to:
@@ -39789,6 +39741,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You created this{time}.'**
   String blocks_tempCreatedByYou(String time);
+
+  /// No description provided for @ag_chatJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get ag_chatJustNow;
+
+  /// No description provided for @localGallery_recentViews.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently viewed'**
+  String get localGallery_recentViews;
+
+  /// No description provided for @localGallery_recentViewsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recently viewed images'**
+  String get localGallery_recentViewsEmpty;
+
+  /// No description provided for @localGallery_deleteForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get localGallery_deleteForever;
+
+  /// No description provided for @localGallery_deleteForeverConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete the selected {count} files? This cannot be undone.'**
+  String localGallery_deleteForeverConfirm(int count);
+
+  /// No description provided for @ag_chatAgeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}m'**
+  String ag_chatAgeMinutes(int count);
+
+  /// No description provided for @ag_chatAgeHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}h'**
+  String ag_chatAgeHours(int count);
+
+  /// No description provided for @ag_chatAgeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}d'**
+  String ag_chatAgeDays(int count);
+
+  /// No description provided for @ag_chatAgeWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}w'**
+  String ag_chatAgeWeeks(int count);
+
+  /// No description provided for @set_agMcpStdio.
+  ///
+  /// In en, this message translates to:
+  /// **'Local command'**
+  String get set_agMcpStdio;
+
+  /// No description provided for @set_agMcpAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Server URL'**
+  String get set_agMcpAddress;
+
+  /// No description provided for @set_agMcpCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Executable command'**
+  String get set_agMcpCommand;
+
+  /// No description provided for @set_agMcpArgs.
+  ///
+  /// In en, this message translates to:
+  /// **'Arguments (one per line)'**
+  String get set_agMcpArgs;
+
+  /// No description provided for @set_agMcpEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'Environment variables'**
+  String get set_agMcpEnv;
+
+  /// No description provided for @set_agMcpHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Request headers'**
+  String get set_agMcpHeaders;
+
+  /// No description provided for @set_agMcpCwd.
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory'**
+  String get set_agMcpCwd;
+
+  /// No description provided for @set_agMcpAdvanced.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get set_agMcpAdvanced;
+
+  /// No description provided for @set_agMcpJson.
+  ///
+  /// In en, this message translates to:
+  /// **'Import / edit JSON'**
+  String get set_agMcpJson;
+
+  /// No description provided for @set_agMcpForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Form'**
+  String get set_agMcpForm;
+
+  /// No description provided for @set_agMcpTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get set_agMcpTest;
+
+  /// No description provided for @set_agMcpJsonOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Import one MCP server at a time.'**
+  String get set_agMcpJsonOne;
+
+  /// No description provided for @set_agMcpPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies next turn'**
+  String get set_agMcpPending;
+
+  /// No description provided for @ag_tool_agent_manage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Agent'**
+  String get ag_tool_agent_manage;
 }
 
 class _AppLocalizationsDelegate

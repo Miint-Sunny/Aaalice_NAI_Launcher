@@ -888,6 +888,7 @@ enum SettingsFolder { images, vibes, thumbnails, appData, logs, agent }
 @immutable
 class SettingsStorageData {
   const SettingsStorageData({
+    this.configurationKey,
     this.slices = const [],
     this.diskLabel = '',
     this.diskFree,
@@ -906,6 +907,10 @@ class SettingsStorageData {
 
   /// 占用分类（新增：后台统计各目录大小，可缓存）；空 = 还没统计。
   final List<SettingsStorageSlice> slices;
+
+  /// Directory identity of a measured summary; avoids reusing old counts after
+  /// a configured source changes while a new traversal is still loading.
+  final String? configurationKey;
 
   /// 图片保存位置所在盘，例如 `E:`。
   final String diskLabel;
@@ -1237,10 +1242,16 @@ class SettingsMcpServer {
     this.tools = 0,
     this.enabled = true,
     this.builtin = false,
+    this.pending = false,
+    this.canCheck = true,
+    this.detail = '',
   });
 
   final String id;
   final String name;
+
+  final bool pending, canCheck;
+  final String detail;
 
   /// 例如 `stdio · npx @modelcontextprotocol/server-filesystem`。
   final String transport;
@@ -1290,6 +1301,7 @@ class SettingsSkill {
     this.enabled = true,
     this.manual = false,
     this.error,
+    this.packageSource,
   });
 
   /// `<source>/<name>`，回调都用它。
@@ -1306,6 +1318,7 @@ class SettingsSkill {
   /// 仅手动：不进提示词目录，只能 `/skill:名称` 调用。
   final bool manual;
   final SettingsSkillError? error;
+  final String? packageSource;
   bool get builtin => source == SettingsSkillSource.builtin;
 }
 
@@ -2053,6 +2066,7 @@ class SettingsActions {
     this.onShowShortcutHelp = _none,
     // 存储
     this.onRecomputeStorage = _none,
+    this.onRefreshStorageSilently,
     this.onAddGalleryRoot = _none,
     this.onRemoveGalleryRoot = _noId,
     this.onOpenGalleryRoot = _noId,
@@ -2095,6 +2109,7 @@ class SettingsActions {
     this.onMcpEnabled = _noIdBool,
     this.onMcpMode = _noMcpMode,
     this.onMcpLogin = _noId,
+    this.onMcpCheck = _noId,
     this.onEditMcp = _noIdOpt,
     this.onRemoveMcp = _noId,
     this.onOpenAgent = _none,
@@ -2207,6 +2222,7 @@ class SettingsActions {
   final VoidCallback onShowShortcutHelp;
 
   final VoidCallback onRecomputeStorage;
+  final VoidCallback? onRefreshStorageSilently;
   final VoidCallback onAddGalleryRoot;
   final ValueChanged<String> onRemoveGalleryRoot;
   final ValueChanged<String> onOpenGalleryRoot;
@@ -2293,6 +2309,7 @@ class SettingsActions {
   final void Function(String id, bool enabled) onMcpEnabled;
   final void Function(String id, SettingsMcpMode mode) onMcpMode;
   final ValueChanged<String> onMcpLogin;
+  final ValueChanged<String> onMcpCheck;
 
   /// 编辑 MCP 服务器；null = 新建（接线方打开现有表单）。
   final ValueChanged<String?> onEditMcp;

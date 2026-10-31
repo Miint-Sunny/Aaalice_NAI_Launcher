@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nai_launcher/presentation/ui/agent/agent_contract.dart';
 import 'package:nai_launcher/presentation/ui/agent/agent_fixture.dart';
 import 'package:nai_launcher/presentation/ui/agent/agent_panel.dart';
+import 'package:nai_launcher/presentation/ui/agent/agent_parts.dart';
 import 'package:nai_launcher/presentation/ui/agent/agent_answered_questions.dart';
 import 'package:nai_launcher/presentation/wiring/nai_agent/agent_history_mapper.dart';
 import '../../../helpers/studio_capture_fonts.dart';
@@ -89,6 +90,36 @@ Future<void> _capture(WidgetTester t, String name) async {
 
 void main() {
   setUpAll(loadStudioCaptureFonts);
+  testWidgets('a summary-only split turn has no fabricated user bubble', (
+    t,
+  ) async {
+    await pumpAgent(
+      t,
+      data: _data([
+        AgentTurn(
+          id: 'split',
+          user: AgentUserMessage(text: '', at: _at),
+          reply: AgentReply(
+            blocks: [
+              AgentCompactionBlock(
+                summary: 'Kept summary',
+                at: _at,
+                tokensBefore: 100,
+              ),
+            ],
+          ),
+        ),
+      ]),
+    );
+    await _frames(t, 3);
+    expect(find.byKey(const Key('agent-compaction')), findsOneWidget);
+    expect(find.byType(AgentCard), findsNothing);
+    expect(
+      find.byKey(Key('agent-user-${_at.millisecondsSinceEpoch}')),
+      findsNothing,
+    );
+    expect(t.takeException(), isNull);
+  });
   // 10-27：历史按钮只随内容宽，打开后也不铺满页签与圆环之间的空白；贴着上下文圆环。
   for (final width in [420.0, 300.0]) {
     testWidgets('history toggle hugs content next to usage ring ($width)', (
@@ -147,7 +178,7 @@ void main() {
     },
   );
   testWidgets(
-    'card jump targets its block and compacted messages target summary without branching',
+    'card jump targets its block without the retired compaction toast or branching',
     (t) async {
       final compact = AgentCompactionBlock(
         summary: 'Earlier conversation summary',
@@ -196,7 +227,7 @@ void main() {
             .overlaps(t.getRect(find.byKey(const Key('agent-compaction')))),
         true,
       );
-      expect(find.text('这段在压缩之前，点看摘要'), findsOneWidget);
+      expect(find.text('这段在压缩之前，点看摘要'), findsNothing);
       await t.tap(find.byKey(const Key('agent-compaction')));
       await t.pump();
       expect(find.text('Earlier conversation summary'), findsOneWidget);

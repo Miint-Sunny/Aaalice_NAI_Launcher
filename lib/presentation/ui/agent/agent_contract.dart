@@ -232,12 +232,15 @@ class AgentChatInfo {
     required this.id,
     required this.title,
     required this.createdAt,
+    this.lastActivityAt,
     this.state = AgentChatState.idle,
     this.canExport = false,
   });
   final String id;
   final String title;
   final DateTime createdAt;
+  final DateTime? lastActivityAt;
+  DateTime get activityAt => lastActivityAt ?? createdAt;
   final AgentChatState state;
 
   /// 已有 Pi 会话文件，可导出 `.jsonl`。
@@ -1585,7 +1588,7 @@ enum AgentMemoryTarget { global, workspace, skills, quick }
 class AgentSlots {
   const AgentSlots({this.dropTarget, this.imageDrag});
 
-  /// 包住整个侧栏的系统拖放区（外部文件、历史缩略图拖进来 = 附图）。
+  /// 包住输入卡片的系统拖放区（外部文件、历史缩略图拖进来 = 附图）。
   /// [onHover] 由转接层在拖入 / 离开时调用，界面据此显示「松开以附加」。
   final Widget Function(
     BuildContext context,

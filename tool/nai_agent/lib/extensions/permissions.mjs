@@ -3,8 +3,9 @@ import { realpath } from 'node:fs/promises';
 import { dirname, resolve, relative, isAbsolute } from 'node:path';
 
 const modes = new Set(['auto', 'ask', 'readonly', 'bypass']);
-const reads = new Set(['read', 'grep', 'find', 'ls', 'studio_context', 'studio_search', 'ask_user', 'image_read', 'wiki_query', 'tag_query', 'block_query', 'settings_read', 'generation_prepare', 'gallery_query', 'generation_cancel', 'tool_search', 'codemode']);
+const reads = new Set(['read', 'grep', 'find', 'ls', 'studio_context', 'studio_search', 'session_history', 'ask_user', 'image_read', 'wiki_query', 'tag_query', 'tag_related', 'block_query', 'settings_read', 'generation_prepare', 'gallery_query', 'generation_cancel', 'tool_search', 'codemode']);
 const readActions = {
+  agent_manage: new Set(['read', 'list', 'status']),
   prompt_set: new Set(['read']),
   snapshot: new Set(['list', 'read']),
   reference_manage: new Set(['list']),
@@ -17,7 +18,7 @@ const readActions = {
 const edits = new Set(['write', 'edit', 'prompt_update', 'prompt_set', 'snapshot', 'block_manage', 'settings_update', 'reference_manage', 'reference_library', 'gallery_manage', 'image_tool', 'image_generate', 'explore_manage']);
 const destructive = /(?:^|_)(?:delete|delete_empty|move|move_file|remove)(?:$|_)/;
 
-async function canonical(path) {
+export async function canonical(path) {
   try { return await realpath(path); }
   catch (error) {
     if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error;
@@ -37,7 +38,7 @@ export function createNaiPermissions({ cwd, mode = 'auto', labels = {}, redact =
   async function classify(event) {
     const studio = event.toolName.startsWith('mcp__nai_studio__');
     const name = studio ? event.toolName.slice('mcp__nai_studio__'.length) : event.toolName;
-    const action = event.input?.action;
+    const action = event.input?.action ?? (name === 'agent_manage' ? 'read' : undefined);
     if (name.startsWith('mcp__')) return 'unknown';
     if (['read', 'write', 'edit', 'grep', 'find', 'ls'].includes(name)) {
       const path = event.input?.path ?? (['grep', 'find', 'ls'].includes(name) ? '.' : null);
@@ -48,7 +49,9 @@ export function createNaiPermissions({ cwd, mode = 'auto', labels = {}, redact =
     }
     if (reads.has(name) || readActions[name]?.has(action)) return 'read';
     if (name === 'generation_run' || (['image_generate', 'image_tool', 'explore_manage'].includes(name) && action === 'run')) return 'native-confirmation';
-    if (name === 'bash' || name === 'powershell' || destructive.test(action ?? '')) return 'danger';
+    if (name === 'bash' || name === 'powershell' || destructive.test(action ?? '') ||
+        (name === 'agent_manage' && ['install','uninstall','update'].includes(action) && event.input.resource === 'packages')) return 'danger';
+    if (name === 'agent_manage') return 'edit';
     return edits.has(name) ? 'edit' : 'unknown';
   }
   const setMode = value => {

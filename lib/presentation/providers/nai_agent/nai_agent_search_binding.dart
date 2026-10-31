@@ -55,7 +55,8 @@ class NaiAgentSearchBinding {
       };
     }
     final controller = ref.read(ragControllerProvider.notifier);
-    final status = ref.read(ragControllerProvider).forSource(source);
+    final root = ref.read(ragControllerProvider);
+    final status = root.forSource(source);
     if (controller.isGpuBusy ||
         status.suspended ||
         status.error == 'resource_busy') {
@@ -64,7 +65,23 @@ class NaiAgentSearchBinding {
         'message': 'Local semantic search resources are busy. Retry later.',
       };
     }
+    if (root.initializing ||
+        (status.indexed == 0 &&
+            status.error == null &&
+            (!status.hasIndexStatus || status.busy))) {
+      return {
+        'status': 'busy',
+        'reason': 'warming',
+        'message': 'Local semantic index is loading. Retry shortly.',
+      };
+    }
     if (status.indexed == 0) {
+      if (status.error != null) {
+        return {
+          'status': 'error',
+          'message': 'Local semantic search is unavailable: ${status.error}.',
+        };
+      }
       return {
         'status': 'not_indexed',
         'message':
@@ -153,6 +170,8 @@ class NaiAgentSearchBinding {
       return result({
         'status': 'ok',
         'items': items,
+        if (request.source == RagSource.tags && after.degraded.isNotEmpty)
+          'degraded': after.degraded,
         if (before.partial || before.busy || after.partial || after.busy)
           'partial': true,
       });
@@ -357,7 +376,7 @@ class NaiAgentSearchBinding {
   Future<String> _temporaryDirectory() async {
     final root = await workspace.resolveSymbolicLinks();
     var parent = root;
-    for (final name in ['.agent', 'search-images']) {
+    for (final name in ['.W.O.F', 'search-images']) {
       final directory = Directory(p.join(parent, name));
       if (await FileSystemEntity.type(directory.path, followLinks: false) !=
               FileSystemEntityType.notFound &&

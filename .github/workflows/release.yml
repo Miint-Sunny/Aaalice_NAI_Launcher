@@ -208,75 +208,14 @@ jobs:
 
   build-macos:
     name: Build macOS
-    runs-on: macos-15
     needs: prepare
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-          lfs: true
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Install Rosetta
-        # The x86_64 slice of studio-bridge is compiled by the x64 Dart SDK.
-        run: sudo softwareupdate --install-rosetta --agree-to-license
-
-      - name: Pull LFS databases
-        run: |
-          git lfs install
-          git lfs pull --include="assets/databases/*.db"
-
-      - name: Verify bundled databases
-        run: |
-          for file in assets/databases/tag_catalog.db assets/databases/cooccurrence.db; do
-            if [ ! -f "$file" ]; then
-              echo "Missing database: $file" >&2
-              exit 1
-            fi
-            if [ "$(wc -c < "$file")" -lt 1024 ]; then
-              echo "Database looks too small, probably an LFS pointer: $file" >&2
-              exit 1
-            fi
-            if [ "$(head -c 15 "$file")" != "SQLite format 3" ]; then
-              echo "Database is not a SQLite file: $file" >&2
-              exit 1
-            fi
-          done
-
-      - name: Resolve dependencies
-        run: flutter pub get
-
-      - name: Validate bundled autocomplete databases
-        run: dart run tool/tag_catalog/verify_bundled_databases.dart
-
-      - name: Generate localizations
-        run: flutter gen-l10n
-
-      - name: Generate code
-        run: dart run tool/generate.dart
-
-      - name: Build macOS release
-        run: scripts/build_macos.sh --release
-
-      - name: Package macOS artifact
-        run: scripts/package_macos_release.sh --version '${{ needs.prepare.outputs.version }}'
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-release
-          path: |
-            dist/WOF_NAI_Studio_macOS_*_Portable.zip
-            dist/WOF_NAI_Studio_macOS_*_Portable.zip.sha256
-          if-no-files-found: error
+    permissions:
+      contents: read
+    uses: ./.github/workflows/macos-build.yml
+    with:
+      checkout-ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      version: ${{ needs.prepare.outputs.version }}
+      artifact-name: macos-release
 
   publish:
     name: Publish GitHub Release

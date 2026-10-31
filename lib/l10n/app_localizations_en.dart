@@ -3266,11 +3266,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Files in the trash are still on disk and will be removed permanently on the next launch. Restored files return to the gallery immediately.';
 
   @override
-  String localGallery_trashCount(Object count) {
-    return '$count items';
-  }
-
-  @override
   String get localGallery_trashRestore => 'Restore';
 
   @override
@@ -3288,17 +3283,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localGallery_trashDeleteAll => 'Delete permanently';
 
   @override
-  String localGallery_trashDeleteAllConfirm(Object count) {
-    return 'This will permanently delete all $count files in the trash immediately. This cannot be undone.';
-  }
-
-  @override
   String localGallery_trashDeletedForever(Object count) {
     return 'Permanently deleted $count files';
   }
-
-  @override
-  String get localGallery_trashFileMissing => 'File no longer on disk';
 
   @override
   String localGallery_movedImages(Object count) {
@@ -7132,9 +7119,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settings_geistDescription =>
       'One appearance across your studio. Black or white surfaces, with blue accents.';
-
-  @override
-  String get updateCapsuleLabel => 'Update';
 
   @override
   String get updateWaitForTask =>
@@ -16963,10 +16947,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get naiAgent_mcpConfig => 'Server configuration (JSON)';
 
   @override
-  String get naiAgent_mcpConfigHint =>
-      'Supports stdio and Streamable HTTP. Paste one server configuration object; command is an executable and args is an array. Supports env, cwd, url, headers, oauth and toolExposure. Configuration is saved in encrypted storage.';
-
-  @override
   String get naiAgent_mcpStatus => 'Check connections';
 
   @override
@@ -20375,7 +20355,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Not saved: the workspace changed or the write failed. Your edits are kept.';
 
   @override
-  String get set_agMcpUnchecked => 'Not checked';
+  String get set_agMcpUnchecked => 'Not connected';
 
   @override
   String get set_agInstructionsSaving => 'Saving instructions…';
@@ -21885,9 +21865,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ag_toggle => 'NAI Agent';
 
   @override
-  String get ag_yesterday => 'Yesterday';
-
-  @override
   String get ag_attachmentTag => 'Attached';
 
   @override
@@ -22410,10 +22387,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ag_historyEmpty => 'No matching entries';
 
   @override
-  String get ag_historyBeforeCompaction =>
-      'This was before compaction. Click to read the summary.';
-
-  @override
   String get ag_historyAuto => 'Auto compaction';
 
   @override
@@ -22747,9 +22720,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Warming while idle (up to 30 minutes) costs extra model usage.';
 
   @override
-  String get ag_suggestionAccept => 'Tab to fill in this suggestion';
-
-  @override
   String get ag_cacheWarmTitle => 'Cache warming';
 
   @override
@@ -22935,4 +22905,83 @@ class AppLocalizationsEn extends AppLocalizations {
   String blocks_tempCreatedByYou(String time) {
     return 'You created this$time.';
   }
+
+  @override
+  String get ag_chatJustNow => 'Just now';
+
+  @override
+  String get localGallery_recentViews => 'Recently viewed';
+
+  @override
+  String get localGallery_recentViewsEmpty => 'No recently viewed images';
+
+  @override
+  String get localGallery_deleteForever => 'Delete permanently';
+
+  @override
+  String localGallery_deleteForeverConfirm(int count) {
+    return 'Permanently delete the selected $count files? This cannot be undone.';
+  }
+
+  @override
+  String ag_chatAgeMinutes(int count) {
+    return '${count}m';
+  }
+
+  @override
+  String ag_chatAgeHours(int count) {
+    return '${count}h';
+  }
+
+  @override
+  String ag_chatAgeDays(int count) {
+    return '${count}d';
+  }
+
+  @override
+  String ag_chatAgeWeeks(int count) {
+    return '${count}w';
+  }
+
+  @override
+  String get set_agMcpStdio => 'Local command';
+
+  @override
+  String get set_agMcpAddress => 'Server URL';
+
+  @override
+  String get set_agMcpCommand => 'Executable command';
+
+  @override
+  String get set_agMcpArgs => 'Arguments (one per line)';
+
+  @override
+  String get set_agMcpEnv => 'Environment variables';
+
+  @override
+  String get set_agMcpHeaders => 'Request headers';
+
+  @override
+  String get set_agMcpCwd => 'Working directory';
+
+  @override
+  String get set_agMcpAdvanced => 'Advanced';
+
+  @override
+  String get set_agMcpJson => 'Import / edit JSON';
+
+  @override
+  String get set_agMcpForm => 'Form';
+
+  @override
+  String get set_agMcpTest => 'Test connection';
+
+  @override
+  String get set_agMcpJsonOne => 'Import one MCP server at a time.';
+
+  @override
+  String get set_agMcpPending => 'Applies next turn';
+
+  @override
+  String get ag_tool_agent_manage => 'Manage Agent';
 }

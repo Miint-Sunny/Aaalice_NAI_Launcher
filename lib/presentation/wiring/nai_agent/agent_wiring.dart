@@ -52,6 +52,7 @@ import '../../widgets/common/app_toast.dart';
 import '../../widgets/common/draggable_memory_image.dart';
 import '../../widgets/common/precise_reference_type_dialog.dart';
 import '../../widgets/drop/image_destination_dialog.dart';
+import '../../widgets/drop/global_drop_handler.dart';
 import '../../widgets/nai_agent/nai_agent_image_input.dart';
 import '../blocks_preferences.dart';
 import '../image_viewer_generation_target.dart';
@@ -659,32 +660,6 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
               );
             },
           );
-    final historyMessages = r?.historyMessages ?? <Map<String, dynamic>>[];
-    final archive = r == null || historyMessages.isEmpty
-        ? null
-        : _mapper.map(
-            r,
-            historyMessages: [
-              for (final old in historyMessages)
-                r.messages
-                        .where(
-                          (m) =>
-                              m['role'] == old['role'] &&
-                              m['timestamp'] == old['timestamp'],
-                        )
-                        .firstOrNull ??
-                    old,
-              ...r.messages.where(
-                (m) => !historyMessages.any(
-                  (old) => m['role'] == 'compactionSummary'
-                      ? old['role'] == m['role'] &&
-                            old['summary'] == m['summary']
-                      : old['role'] == m['role'] &&
-                            old['timestamp'] == m['timestamp'],
-                ),
-              ),
-            ],
-          );
     _mapping = mapping;
     final recent = <String, AgentImage>{};
     for (final image
@@ -771,6 +746,7 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
         id: chat.id,
         title: chat.title.trim().isEmpty ? c.initialChatName : chat.title,
         createdAt: chat.createdAt.toLocal(),
+        lastActivityAt: chat.lastActivityAt?.toLocal(),
         canExport: !chat.isDraft && chat.sessionFile != null,
         state: waiting
             ? AgentChatState.waitingUser
@@ -844,10 +820,7 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
         enterSends: c.settings.enterToSend,
       ),
       thread: mapping?.turns ?? [],
-      history: agentHistoryEntries(
-        mapping?.turns ?? [],
-        archive: archive?.turns ?? [],
-      ),
+      history: agentHistoryEntries(mapping?.turns ?? []),
       shelf: mapping?.shelf ?? const AgentShelfData(),
       memory: AgentMemoryData(
         globalInstructions: c.settings.globalInstructions,
@@ -993,7 +966,7 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
         ],
       ],
       initError: c.initializationError,
-      loading: r == null,
+      loading: r == null && !c.initialized,
       revision: _revision + (r?.uiRevision ?? 0),
       quick: agentQuickItems(
         context.l10n,
@@ -1305,33 +1278,38 @@ class _AgentWiringState extends ConsumerState<AgentWiring>
       }),
       onEditMemory: (target) => _settings(memory: target),
     );
-    return AgentPanel(
-      key: ValueKey(r?.chat.id),
-      data: data,
-      actions: actions,
-      slots: AgentSlots(
-        dropTarget: (_, hover, child) => r == null
-            ? child
-            : NaiAgentDropTarget(
-                controller: c,
-                runtime: r,
-                onHighlight: hover,
-                child: child,
-              ),
-        imageDrag: (_, image, child) {
-          if (!ref.read(naiAgentNativeDragEnabledProvider)) return child;
-          final provider = image.image;
-          return provider is! MemoryImage
+    return MetaData(
+      metaData: GlobalDropHandler.excludedRegion,
+      behavior: HitTestBehavior.opaque,
+      child: AgentPanel(
+        // Deleting the selected chat changes chats without closing the picker.
+        key: ValueKey(data.workspace.id),
+        data: data,
+        actions: actions,
+        slots: AgentSlots(
+          dropTarget: (_, hover, child) => r == null
               ? child
-              : DraggableMemoryImage(
-                  imageBytes: provider.bytes,
-                  imageId: image.historyId,
-                  fileName: 'agent-image.png',
-                  feedbackPixelWidth: image.width,
-                  feedbackPixelHeight: image.height,
+              : NaiAgentDropTarget(
+                  controller: c,
+                  runtime: r,
+                  onHighlight: hover,
                   child: child,
-                );
-        },
+                ),
+          imageDrag: (_, image, child) {
+            if (!ref.read(naiAgentNativeDragEnabledProvider)) return child;
+            final provider = image.image;
+            return provider is! MemoryImage
+                ? child
+                : DraggableMemoryImage(
+                    imageBytes: provider.bytes,
+                    imageId: image.historyId,
+                    fileName: 'agent-image.png',
+                    feedbackPixelWidth: image.width,
+                    feedbackPixelHeight: image.height,
+                    child: child,
+                  );
+          },
+        ),
       ),
     );
   }

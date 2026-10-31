@@ -236,7 +236,9 @@ void main() {
       expect(c.selected!.chat.id, draftId);
       await c.saveComposer('尚未发送');
       expect(
-        await File('${workspace.directory.path}/ui/$draftId.json').exists(),
+        await File(
+          '${workspace.agentDirectory.path}/ui/$draftId.json',
+        ).exists(),
         false,
       );
       await c.close();
@@ -263,6 +265,31 @@ void main() {
   );
 
   test(
+    'sending to an older chat moves it first; merely opening it preserves activity',
+    () async {
+      final c = controller();
+      await c.initialize();
+      await c.saveComposer('first');
+      await c.send();
+      final first = c.selected!.chat.id;
+      await c.createChat();
+      await c.saveComposer('second');
+      await c.send();
+      final second = c.selected!.chat.id;
+      expect(c.chats.first.id, second);
+      final firstAt = c.chats.firstWhere((chat) => chat.id == first).activityAt;
+      await c.selectChat(first);
+      expect(c.chats.first.id, second);
+      expect(c.selected!.chat.activityAt, firstAt);
+      await c.saveComposer('continue');
+      await c.send();
+      expect(c.chats.first.id, first);
+      expect(c.selected!.chat.activityAt.isAfter(firstAt), isTrue);
+      expect(calls, 3);
+    },
+  );
+
+  test(
     'switching away discards draft composer and staged attachments',
     () async {
       final c = controller();
@@ -284,7 +311,7 @@ void main() {
         saved,
       );
       final attachmentDirectory = Directory(
-        '${draft.workspace.directory.path}/attachments/${draft.chat.id}',
+        '${draft.workspace.agentDirectory.path}/attachments/${draft.chat.id}',
       );
       expect(await attachmentDirectory.exists(), true);
       await c.selectChat(saved);
@@ -300,7 +327,7 @@ void main() {
       await c.createWorkspace('other');
       expect(
         await File(
-          '${draft.workspace.directory.path}/ui/chats/$newDraftId.json',
+          '${draft.workspace.agentDirectory.path}/ui/chats/$newDraftId.json',
         ).exists(),
         false,
       );
@@ -700,6 +727,45 @@ void main() {
     expect(await c.store.readAttachment(runtime.workspace.id, original), bmp);
   });
   test(
+    'self-management applies next idle send and resumes the same Pi conversation',
+    () async {
+      final c = controller();
+      await c.initialize();
+      final entered = Completer<void>(), release = Completer<void>();
+      waitForResponse = () async {
+        entered.complete();
+        await release.future;
+      };
+      final running = c.sendText('before management');
+      await entered.future.timeout(const Duration(seconds: 10));
+      final runtime = c.selected!, client = runtime.client!;
+      try {
+        await c.updateSettings({
+          'permissionMode': 'readonly',
+        }, deferRuntime: true);
+        expect(runtime.running, isTrue);
+        expect(client.isClosed, isFalse);
+        expect((await client.state())['permissionMode'], 'auto');
+        expect(runtime.extensionSignature, isNull);
+      } finally {
+        release.complete();
+      }
+      await running;
+      final session = runtime.chat.sessionFile;
+      waitForResponse = null;
+      await c.sendText('after management');
+      expect(runtime.error, isNull);
+      expect(runtime.client, isNot(same(client)));
+      expect(client.isClosed, isTrue);
+      expect(runtime.chat.sessionFile, session);
+      expect((await runtime.client!.state())['permissionMode'], 'readonly');
+      expect(
+        jsonEncode(requests.last['messages']),
+        contains('before management'),
+      );
+    },
+  );
+  test(
     'live approval mode updates the owned Pi host without a model request',
     () async {
       final c = controller();
@@ -1075,7 +1141,7 @@ void main() {
       final runtime = c.selected!, callsBefore = calls;
       final exported = await c.exportSession(runtime);
       final original = await File(
-        '${runtime.workspace.directory.path}/${runtime.chat.sessionFile}',
+        '${runtime.workspace.agentDirectory.path}/${runtime.chat.sessionFile}',
       ).readAsBytes();
       expect(exported, original);
       final rows = utf8
