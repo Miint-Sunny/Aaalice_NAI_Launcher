@@ -19,5 +19,7 @@ flutter test --no-pub --concurrency=3 \
   test/core/network/system_proxy_reader_test.dart \
   test/presentation/providers/detected_system_proxy_test.dart \
   test/presentation/providers/nai_agent/inventory_cache_test.dart \
+  test/presentation/providers/nai_agent/skill_command_lists_test.dart \
+  test/presentation/providers/nai_agent/host_reaper_test.dart \
   test/presentation/providers/nai_agent/package_inventory_refresh_test.dart \
   test/core/database/asset_database_manager_test.dart
