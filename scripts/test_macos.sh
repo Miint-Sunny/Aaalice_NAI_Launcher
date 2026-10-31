@@ -22,4 +22,9 @@ flutter test --no-pub --concurrency=3 \
   test/presentation/providers/nai_agent/skill_command_lists_test.dart \
   test/presentation/providers/nai_agent/host_reaper_test.dart \
   test/presentation/providers/nai_agent/package_inventory_refresh_test.dart \
-  test/core/database/asset_database_manager_test.dart
+  test/core/database/asset_database_manager_test.dart \
+  test/presentation/providers/generation/generation_retry_policy_test.dart \
+  test/presentation/providers/generation/image_generation_retry_test.dart \
+  test/presentation/wiring/generation_error_view_test.dart \
+  test/presentation/wiring/generation_data_wiring_test.dart \
+  test/presentation/wiring/generation_canvas_wiring_test.dart

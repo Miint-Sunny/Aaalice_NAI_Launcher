@@ -2354,6 +2354,13 @@ class AppLocalizationsJa extends AppLocalizations {
       'リクエストが多すぎます。しばらく待ってからもう一度お試しください (共有アカウントの場合に共通)';
 
   @override
+  String get api_error_400 => '無効なリクエスト';
+
+  @override
+  String get api_error_400_hint =>
+      '生成できません：NovelAI がこの設定を受け付けませんでした。プロンプトとパラメーターを見直してから、「生成」を押してください';
+
+  @override
   String get api_error_401 => '認証に失敗しました';
 
   @override
@@ -2364,6 +2371,20 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get api_error_402_hint => 'Anlas が不足しています。補充してもう一度お試しください';
+
+  @override
+  String get api_error_403 => '権限がありません';
+
+  @override
+  String get api_error_403_hint =>
+      '生成できません：このアカウントにはこの機能を使う権限がありません。サブスクリプションを確認するか、別のアカウントに切り替えてから、「生成」を押してください';
+
+  @override
+  String get api_error_404 => '見つかりません';
+
+  @override
+  String get api_error_404_hint =>
+      '生成できません：サーバーにこのエンドポイントまたはモデルがありません。API アドレスとモデルを見直してから、「生成」を押してください';
 
   @override
   String get api_error_500 => 'サーバーエラー';
@@ -14209,6 +14230,22 @@ class AppLocalizationsJa extends AppLocalizations {
   String get explore_retryFailed => '失敗した候補を再試行';
 
   @override
+  String get explore_error400Hint =>
+      '生成できません：NovelAI がこの設定を受け付けませんでした。プロンプトとパラメーターを見直してから、「失敗した候補を再試行」を押してください';
+
+  @override
+  String get explore_error403Hint =>
+      '生成できません：このアカウントにはこの機能を使う権限がありません。サブスクリプションを確認するか、別のアカウントに切り替えてから、「失敗した候補を再試行」を押してください';
+
+  @override
+  String get explore_error404Hint =>
+      '生成できません：サーバーにこのエンドポイントまたはモデルがありません。API アドレスとモデルを見直してから、「失敗した候補を再試行」を押してください';
+
+  @override
+  String get explore_concurrencyStoppedHint =>
+      '生成を続けられません：NovelAI では 1 つのアカウントで同時に 1 件しか生成できず、このアカウントは別の生成でふさがったままでした。残りの画像は送信していません。そちらが終わってから「失敗した候補を再試行」を押してください。';
+
+  @override
   String get explore_waitHint => '生成されると抽選された絵師がここに表示されます';
 
   @override
@@ -15311,6 +15348,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get gen_copyDetail => '詳細をコピー';
+
+  @override
+  String get gen_concurrencyStopped =>
+      '生成を続けられません：NovelAI では 1 つのアカウントで同時に 1 件しか生成できず、このアカウントは別の生成でふさがったままでした。残りの画像は送信していません。そちらが終わってから「再試行」を押してください。';
+
+  @override
+  String gen_rejectedRequestsHint(int count) {
+    return '$count 回のリクエストで抽選された語句を NovelAI が受け付けなかったため、その分はスキップし、ほかのリクエストはそのまま送信しました。順番またはランダムブロックの語句を見直してから、「生成」を押してください';
+  }
 
   @override
   String get gen_history => '履歴';
@@ -21538,6 +21584,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get ag_psGenerating => '生成中';
+
+  @override
+  String get ag_psError400Hint =>
+      '生成できません：NovelAI がこの設定を受け付けませんでした。パラメーターを見直すか、この項目のプロンプトの修正を Agent に頼むかしてから、「生成」を押してください';
 
   @override
   String ag_psRevision(int revision, int count) {

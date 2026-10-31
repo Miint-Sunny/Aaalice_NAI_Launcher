@@ -30,6 +30,7 @@ import 'package:nai_launcher/presentation/providers/auth_provider.dart';
 import 'package:nai_launcher/presentation/providers/cost_estimate_provider.dart';
 import 'package:nai_launcher/presentation/providers/director_tools_notifier.dart';
 import 'package:nai_launcher/presentation/providers/generation/cloud_upscale_provider.dart';
+import 'package:nai_launcher/presentation/providers/generation/generation_retry_policy.dart';
 import 'package:nai_launcher/presentation/providers/generation/image_action_providers.dart';
 import 'package:nai_launcher/presentation/providers/generation/image_workflow_controller.dart';
 import 'package:nai_launcher/presentation/providers/generation/local_upscale_provider.dart';
@@ -121,6 +122,7 @@ class _Session {
         ...realBalanceOverrides(this.balances, auth: auth),
         if (!realStatistics)
           anlasStatisticsServiceProvider.overrideWith(() => spend),
+        generationRetryDelayProvider.overrideWithValue((_, __) async {}),
         ...overrides,
       ],
     );
@@ -416,12 +418,41 @@ void main() {
       final shown = await session.generate();
       expect(await session.recorded(), [shown]);
       await session.generation.retry(session.generation.lastRequest!);
+      expect(session.container.read(imageGenerationNotifierProvider).status,
+          GenerationStatus.completed);
+      expect(await session.recorded(), [shown, shown]);
+      expect(session.novelAi.paths, [_stream, _stream]);
+      expect(session.balances.requests, 0);
+    });
+
+    test('a retry records only the requests it sends again', () async {
+      session = _Session();
+      await session.open(requests: 3);
+      // The second of three requests is refused (not enough Anlas): the run
+      // stops, the first one was billed.
+      session.novelAi.refuse = (index, _) => index == 1 ? 402 : null;
+      final shown = await session.generate();
+      final state = session.container.read(imageGenerationNotifierProvider);
+      expect(state.status, GenerationStatus.error);
+      final price = shown ~/ 3;
+      expect(await session.recorded(), [price]);
+      final retry = session.generation.lastRequest!;
+      expect(retry.params.nSamples, 2);
+      final quoted = generationRequestCost(
+        retry.params,
+        retry.workflow,
+        session.container.read(subscriptionNotifierProvider).subscription,
+        retry.count,
+      );
+      session.novelAi.refuse = null;
+      await session.generation.retry(retry);
       expect(
         session.container.read(imageGenerationNotifierProvider).status,
         GenerationStatus.completed,
       );
-      expect(await session.recorded(), [shown, shown]);
-      expect(session.novelAi.paths, [_stream, _stream]);
+      expect(await session.recorded(), [price, price, price]);
+      expect(quoted, price * 2);
+      expect(session.novelAi.paths, [_stream, _stream, _stream, _stream]);
       expect(session.balances.requests, 0);
     });
 

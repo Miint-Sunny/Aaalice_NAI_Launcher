@@ -4368,6 +4368,18 @@ abstract class AppLocalizations {
   /// **'Too many requests. Please wait and try again (common with shared accounts)'**
   String get api_error_429_hint;
 
+  /// No description provided for @api_error_400.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid request'**
+  String get api_error_400;
+
+  /// No description provided for @api_error_400_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: NovelAI rejected these settings. Check the prompt and parameters, then click Generate'**
+  String get api_error_400_hint;
+
   /// No description provided for @api_error_401.
   ///
   /// In en, this message translates to:
@@ -4391,6 +4403,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Insufficient Anlas. Please top up and try again'**
   String get api_error_402_hint;
+
+  /// No description provided for @api_error_403.
+  ///
+  /// In en, this message translates to:
+  /// **'Access denied'**
+  String get api_error_403;
+
+  /// No description provided for @api_error_403_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: this account doesn\'t have permission for this. Check your subscription or switch accounts, then click Generate'**
+  String get api_error_403_hint;
+
+  /// No description provided for @api_error_404.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found'**
+  String get api_error_404;
+
+  /// No description provided for @api_error_404_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: the server doesn\'t have this endpoint or model. Check the API address and the model, then click Generate'**
+  String get api_error_404_hint;
 
   /// No description provided for @api_error_500.
   ///
@@ -25362,6 +25398,30 @@ abstract class AppLocalizations {
   /// **'Retry failed candidates'**
   String get explore_retryFailed;
 
+  /// Hint after api_error_400 in a style explore. Ends with the explore_retryFailed button, not Generate
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: NovelAI rejected these settings. Check the prompt and parameters, then click \"Retry failed candidates\"'**
+  String get explore_error400Hint;
+
+  /// Hint after api_error_403 in a style explore. Ends with the explore_retryFailed button, not Generate
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: this account doesn\'t have permission for this. Check your subscription or switch accounts, then click \"Retry failed candidates\"'**
+  String get explore_error403Hint;
+
+  /// Hint after api_error_404 in a style explore. Ends with the explore_retryFailed button, not Generate
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: the server doesn\'t have this endpoint or model. Check the API address and the model, then click \"Retry failed candidates\"'**
+  String get explore_error404Hint;
+
+  /// Hint after api_error_429 when a style explore stopped because the 429 waits ran out. Word for word gen_concurrencyStopped, but it ends with the explore_retryFailed button, not Retry
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t keep generating: NovelAI runs one generation per account at a time, and another one kept this account busy, so the remaining images weren\'t sent. Wait for it to finish, then click \"Retry failed candidates\".'**
+  String get explore_concurrencyStoppedHint;
+
   /// No description provided for @explore_waitHint.
   ///
   /// In en, this message translates to:
@@ -27364,6 +27424,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy details'**
   String get gen_copyDetail;
+
+  /// No description provided for @gen_concurrencyStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t keep generating: NovelAI runs one generation per account at a time, and another one kept this account busy, so the remaining images weren\'t sent. Wait for it to finish, then click Retry.'**
+  String get gen_concurrencyStopped;
+
+  /// Hint after api_error_400 on the generation canvas when a run with sequential or random blocks finished but NovelAI rejected (400) the words drawn for {count} of its requests: they were skipped and the others were sent. Ends with the Generate button, as api_error_400_hint does; this card has no Retry
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{NovelAI rejected the words drawn for 1 request, so it was skipped and the other requests were sent. Check the words in the sequential or random blocks, then click Generate} other{NovelAI rejected the words drawn for {count} requests, so they were skipped and the other requests were sent. Check the words in the sequential or random blocks, then click Generate}}'**
+  String gen_rejectedRequestsHint(int count);
 
   /// No description provided for @gen_history.
   ///
@@ -38697,6 +38769,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generating'**
   String get ag_psGenerating;
+
+  /// Hint after api_error_400 on a prompt-set card. Its Generate writes the item's prompt into the draft again, so the prompt is fixed through Agent (ag_psEditItem), not on the canvas. Ends with the card's Generate (ag_psGenerate)
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t generate: NovelAI rejected these settings. Check the parameters, or ask Agent to edit this item\'s prompt, then click Generate'**
+  String get ag_psError400Hint;
 
   /// No description provided for @ag_psRevision.
   ///

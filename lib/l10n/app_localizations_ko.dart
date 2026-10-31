@@ -2351,6 +2351,13 @@ class AppLocalizationsKo extends AppLocalizations {
       '요청이 너무 많습니다. 잠시 기다린 후 다시 시도하세요(공유 계정에서 자주 발생합니다)';
 
   @override
+  String get api_error_400 => '잘못된 요청';
+
+  @override
+  String get api_error_400_hint =>
+      '생성할 수 없습니다. NovelAI가 이 설정을 받아들이지 않았습니다. 프롬프트와 매개변수를 확인한 뒤 “생성”을 누르세요';
+
+  @override
   String get api_error_401 => '인증 실패';
 
   @override
@@ -2361,6 +2368,20 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get api_error_402_hint => 'Anlas가 부족합니다. 충전한 뒤 다시 시도하세요';
+
+  @override
+  String get api_error_403 => '권한 없음';
+
+  @override
+  String get api_error_403_hint =>
+      '생성할 수 없습니다. 이 계정에는 이 기능을 사용할 권한이 없습니다. 구독을 확인하거나 다른 계정으로 바꾼 뒤 “생성”을 누르세요';
+
+  @override
+  String get api_error_404 => '찾을 수 없음';
+
+  @override
+  String get api_error_404_hint =>
+      '생성할 수 없습니다. 서버에 이 엔드포인트나 모델이 없습니다. API 주소와 모델을 확인한 뒤 “생성”을 누르세요';
 
   @override
   String get api_error_500 => '서버 오류';
@@ -14245,6 +14266,22 @@ class AppLocalizationsKo extends AppLocalizations {
   String get explore_retryFailed => '실패한 후보 다시 시도';
 
   @override
+  String get explore_error400Hint =>
+      '생성할 수 없습니다. NovelAI가 이 설정을 받아들이지 않았습니다. 프롬프트와 매개변수를 확인한 뒤 “실패한 후보 다시 시도”를 누르세요';
+
+  @override
+  String get explore_error403Hint =>
+      '생성할 수 없습니다. 이 계정에는 이 기능을 사용할 권한이 없습니다. 구독을 확인하거나 다른 계정으로 바꾼 뒤 “실패한 후보 다시 시도”를 누르세요';
+
+  @override
+  String get explore_error404Hint =>
+      '생성할 수 없습니다. 서버에 이 엔드포인트나 모델이 없습니다. API 주소와 모델을 확인한 뒤 “실패한 후보 다시 시도”를 누르세요';
+
+  @override
+  String get explore_concurrencyStoppedHint =>
+      '생성을 계속할 수 없습니다. NovelAI는 계정당 한 번에 하나만 생성할 수 있는데, 이 계정을 다른 생성이 계속 쓰고 있어 남은 이미지는 보내지 않았습니다. 그 생성이 끝난 뒤 “실패한 후보 다시 시도”를 누르세요.';
+
+  @override
   String get explore_waitHint => '생성되면 뽑힌 작가가 여기에 표시됩니다';
 
   @override
@@ -15349,6 +15386,15 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get gen_copyDetail => '자세히 복사';
+
+  @override
+  String get gen_concurrencyStopped =>
+      '생성을 계속할 수 없습니다. NovelAI는 계정당 한 번에 하나만 생성할 수 있는데, 이 계정을 다른 생성이 계속 쓰고 있어 남은 이미지는 보내지 않았습니다. 그 생성이 끝난 뒤 “다시 시도”를 누르세요.';
+
+  @override
+  String gen_rejectedRequestsHint(int count) {
+    return '요청 $count회에서 뽑힌 단어를 NovelAI가 받아들이지 않아 그 요청은 건너뛰고 나머지 요청은 그대로 보냈습니다. 순차 또는 무작위 블록의 단어를 확인한 뒤 “생성”을 누르세요';
+  }
 
   @override
   String get gen_history => '기록';
@@ -21614,6 +21660,10 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get ag_psGenerating => '생성 중';
+
+  @override
+  String get ag_psError400Hint =>
+      '생성할 수 없습니다. NovelAI가 이 설정을 받아들이지 않았습니다. 매개변수를 확인하거나 이 항목의 프롬프트 수정을 Agent에 요청한 뒤 “생성”을 누르세요';
 
   @override
   String ag_psRevision(int revision, int count) {

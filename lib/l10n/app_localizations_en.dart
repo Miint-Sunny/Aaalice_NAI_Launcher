@@ -2401,6 +2401,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Too many requests. Please wait and try again (common with shared accounts)';
 
   @override
+  String get api_error_400 => 'Invalid request';
+
+  @override
+  String get api_error_400_hint =>
+      'Can\'t generate: NovelAI rejected these settings. Check the prompt and parameters, then click Generate';
+
+  @override
   String get api_error_401 => 'Authentication failed';
 
   @override
@@ -2413,6 +2420,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get api_error_402_hint =>
       'Insufficient Anlas. Please top up and try again';
+
+  @override
+  String get api_error_403 => 'Access denied';
+
+  @override
+  String get api_error_403_hint =>
+      'Can\'t generate: this account doesn\'t have permission for this. Check your subscription or switch accounts, then click Generate';
+
+  @override
+  String get api_error_404 => 'Not found';
+
+  @override
+  String get api_error_404_hint =>
+      'Can\'t generate: the server doesn\'t have this endpoint or model. Check the API address and the model, then click Generate';
 
   @override
   String get api_error_500 => 'Server error';
@@ -14620,6 +14641,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get explore_retryFailed => 'Retry failed candidates';
 
   @override
+  String get explore_error400Hint =>
+      'Can\'t generate: NovelAI rejected these settings. Check the prompt and parameters, then click \"Retry failed candidates\"';
+
+  @override
+  String get explore_error403Hint =>
+      'Can\'t generate: this account doesn\'t have permission for this. Check your subscription or switch accounts, then click \"Retry failed candidates\"';
+
+  @override
+  String get explore_error404Hint =>
+      'Can\'t generate: the server doesn\'t have this endpoint or model. Check the API address and the model, then click \"Retry failed candidates\"';
+
+  @override
+  String get explore_concurrencyStoppedHint =>
+      'Can\'t keep generating: NovelAI runs one generation per account at a time, and another one kept this account busy, so the remaining images weren\'t sent. Wait for it to finish, then click \"Retry failed candidates\".';
+
+  @override
   String get explore_waitHint => 'Artists show up here once it is generated';
 
   @override
@@ -15753,6 +15790,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gen_copyDetail => 'Copy details';
+
+  @override
+  String get gen_concurrencyStopped =>
+      'Can\'t keep generating: NovelAI runs one generation per account at a time, and another one kept this account busy, so the remaining images weren\'t sent. Wait for it to finish, then click Retry.';
+
+  @override
+  String gen_rejectedRequestsHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'NovelAI rejected the words drawn for $count requests, so they were skipped and the other requests were sent. Check the words in the sequential or random blocks, then click Generate',
+      one:
+          'NovelAI rejected the words drawn for 1 request, so it was skipped and the other requests were sent. Check the words in the sequential or random blocks, then click Generate',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get gen_history => 'History';
@@ -22295,6 +22349,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ag_psGenerating => 'Generating';
+
+  @override
+  String get ag_psError400Hint =>
+      'Can\'t generate: NovelAI rejected these settings. Check the parameters, or ask Agent to edit this item\'s prompt, then click Generate';
 
   @override
   String ag_psRevision(int revision, int count) {
