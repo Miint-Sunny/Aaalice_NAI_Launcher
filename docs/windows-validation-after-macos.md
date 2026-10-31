@@ -26,4 +26,4 @@
 
 ## 既有问题
 
-上游已有未引用的 updateCapsuleLabel 文案、写死 E:/node/node.exe 的测试入口、online_backend 缓存数据库工厂未设置等问题需要独立处理；本 PR 不通过跳过失败或改写旧 golden 来掩盖它们。
+上游写死 E:/node/node.exe 的测试入口、online_backend 缓存数据库工厂未设置等问题需要独立处理；本 PR 不通过跳过失败或改写旧 golden 来掩盖它们。旧交接提到的 updateCapsuleLabel 已由上游 2.2.4 移除，不再列为待修问题。

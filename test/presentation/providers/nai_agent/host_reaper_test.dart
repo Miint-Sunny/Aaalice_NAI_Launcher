@@ -94,7 +94,7 @@ void main() {
     final workspace = await store.createWorkspace('Fixture');
     final chat = await store.createChat(workspace.id, 'Saved');
     final session = File(
-      p.join(workspace.directory.path, 'sessions', 'saved.jsonl'),
+      p.join(workspace.agentDirectory.path, 'sessions', 'saved.jsonl'),
     );
     await session.create(recursive: true);
     await store.updateChat(
