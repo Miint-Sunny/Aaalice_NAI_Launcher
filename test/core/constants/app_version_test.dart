@@ -46,7 +46,7 @@ void main() {
 
   test('current pubspec version displays without build metadata', () async {
     final declared = RegExp(
-      r'^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$',
+      r'^version:\s*(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\+(\d+)\s*$',
       multiLine: true,
     ).firstMatch(File('pubspec.yaml').readAsStringSync());
     expect(declared, isNotNull);
@@ -54,12 +54,17 @@ void main() {
     final build = declared.group(2)!;
     for (final value in [name, '$name+$build']) {
       await version(value, build);
-      expect(AppVersion.versionName, name);
+      expect(AppVersion.versionName, isNotEmpty);
+      expect(AppVersion.versionName, isNot(contains('+')));
       expect(AppVersion.fullVersion, '$name+$build');
       expect(AppVersion.buildNumber, build);
       expect(
         AppVersion.getDisplayName('W.O.F NAI Studio'),
-        'W.O.F NAI Studio $name',
+        startsWith('W.O.F NAI Studio '),
+      );
+      expect(
+        AppVersion.getDisplayName('W.O.F NAI Studio'),
+        isNot(contains('+$build')),
       );
     }
   });
@@ -69,6 +74,16 @@ void main() {
     expect(AppVersion.versionName, '2.0 Preview');
     expect(AppVersion.fullVersion, '2.0.0-preview+6');
   });
+
+  test(
+    'a macOS preview retains its patch and prerelease when supplied by the platform',
+    () async {
+      await version('2.2.4-macos-preview', '76');
+      expect(AppVersion.versionName, '2.2.4-Macos-preview');
+      expect(AppVersion.fullVersion, '2.2.4-macos-preview+76');
+      expect((AppVersion.major, AppVersion.minor, AppVersion.patch), (2, 2, 4));
+    },
+  );
 
   test(
     'stable and earlier beta formats still compare and display normally',

@@ -2,11 +2,13 @@
 import importlib.util
 import json
 import os
+import plistlib
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPTS = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('payload', SCRIPTS / 'macos_release_payload.py')
@@ -22,6 +24,39 @@ class MacNodeToolsTest(unittest.TestCase):
         self.app = self.root / 'Studio 测试.app'
         self.agent = payload.agent_dir(self.app)
         self.agent.mkdir(parents=True)
+
+    def test_package_metadata_distinguishes_preview_from_stable(self):
+        (self.app / 'Contents/Info.plist').write_bytes(plistlib.dumps({
+            'CFBundleExecutable': 'Studio',
+            'CFBundleIdentifier': 'com.wof.naiStudio',
+            'LSMinimumSystemVersion': '12.0',
+        }))
+        aot = self.app / 'Contents/Frameworks/App.framework/Versions/A/App'
+        aot.parent.mkdir(parents=True)
+        aot.write_bytes(b'synthetic AOT fixture')
+        flutter = self.root / 'flutter.json'
+        flutter.write_text('{"frameworkVersion":"3.47.7","dartSdkVersion":"3.13.5"}')
+
+        def command(args, **kwargs):
+            if args[0] == 'lipo':
+                return 'arm64 x86_64\n'
+            if args[0] == 'git':
+                return 'fixture-source-commit\n'
+            if args[-1] == '--version':
+                return 'v24.18.0\n'
+            raise AssertionError(args)
+
+        with patch.object(payload.subprocess, 'check_output', side_effect=command):
+            for version, display, expected in [
+                ('2.2.4+75', '2.2.4', 'stable'),
+                ('2.2.4-macos-preview+76', '2.2.4-macos-preview', 'preview'),
+            ]:
+                with self.subTest(version=version):
+                    payload.finish(self.root, self.app, version, display, flutter, '-')
+                    metadata = json.loads((self.app / 'Contents/Resources/package-info.json').read_text())
+                    self.assertEqual(metadata['channel'], expected)
+                    self.assertEqual(metadata['version'], display)
+                    self.assertEqual(metadata['codeSignature'], 'ad-hoc')
 
     def test_packaging_rejects_node_without_npm(self):
         source = self.root / 'tool/nai_agent'

@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 flutter test --no-pub --concurrency=3 \
+  test/core/constants/app_version_test.dart \
   test/presentation/wiring/resource_window_opener_test.dart \
   test/app_exit_shortcuts_test.dart \
   test/core/services/mac_legacy_data_import_test.dart \

@@ -1,0 +1,71 @@
+name: W.O.F macOS Preview
+
+on:
+  push:
+    branches:
+      - wof/macos/preview/macos-2.2.4
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wof-macos-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.repository == 'Miint-Sunny/Aaalice_NAI_Launcher'
+    name: Build verified macOS preview
+    uses: ./.github/workflows/macos-build.yml
+    with:
+      checkout-ref: ${{ github.sha }}
+      artifact-name: wof-macos-preview
+
+  draft-release:
+    name: Prepare preview release for final verification
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          lfs: false
+          persist-credentials: false
+
+      - name: Download verified package
+        uses: actions/download-artifact@v4
+        with:
+          name: wof-macos-preview
+          path: dist
+
+      - name: Check artifact checksums
+        run: |
+          cd dist
+          test "$(find . -maxdepth 1 -name '*.zip' | wc -l)" -eq 1
+          test "$(find . -maxdepth 1 -name '*.sha256' | wc -l)" -eq 1
+          sha256sum --check ./*.sha256
+
+      - name: Create draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | tr -d '[:space:]')"
+          base="${version%%-*}"
+          tag="wof-macos-preview-${base}-${GITHUB_RUN_NUMBER}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; leave it unchanged." >&2
+            exit 1
+          fi
+          cp docs/releases/macos-preview-2.2.4.md release-notes.md
+          printf '\nSource commit: `%s`\nBuild run: %s/%s/actions/runs/%s\n' \
+            "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> release-notes.md
+          gh release create "$tag" dist/*.zip dist/*.sha256 \
+            --target "$GITHUB_SHA" --draft --prerelease --latest=false \
+            --title "W.O.F NAI Studio · macOS 2.2.4 Preview ${GITHUB_RUN_NUMBER}" \
+            --notes-file release-notes.md
+          printf 'Draft release: `%s`\n' "$tag" >> "$GITHUB_STEP_SUMMARY"

@@ -1,3 +1,5 @@
+> **This branch is the W.O.F macOS preview.** In [Releases](https://github.com/Miint-Sunny/Aaalice_NAI_Launcher/releases), choose the prerelease titled “W.O.F NAI Studio · macOS 2.2.4 Preview”. Existing Aaalice releases and Latest are separate. Upstream PRs have not been opened yet.
+
 <p align="center">
   <img src="assets/images/wof_logo_full.png" alt="W.O.F NAI Studio" width="300">
 </p>

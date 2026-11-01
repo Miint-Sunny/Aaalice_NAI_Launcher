@@ -241,7 +241,7 @@ def finish(root, app, version, display, flutter_json, signature):
     node = subprocess.check_output([str(agent_dir(app) / 'node'), '--version'], text=True).strip()
     write_json(contents(app) / 'Resources/package-info.json', {
         'product': 'W.O.F NAI Studio', 'version': display, 'buildVersion': version,
-        'channel': 'stable', 'platform': 'macos-universal',
+        'channel': 'preview' if '-' in display else 'stable', 'platform': 'macos-universal',
         'architectures': architectures(executable),
         'studioBridgeArchitectures': architectures(app / STUDIO_BRIDGE),
         'bundleIdentifier': info['CFBundleIdentifier'],

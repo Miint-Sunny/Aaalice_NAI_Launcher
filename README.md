@@ -1,3 +1,5 @@
+> **此分支为 W.O.F macOS 试用版。** 请到 [Releases](https://github.com/Miint-Sunny/Aaalice_NAI_Launcher/releases) 选择标题为「W.O.F NAI Studio · macOS 2.2.4 Preview」的预发布。原 Aaalice 版本与 Latest 保持独立；本分支尚未向上游提交 PR。
+
 <p align="center">
   <img src="assets/images/wof_logo_full.png" alt="W.O.F NAI Studio" width="300">
 </p>
