@@ -1,4 +1,4 @@
-> **此分支为 W.O.F macOS 试用版。** 请到 [Releases](https://github.com/Miint-Sunny/Aaalice_NAI_Launcher/releases) 选择标题为「W.O.F NAI Studio · macOS 2.2.4 Preview」的预发布。原 Aaalice 版本与 Latest 保持独立；本分支尚未向上游提交 PR。
+> **此分支为 W.O.F macOS 试用版。** 请到 [Releases](https://github.com/Miint-Sunny/Aaalice_NAI_Launcher/releases) 选择标题为「W.O.F NAI Studio · macOS 2.2.4 Preview」的预发布。原 Aaalice 版本与 Latest 保持独立；本分支尚未向上游提交 PR。**本预览包按 macOS 13.5+ 使用**，因为内置 Node 24 的最低系统版本为 13.5；下文 macOS 12 是应用主体的编译目标。
 
 <p align="center">
   <img src="assets/images/wof_logo_full.png" alt="W.O.F NAI Studio" width="300">

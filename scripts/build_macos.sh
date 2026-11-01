@@ -101,7 +101,7 @@ fetch_realesrgan() {
   engine="$dir/realesrgan-ncnn-vulkan"
   windows=$(sed -n 's/.*"engine_version": *"\([^"]*\)".*/\1/p' assets/local_upscale/manifest.json)
   if [ "v$windows" != "$REALESRGAN_VERSION" ]; then
-    echo "Windows 包的 Real-ESRGAN 是 $windows，这里固定的是 $REALESRGAN_VERSION，两边要一起换" >&2
+    echo "Windows 包的 Real-ESRGAN 是 ${windows}，这里固定的是 ${REALESRGAN_VERSION}，两边要一起换" >&2
     exit 1
   fi
   mkdir -p "$CACHE"
@@ -135,7 +135,7 @@ bundle_local_upscale() {
   chmod 755 "$target/realesrgan-ncnn-vulkan"
   for arch in arm64 x86_64; do
     if ! lipo "$target/realesrgan-ncnn-vulkan" -verify_arch "$arch"; then
-      echo "Real-ESRGAN 缺 $arch，要 arm64 + x86_64 的通用二进制" >&2
+      echo "Real-ESRGAN 缺 ${arch}，要 arm64 + x86_64 的通用二进制" >&2
       exit 1
     fi
   done
@@ -211,6 +211,10 @@ bundle_tools() {
   # Pi 的依赖：照 Windows 的准备脚本用 npm ci，用的是同一个版本 Node 带的 npm（纯 JS 依赖，不分架构）
   (cd tool/nai_agent && PATH="$OLDPWD/$arm/bin:$PATH" npm ci --no-audit --no-fund)
 
+  # The npm tarball may only carry the build host's pi-tui native slice.
+  # Its pinned source ships an official clang cross-build for both Mac targets.
+  bash tool/nai_agent/node_modules/@earendil-works/pi-tui/native/darwin/build.sh
+
   # 照 scripts/windows_release_payload.py：tool/nai_agent 里跟踪的文件（不要 test/、node_modules/）+ node_modules
   while IFS= read -r -d '' file; do
     rel="${file#tool/nai_agent/}"
@@ -244,7 +248,7 @@ bundle_tools() {
     --preserve-metadata=identifier,entitlements,requirements,flags,runtime "$app"
   codesign --verify --deep --strict "$app"
   echo "已放进应用包：Node $("$agent/node" --version)（$(lipo -archs "$agent/node")）+ Pi，studio-bridge（$(lipo -archs "$tools/studio-bridge")）"
-  echo "已放进应用包：Real-ESRGAN $REALESRGAN_VERSION（$(lipo -archs "$tools/local-upscale/realesrgan-ncnn-vulkan")）"
+  echo "已放进应用包：Real-ESRGAN ${REALESRGAN_VERSION}（$(lipo -archs "$tools/local-upscale/realesrgan-ncnn-vulkan")）"
 }
 
 cmd="${1:-}"

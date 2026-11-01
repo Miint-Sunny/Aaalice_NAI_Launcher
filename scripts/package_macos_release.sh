@@ -57,7 +57,7 @@ if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9]+)?$ ]]; 
   exit 2
 fi
 if [ ! -d "$app/Contents" ]; then
-  echo "找不到应用包：$app（先跑 scripts/build_macos.sh --release）" >&2
+  echo "找不到应用包：${app}（先跑 scripts/build_macos.sh --release）" >&2
   exit 1
 fi
 
@@ -121,4 +121,4 @@ fi
 rm -rf "$check"
 
 "${payload[@]}" checksum --output "$zip"
-echo "已生成 macOS 包：$zip（$(du -h "$zip" | cut -f1)，签名 $CODESIGN_IDENTITY）"
+echo "已生成 macOS 包：${zip}（$(du -h "$zip" | cut -f1)，签名 ${CODESIGN_IDENTITY}）"

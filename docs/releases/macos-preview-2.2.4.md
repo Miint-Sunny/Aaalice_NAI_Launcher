@@ -6,7 +6,7 @@
 
 ## 下载与安装
 
-下载 `WOF_NAI_Studio_macOS_2.2.4-macos-preview_Portable.zip`；旁边的 `.sha256` 用于校验。需要 macOS 12 或更高版本，ZIP 包含 Apple 芯片和 Intel 架构；Intel 尚待实机验证。
+下载 `WOF_NAI_Studio_macOS_2.2.4-macos-preview_Portable.zip`；旁边的 `.sha256` 用于校验。本试用包按 **macOS 13.5 或更高版本**使用：应用主体的编译目标仍是 macOS 12，但随包 Node v24.18.0 的 arm64 / x86_64 二进制都要求至少 macOS 13.5，因此不能把 Agent 功能承诺为支持 macOS 12。ZIP 包含 Apple 芯片和 Intel 架构；Intel 尚待实机验证。
 
 用访达解压，将 `W.O.F NAI Studio.app` 拖入“应用程序”。这是标准 W.O.F 应用身份 `com.wof.naiStudio`，数据在该身份的“应用支持”目录。它不是此前私有的 `W.O.F NAI Studio 试用.app`，不要直接把它当作同一数据身份覆盖；两者可以分别保留。
 
